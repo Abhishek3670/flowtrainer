@@ -48,6 +48,29 @@ export enum NodeType {
   END = 'end'
 }
 
+// New whiteboard object types
+export enum WhiteboardObjectType {
+  // Legacy workflow nodes
+  START = 'start',
+  HTTP = 'http',
+  DELAY = 'delay',
+  CONDITION = 'condition',
+  LOOP = 'loop',
+  END = 'end',
+  
+  // New whiteboard objects
+  STICKY_NOTE = 'sticky_note',
+  TEXT = 'text',
+  RECTANGLE = 'rectangle',
+  CIRCLE = 'circle',
+  TRIANGLE = 'triangle',
+  LINE = 'line',
+  ARROW = 'arrow',
+  IMAGE = 'image',
+  DRAWING = 'drawing',
+  FRAME = 'frame'
+}
+
 export interface IWorkflowRevision {
   _id: string;
   workflowId: string;
@@ -58,6 +81,8 @@ export interface IWorkflowRevision {
   createdAt: Date;
   changeDescription?: string;
 }
+
+import { Request } from 'express';
 
 export interface AuthenticatedRequest extends Request {
   user?: {

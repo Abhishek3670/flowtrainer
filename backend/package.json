@@ -1,7 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "Backend services for FlowCraft",
+  "description": "Backend services for FlowTrain",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -27,6 +27,6 @@
     "@types/jsonwebtoken": "^9.0.0",
     "@types/bcryptjs": "^2.4.2"
   },
-  "author": "FlowCraft Team",
+  "author": "FlowTrain Team",
   "license": "MIT"
 }

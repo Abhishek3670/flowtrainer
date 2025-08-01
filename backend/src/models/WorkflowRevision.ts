@@ -52,6 +52,6 @@ const workflowRevisionSchema = new Schema({
 workflowRevisionSchema.index({ workflowId: 1, version: -1 });
 workflowRevisionSchema.index({ createdBy: 1 });
 
-export interface WorkflowRevisionDocument extends IWorkflowRevision, Document {}
+export interface WorkflowRevisionDocument extends Omit<IWorkflowRevision, '_id'>, Document {}
 
 export default mongoose.model<WorkflowRevisionDocument>('WorkflowRevision', workflowRevisionSchema);

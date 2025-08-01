@@ -7,7 +7,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key';
 
 export const authenticate = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const token = req.headers.authorization?.replace('Bearer ', '');
     
     if (!token) {
       return res.status(401).json({ error: 'Access denied. No token provided.' });

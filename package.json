@@ -1,7 +1,7 @@
 {
-  "name": "flowcraft",
+  "name": "flowtrain",
   "version": "1.0.0",
-  "description": "Full-stack drag-and-drop workflow designer",
+  "description": "FlowTrain - Full-stack drag-and-drop workflow designer",
   "main": "index.js",
   "workspaces": [
     "frontend",
@@ -29,6 +29,6 @@
     "nodejs",
     "typescript"
   ],
-  "author": "FlowCraft Team",
+  "author": "FlowTrain Team",
   "license": "MIT"
 }

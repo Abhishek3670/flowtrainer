@@ -20,6 +20,6 @@ const userSchema = new Schema({
 
 userSchema.index({ email: 1 });
 
-export interface UserDocument extends IUser, Document {}
+export interface UserDocument extends Omit<IUser, '_id'>, Document {}
 
 export default mongoose.model<UserDocument>('User', userSchema);

@@ -63,6 +63,6 @@ workflowSchema.index({ collaborators: 1 });
 workflowSchema.index({ isPublic: 1 });
 workflowSchema.index({ title: 'text', description: 'text' });
 
-export interface WorkflowDocument extends IWorkflow, Document {}
+export interface WorkflowDocument extends Omit<IWorkflow, '_id'>, Document {}
 
 export default mongoose.model<WorkflowDocument>('Workflow', workflowSchema);

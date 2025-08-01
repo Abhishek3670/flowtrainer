@@ -1,4 +1,4 @@
-# FlowCraft - Visual Workflow Designer
+# FlowTrain - Visual Workflow Designer
 
 A full-stack drag-and-drop workflow designer with real-time collaboration features.
 
@@ -136,7 +136,7 @@ Set environment variables:
 ```
 NODE_ENV=development
 PORT=5000
-MONGODB_URI=mongodb://admin:password@mongodb:27017/flowcraft?authSource=admin
+MONGODB_URI=mongodb://admin:password@mongodb:27017/flowtrain?authSource=admin
 JWT_SECRET=your-super-secret-jwt-key
 CORS_ORIGIN=http://localhost:3000
 ```
@@ -149,4 +149,4 @@ REACT_APP_WS_URL=http://localhost:5000
 
 ## License
 
-MIT License - Built with love by the FlowCraft Team
+MIT License - Built with love by the FlowTrain Team
