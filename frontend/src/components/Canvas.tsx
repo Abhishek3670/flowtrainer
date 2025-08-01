@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
-import { setPan, setZoom, addObject, updateComment, updateObject, removeObject, selectObject, clearSelection } from '../store/slices/whiteboardSlice';
+import { setPan, setZoom, addObject, updateComment, updateObject, removeObject, selectObject, clearSelection, undo, redo } from '../store/slices/whiteboardSlice';
 import { WhiteboardObjectType } from '../types';
 import Comment from './Comment';
 import AddComment from './AddComment';
@@ -16,6 +16,7 @@ const Canvas: React.FC = () => {
 
   const { zoom, pan, objects, tool } = useSelector((state: RootState) => state.whiteboard.canvas);
   const comments = useSelector((state: RootState) => state.whiteboard.comments);
+  const { undoStack, redoStack } = useSelector((state: RootState) => state.whiteboard);
 
   const handleMouseMove = (e: MouseEvent) => {
     if (dragging) {
@@ -323,8 +324,9 @@ const Canvas: React.FC = () => {
         )}
       </div>
 
-      {/* Comment Control */}
-      <div className="absolute top-16 left-20 z-50">
+      {/* Action Controls */}
+      <div className="absolute top-16 left-20 z-50 flex gap-2">
+        {/* Comment button */}
         <button
           onClick={() => setAddingComment(true)}
           className="w-12 h-12 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -332,6 +334,38 @@ const Canvas: React.FC = () => {
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </button>
+        
+        {/* Undo button */}
+        <button
+          onClick={() => dispatch(undo())}
+          disabled={undoStack.length === 0}
+          className={`w-12 h-12 rounded-xl transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl border ${
+            undoStack.length === 0
+              ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400'
+          }`}
+          title="Undo (Ctrl+Z)"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+          </svg>
+        </button>
+        
+        {/* Redo button */}
+        <button
+          onClick={() => dispatch(redo())}
+          disabled={redoStack.length === 0}
+          className={`w-12 h-12 rounded-xl transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl border ${
+            redoStack.length === 0
+              ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700'
+              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400'
+          }`}
+          title="Redo (Ctrl+Y)"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
           </svg>
         </button>
       </div>

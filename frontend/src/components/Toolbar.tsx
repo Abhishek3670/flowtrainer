@@ -99,68 +99,28 @@ const tools = [
             Tools
           </div>
           
-          {/* Tools Grid */}
+          {/* Tools Grid - Vertical Layout */}
           <div className="flex flex-col gap-2">
-            {/* Main Tools Row */}
-            <div className="flex gap-2">
-              {tools.map((toolItem) => (
-                <button
-                  key={toolItem.id}
-                  onClick={() => {
-                    handleToolSelect(toolItem.id);
-                    handleCanvasClick(toolItem.id);
-                  }}
-                  className={`w-10 h-10 rounded-lg transition-all duration-200 flex items-center justify-center border ${
-                    tool === toolItem.id
-                      ? 'bg-blue-500 text-white border-blue-600 shadow-md scale-105'
-                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 hover:scale-105'
-                  }`}
-                  title={`${toolItem.label} (${toolItem.shortcut})`}
-                >
-                  <div className="w-4 h-4">
-                    {toolItem.icon}
-                  </div>
-                </button>
-              ))}
-            </div>
-            
-            {/* Separator */}
-            <div className="w-full h-px bg-gray-300 dark:bg-gray-600 my-1"></div>
-            
-            {/* Action Tools Row */}
-            <div className="flex gap-2">
-              {/* Undo button */}
+            {/* Main Tools - Vertical Stack */}
+            {tools.map((toolItem) => (
               <button
-                onClick={() => dispatch(undo())}
-                disabled={undoStack.length === 0}
+                key={toolItem.id}
+                onClick={() => {
+                  handleToolSelect(toolItem.id);
+                  handleCanvasClick(toolItem.id);
+                }}
                 className={`w-10 h-10 rounded-lg transition-all duration-200 flex items-center justify-center border ${
-                  undoStack.length === 0
-                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700'
-                    : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
+                  tool === toolItem.id
+                    ? 'bg-blue-500 text-white border-blue-600 shadow-md scale-105'
+                    : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 hover:scale-105'
                 }`}
-                title="Undo (Ctrl+Z)"
+                title={`${toolItem.label} (${toolItem.shortcut})`}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                </svg>
+                <div className="w-4 h-4">
+                  {toolItem.icon}
+                </div>
               </button>
-              
-              {/* Redo button */}
-              <button
-                onClick={() => dispatch(redo())}
-                disabled={redoStack.length === 0}
-                className={`w-10 h-10 rounded-lg transition-all duration-200 flex items-center justify-center border ${
-                  redoStack.length === 0
-                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700'
-                    : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
-                }`}
-                title="Redo (Ctrl+Y)"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
-                </svg>
-              </button>
-            </div>
+            ))}
             
             {/* Selection Info (when items selected) */}
             {selectedObjectIds.length > 0 && (
