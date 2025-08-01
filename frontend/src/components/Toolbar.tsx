@@ -91,77 +91,97 @@ const tools = [
 
   return (
     <>
-      {/* Floating left toolbar */}
-      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-50 flex flex-col gap-2">
-        {/* Tools */}
-        {tools.map((toolItem) => (
-          <button
-            key={toolItem.id}
-            onClick={() => {
-              handleToolSelect(toolItem.id);
-              handleCanvasClick(toolItem.id);
-            }}
-            className={`w-12 h-12 rounded-xl transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl border ${
-              tool === toolItem.id
-                ? 'bg-blue-500 text-white border-blue-600 scale-105'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-            }`}
-            title={`${toolItem.label} (${toolItem.shortcut}) - ${toolItem.description}`}
-          >
-            {toolItem.icon}
-          </button>
-        ))}
-        
-        {/* Separator */}
-        <div className="w-8 h-px bg-gray-300 dark:bg-gray-600 mx-auto my-2"></div>
-        
-        {/* Undo button */}
-        <button
-          onClick={() => dispatch(undo())}
-          disabled={undoStack.length === 0}
-          className={`w-12 h-12 rounded-xl transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl border ${
-            undoStack.length === 0
-              ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700'
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400'
-          }`}
-          title="Undo (Ctrl+Z)"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-          </svg>
-        </button>
-        
-        {/* Redo button */}
-        <button
-          onClick={() => dispatch(redo())}
-          disabled={redoStack.length === 0}
-          className={`w-12 h-12 rounded-xl transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-xl border ${
-            redoStack.length === 0
-              ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700'
-              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400'
-          }`}
-          title="Redo (Ctrl+Y)"
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
-          </svg>
-        </button>
-      </div>
-      
-      {/* Selection info (floating) */}
-      {selectedObjectIds.length > 0 && (
-        <div className="absolute left-20 bottom-4 z-50 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3">
-          <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {selectedObjectIds.length} selected
+      {/* Tools Panel */}
+      <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-50">
+        <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-2xl shadow-xl p-3">
+          {/* Panel Header */}
+          <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-3 text-center">
+            Tools
           </div>
-          <button
-            onClick={() => dispatch(clearSelection())}
-            className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-          >
-            Clear Selection
-          </button>
+          
+          {/* Tools Grid */}
+          <div className="flex flex-col gap-2">
+            {/* Main Tools Row */}
+            <div className="flex gap-2">
+              {tools.map((toolItem) => (
+                <button
+                  key={toolItem.id}
+                  onClick={() => {
+                    handleToolSelect(toolItem.id);
+                    handleCanvasClick(toolItem.id);
+                  }}
+                  className={`w-10 h-10 rounded-lg transition-all duration-200 flex items-center justify-center border ${
+                    tool === toolItem.id
+                      ? 'bg-blue-500 text-white border-blue-600 shadow-md scale-105'
+                      : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 hover:scale-105'
+                  }`}
+                  title={`${toolItem.label} (${toolItem.shortcut})`}
+                >
+                  <div className="w-4 h-4">
+                    {toolItem.icon}
+                  </div>
+                </button>
+              ))}
+            </div>
+            
+            {/* Separator */}
+            <div className="w-full h-px bg-gray-300 dark:bg-gray-600 my-1"></div>
+            
+            {/* Action Tools Row */}
+            <div className="flex gap-2">
+              {/* Undo button */}
+              <button
+                onClick={() => dispatch(undo())}
+                disabled={undoStack.length === 0}
+                className={`w-10 h-10 rounded-lg transition-all duration-200 flex items-center justify-center border ${
+                  undoStack.length === 0
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700'
+                    : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
+                }`}
+                title="Undo (Ctrl+Z)"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
+              </button>
+              
+              {/* Redo button */}
+              <button
+                onClick={() => dispatch(redo())}
+                disabled={redoStack.length === 0}
+                className={`w-10 h-10 rounded-lg transition-all duration-200 flex items-center justify-center border ${
+                  redoStack.length === 0
+                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed border-gray-200 dark:border-gray-700'
+                    : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 hover:scale-105'
+                }`}
+                title="Redo (Ctrl+Y)"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Selection Info (when items selected) */}
+            {selectedObjectIds.length > 0 && (
+              <>
+                <div className="w-full h-px bg-gray-300 dark:bg-gray-600 my-1"></div>
+                <div className="text-center">
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {selectedObjectIds.length} selected
+                  </div>
+                  <button
+                    onClick={() => dispatch(clearSelection())}
+                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </>
   );
 };
