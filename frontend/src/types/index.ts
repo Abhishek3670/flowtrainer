@@ -73,7 +73,10 @@ export enum WhiteboardObjectType {
   ARROW = 'arrow',
   IMAGE = 'image',
   DRAWING = 'drawing',
-  FRAME = 'frame'
+  FRAME = 'frame',
+  
+  // Data pipeline blocks
+  DATA_PIPELINE = 'data_pipeline'
 }
 
 export interface WorkflowState {
@@ -187,6 +190,49 @@ export interface DrawingObject extends WhiteboardObject {
       color: string;
       width: number;
     }>;
+  };
+}
+
+// Data pipeline process steps
+export enum ProcessStep {
+  SOURCE = 'source',
+  EXTRACTION = 'extraction',
+  OUTPUT = 'output'
+}
+
+export interface ProcessStepConfig {
+  id: ProcessStep;
+  label: string;
+  status: 'idle' | 'running' | 'completed' | 'error';
+  config?: Record<string, any>;
+  progress?: number;
+}
+
+// Data pipeline block interface
+export interface DataPipelineBlock extends WhiteboardObject {
+  type: WhiteboardObjectType.DATA_PIPELINE;
+  data: {
+    title: string;
+    description?: string;
+    steps: ProcessStepConfig[];
+    isRunning: boolean;
+    currentStep?: ProcessStep;
+    results?: Record<string, any>;
+    config?: {
+      source?: {
+        type: 'file' | 'database' | 'api';
+        path?: string;
+        connection?: Record<string, any>;
+      };
+      extraction?: {
+        method: 'sampling' | 'filtering' | 'transformation';
+        parameters?: Record<string, any>;
+      };
+      output?: {
+        format: 'json' | 'csv' | 'database';
+        destination?: string;
+      };
+    };
   };
 }
 

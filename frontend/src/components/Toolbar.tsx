@@ -1,13 +1,12 @@
 import React from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
-import { setTool, addObject, undo, redo, clearSelection } from '../store/slices/whiteboardSlice';
-import { WhiteboardObjectType } from '../types';
+import { setTool, addObject } from '../store/slices/whiteboardSlice';
+import { WhiteboardObjectType, ProcessStep } from '../types';
 
 const Toolbar: React.FC = () => {
   const dispatch = useDispatch();
-  const { tool, selectedObjectIds } = useSelector((state: RootState) => state.whiteboard.canvas);
-  const { undoStack, redoStack } = useSelector((state: RootState) => state.whiteboard);
+  const { tool } = useSelector((state: RootState) => state.whiteboard.canvas);
 
 const tools = [
     { 
@@ -31,6 +30,21 @@ const tools = [
       label: 'Text', 
       shortcut: 'T',
       description: 'Add text boxes'
+    }
+  ];
+
+  const dataBlocks = [
+    {
+      id: 'data_pipeline',
+      type: WhiteboardObjectType.DATA_PIPELINE,
+      icon: (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M3 3v18h18V3H3zm16 16H5V5h14v14zM7 7h10v2H7V7zm0 4h10v2H7v-2zm0 4h7v2H7v-2z"/>
+        </svg>
+      ),
+      label: 'Data Fetch',
+      color: '#4F46E5',
+      description: 'Create a data processing pipeline'
     }
   ];
 
@@ -61,6 +75,8 @@ const tools = [
         return { width: 150, height: 150 };
       case WhiteboardObjectType.IMAGE:
         return { width: 300, height: 200 };
+      case WhiteboardObjectType.DATA_PIPELINE:
+        return { width: 320, height: 180 };
       default:
         return { width: 200, height: 100 };
     }
@@ -78,6 +94,49 @@ const tools = [
         return { fillColor: '#E3F2FD', strokeColor: '#1976D2', strokeWidth: 2 };
       case WhiteboardObjectType.IMAGE:
         return { src: '', alt: 'Image placeholder' };
+      case WhiteboardObjectType.DATA_PIPELINE:
+        return {
+          title: 'Data Fetch',
+          description: 'Fetch and process data from various sources',
+          steps: [
+            {
+              id: ProcessStep.SOURCE,
+              label: 'Source',
+              status: 'idle' as const,
+              progress: 0
+            },
+            {
+              id: ProcessStep.EXTRACTION,
+              label: 'Extraction',
+              status: 'idle' as const,
+              progress: 0
+            },
+            {
+              id: ProcessStep.OUTPUT,
+              label: 'Output',
+              status: 'idle' as const,
+              progress: 0
+            }
+          ],
+          isRunning: false,
+          currentStep: undefined,
+          results: {},
+          config: {
+            source: {
+              type: 'file' as const,
+              path: '',
+              connection: {}
+            },
+            extraction: {
+              method: 'sampling' as const,
+              parameters: {}
+            },
+            output: {
+              format: 'json' as const,
+              destination: ''
+            }
+          }
+        };
       default:
         return {};
     }
@@ -122,23 +181,29 @@ const tools = [
               </button>
             ))}
             
-            {/* Selection Info (when items selected) */}
-            {selectedObjectIds.length > 0 && (
-              <>
-                <div className="w-full h-px bg-gray-300 dark:bg-gray-600 my-1"></div>
-                <div className="text-center">
-                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {selectedObjectIds.length} selected
-                  </div>
-                  <button
-                    onClick={() => dispatch(clearSelection())}
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200"
-                  >
-                    Clear
-                  </button>
+            {/* Blocks Separator */}
+            <div className="w-full h-px bg-gray-300 dark:bg-gray-600 my-2"></div>
+            <div className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide text-center mb-2">
+              Blocks
+            </div>
+            
+            {/* Data Blocks */}
+            {dataBlocks.map((block) => (
+              <button
+                key={block.id}
+                onClick={() => createObject(block.type)}
+                className="w-10 h-10 rounded-lg transition-all duration-200 flex items-center justify-center border bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600 hover:scale-105"
+                title={block.description}
+                style={{
+                  backgroundColor: `${block.color}20`,
+                  borderColor: `${block.color}40`
+                }}
+              >
+                <div className="w-4 h-4">
+                  {block.icon}
                 </div>
-              </>
-            )}
+              </button>
+            ))}
           </div>
         </div>
       </div>

@@ -14,7 +14,7 @@ const Canvas: React.FC = () => {
   const [dragging, setDragging] = useState<{ id: string; offset: { x: number; y: number } } | null>(null);
   const [justDragged, setJustDragged] = useState(false);
 
-  const { zoom, pan, objects, tool } = useSelector((state: RootState) => state.whiteboard.canvas);
+  const { zoom, pan, objects, tool, selectedObjectIds } = useSelector((state: RootState) => state.whiteboard.canvas);
   const comments = useSelector((state: RootState) => state.whiteboard.comments);
   const { undoStack, redoStack } = useSelector((state: RootState) => state.whiteboard);
 
@@ -195,7 +195,10 @@ const Canvas: React.FC = () => {
           height: '100%',
         }}
       >
-        {objects.map((obj, index) => (
+        {objects.map((obj, index) => {
+          const isDataPipelineBlock = obj.type === WhiteboardObjectType.DATA_PIPELINE;
+          
+          return (
           <div
             key={obj.id}
             onClick={(e) => {
@@ -210,17 +213,31 @@ const Canvas: React.FC = () => {
               left: obj.position.x,
               width: obj.size.width,
               height: obj.size.height,
-              border: obj.type === WhiteboardObjectType.TEXT ? (obj.selected ? '2px solid #3B82F6' : '2px solid #E5E7EB') : 'none',
-              borderRadius: '12px',
-              backgroundColor: obj.type === WhiteboardObjectType.TEXT ? 'rgba(255, 255, 255, 0.95)' : obj.data.color,
+              border: obj.type === WhiteboardObjectType.TEXT ? 
+                (obj.selected ? '2px solid #3B82F6' : '2px solid #E5E7EB') : 
+                isDataPipelineBlock ? 
+                  (obj.selected ? '2px solid #4F46E5' : '1px solid #4F46E580') : 
+                  'none',
+              borderRadius: isDataPipelineBlock ? '8px' : '12px',
+              backgroundColor: obj.type === WhiteboardObjectType.TEXT ? 
+                'rgba(255, 255, 255, 0.95)' : 
+                isDataPipelineBlock ? 
+                  '#F3F4F6' : 
+                  (obj.data.color || 'transparent'),
               boxShadow: obj.type === WhiteboardObjectType.TEXT ? 
                 (obj.selected ? 
                   '0 8px 25px rgba(59, 130, 246, 0.15), 0 4px 10px rgba(0, 0, 0, 0.1)' : 
                   '0 4px 15px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06)'
-                ) : 'none',
-              backdropFilter: obj.type === WhiteboardObjectType.TEXT ? 'blur(10px)' : 'none',
+                ) : 
+                isDataPipelineBlock ? 
+                  (obj.selected ? 
+                    '0 8px 25px rgba(79, 70, 229, 0.4), 0 4px 10px rgba(0, 0, 0, 0.1)' : 
+                    '0 4px 15px rgba(79, 70, 229, 0.2), 0 2px 4px rgba(0, 0, 0, 0.06)'
+                  ) : 
+                  'none',
+              backdropFilter: (obj.type === WhiteboardObjectType.TEXT || isDataPipelineBlock) ? 'blur(10px)' : 'none',
               transition: 'all 0.2s ease-in-out',
-              zIndex: obj.zIndex || index + 1, // Use zIndex from object or fallback to array index
+              zIndex: obj.zIndex || index + 1,
               cursor: tool === 'text' ? 'text' : 'pointer',
             }}
           >
@@ -306,8 +323,138 @@ const Canvas: React.FC = () => {
                 />
               </>
             )}
+            
+            {/* Data Pipeline Block Content */}
+            {isDataPipelineBlock && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    dispatch(removeObject(obj.id));
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '-10px',
+                    right: '-10px',
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    backgroundColor: '#EF4444',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: (obj.zIndex || index + 1) + 1
+                  }}
+                  title="Delete data pipeline block"
+                >
+                  ×
+                </button>
+                <button
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                    const canvasRect = canvasRef.current?.getBoundingClientRect();
+                    if (canvasRect) {
+                      setDragging({
+                        id: obj.id,
+                        offset: {
+                          x: (e.clientX - canvasRect.left) / zoom - obj.position.x,
+                          y: (e.clientY - canvasRect.top) / zoom - obj.position.y,
+                        },
+                      });
+                    }
+                  }}
+                  style={{
+                    position: 'absolute',
+                    top: '-10px',
+                    left: '-10px',
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    backgroundColor: '#10B981',
+                    color: 'white',
+                    border: 'none',
+                    cursor: 'grab',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: (obj.zIndex || index + 1) + 1
+                  }}
+                  title="Move data pipeline block"
+                >
+                  ⟡
+                </button>
+                <div 
+                  style={{
+                    position: 'relative',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }}
+                  onMouseEnter={(e) => {
+                    const desc = e.currentTarget.querySelector('.description') as HTMLElement;
+                    if (desc) desc.style.display = 'block';
+                  }}
+                  onMouseLeave={(e) => {
+                    const desc = e.currentTarget.querySelector('.description') as HTMLElement;
+                    if (desc) desc.style.display = 'none';
+                  }}
+                >
+                {/* Title bar with thick border */}
+                <div style={{
+                  padding: '8px 12px',
+                  backgroundColor: '#F9FAFB',
+                  borderBottom: '4px solid #D1D5DB',
+                  borderRadius: '6px 6px 0 0',
+                  textAlign: 'center'
+                }}>
+                  <button
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#1F2937',
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                      fontWeight: 'bold',
+                      width: '100%'
+                    }}
+                    title="Click to set data source"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      console.log('Set data source');
+                    }}
+                  >
+                    {obj.data.title}
+                  </button>
+                </div>
+                
+                {/* Description - always visible */}
+                {obj.data.description && (
+                  <div 
+                    className="description" 
+                    style={{
+                      padding: '8px 12px',
+                      backgroundColor: '#F3F4F6',
+                      color: '#374151',
+                      fontSize: '12px',
+                      borderTop: '1px solid #E5E7EB',
+                      textAlign: 'left',
+                      lineHeight: '1.4'
+                    }}
+                  >
+                    {obj.data.description}
+                  </div>
+                )}
+              </div>
+              </>
+            )}
           </div>
-        ))}
+          );
+        })}
         {comments.map((comment) => (
           <Comment
             key={comment.id}
@@ -325,7 +472,7 @@ const Canvas: React.FC = () => {
       </div>
 
       {/* Undo/Redo Controls */}
-      <div className="absolute top-4 left-20 z-50 flex gap-2">
+      <div className="absolute top-16 left-4 z-50 flex gap-2">
         {/* Undo button */}
         <button
           onClick={() => dispatch(undo())}
@@ -398,6 +545,25 @@ const Canvas: React.FC = () => {
           </svg>
         </button>
       </div>
+      
+      {/* Selection Indicator */}
+      {selectedObjectIds.length > 0 && (
+        <div className="absolute bottom-4 left-4 z-50">
+          <div className="px-3 py-2 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg">
+            <div className="flex items-center gap-3">
+              <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {selectedObjectIds.length} selected
+              </div>
+              <button
+                onClick={() => dispatch(clearSelection())}
+                className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 px-2 py-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Canvas Info */}
       <div className="absolute bottom-4 right-20 z-50">

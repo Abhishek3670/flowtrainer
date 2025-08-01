@@ -11,7 +11,7 @@ const WorkflowPage: React.FC = () => {
       {/* Floating title */}
       <div className="absolute top-4 left-4 z-50">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          FlowTrain
+          FLOWTRAIN
         </h1>
       </div>
 
