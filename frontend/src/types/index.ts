@@ -53,6 +53,29 @@ export enum NodeType {
   END = 'end'
 }
 
+// New whiteboard object types
+export enum WhiteboardObjectType {
+  // Legacy workflow nodes
+  START = 'start',
+  HTTP = 'http',
+  DELAY = 'delay',
+  CONDITION = 'condition',
+  LOOP = 'loop',
+  END = 'end',
+  
+  // New whiteboard objects
+  STICKY_NOTE = 'sticky_note',
+  TEXT = 'text',
+  RECTANGLE = 'rectangle',
+  CIRCLE = 'circle',
+  TRIANGLE = 'triangle',
+  LINE = 'line',
+  ARROW = 'arrow',
+  IMAGE = 'image',
+  DRAWING = 'drawing',
+  FRAME = 'frame'
+}
+
 export interface WorkflowState {
   currentWorkflow: Workflow | null;
   workflows: Workflow[];
@@ -93,4 +116,118 @@ export interface NodeConfig {
   icon: string;
   color: string;
   defaultData: Record<string, any>;
+}
+
+// New whiteboard object interfaces
+export interface WhiteboardObject {
+  id: string;
+  type: WhiteboardObjectType;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  rotation?: number;
+  zIndex?: number;
+  selected?: boolean;
+  locked?: boolean;
+  data: Record<string, any>;
+  style?: {
+    backgroundColor?: string;
+    borderColor?: string;
+    borderWidth?: number;
+    opacity?: number;
+    [key: string]: any;
+  };
+}
+
+// Specific object types
+export interface StickyNote extends WhiteboardObject {
+  type: WhiteboardObjectType.STICKY_NOTE;
+  data: {
+    text: string;
+    color: string;
+    fontSize?: number;
+  };
+}
+
+export interface TextObject extends WhiteboardObject {
+  type: WhiteboardObjectType.TEXT;
+  data: {
+    text: string;
+    fontSize: number;
+    fontFamily?: string;
+    fontWeight?: string;
+    textAlign?: 'left' | 'center' | 'right';
+    color?: string;
+  };
+}
+
+export interface ShapeObject extends WhiteboardObject {
+  type: WhiteboardObjectType.RECTANGLE | WhiteboardObjectType.CIRCLE | WhiteboardObjectType.TRIANGLE;
+  data: {
+    fillColor?: string;
+    strokeColor?: string;
+    strokeWidth?: number;
+  };
+}
+
+export interface ImageObject extends WhiteboardObject {
+  type: WhiteboardObjectType.IMAGE;
+  data: {
+    src: string;
+    alt?: string;
+    originalWidth: number;
+    originalHeight: number;
+  };
+}
+
+export interface DrawingObject extends WhiteboardObject {
+  type: WhiteboardObjectType.DRAWING;
+  data: {
+    paths: Array<{
+      points: Array<{ x: number; y: number }>;
+      color: string;
+      width: number;
+    }>;
+  };
+}
+
+// Canvas state
+export interface CanvasState {
+  zoom: number;
+  pan: { x: number; y: number };
+  tool: string;
+  objects: WhiteboardObject[];
+  selectedObjectIds: string[];
+  clipboard: WhiteboardObject[];
+}
+
+// Updated workflow state to include canvas
+export interface WhiteboardState extends Omit<WorkflowState, 'nodes' | 'edges' | 'undoStack' | 'redoStack'> {
+  canvas: CanvasState;
+  comments: Comment[];
+  templates: Template[];
+  undoStack: { canvas: CanvasState }[];
+  redoStack: { canvas: CanvasState }[];
+}
+
+export interface Comment {
+  id: string;
+  objectId: string;
+  author: User;
+  text: string;
+  position: { x: number; y: number };
+  createdAt: string;
+  resolved?: boolean;
+  mentions?: string[];
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  description?: string;
+  thumbnail?: string;
+  objects: WhiteboardObject[];
+  category: string;
+  isPublic: boolean;
+  createdBy: string;
+  createdAt: string;
 }
