@@ -150,7 +150,7 @@ const tools = [
       
       {/* Selection info (floating) */}
       {selectedObjectIds.length > 0 && (
-        <div className="absolute left-4 bottom-4 z-50 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3">
+        <div className="absolute left-20 bottom-4 z-50 bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg p-3">
           <div className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {selectedObjectIds.length} selected
           </div>
