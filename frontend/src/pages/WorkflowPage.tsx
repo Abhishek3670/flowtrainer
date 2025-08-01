@@ -4,23 +4,21 @@ import Canvas from '../components/Canvas';
 
 const WorkflowPage: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="flex h-screen">
-<Toolbar />
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 relative">
+      {/* Floating toolbar */}
+      <Toolbar />
 
-<Canvas />
+      {/* Floating title */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          FlowTrain
+        </h1>
+      </div>
 
-        {/* Right Properties Panel */}
-        <div className="w-80 properties-panel">
-          <div className="p-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Properties
-            </h3>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Select a node to edit its properties
-            </div>
-          </div>
-        </div>
+
+      {/* Main canvas */}
+      <div className="flex justify-center items-center h-screen">
+        <Canvas />
       </div>
     </div>
   );
