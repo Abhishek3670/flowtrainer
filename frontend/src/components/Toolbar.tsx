@@ -10,8 +10,28 @@ const Toolbar: React.FC = () => {
   const { undoStack, redoStack } = useSelector((state: RootState) => state.whiteboard);
 
 const tools = [
-    { id: 'select', icon: '↖️', label: 'Select', shortcut: 'V' },
-    { id: 'text', icon: '📄', label: 'Text', shortcut: 'T' }
+    { 
+      id: 'select', 
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+        </svg>
+      ), 
+      label: 'Select', 
+      shortcut: 'V',
+      description: 'Select and move objects'
+    },
+    { 
+      id: 'text', 
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+        </svg>
+      ), 
+      label: 'Text', 
+      shortcut: 'T',
+      description: 'Add text boxes'
+    }
   ];
 
   const handleToolSelect = (toolId: string) => {
@@ -78,31 +98,35 @@ const tools = [
         </h2>
         
         {/* Action buttons */}
-        <div className="flex space-x-2 mb-4">
+        <div className="flex space-x-1 mb-4">
           <button
             onClick={() => dispatch(undo())}
             disabled={undoStack.length === 0}
-            className={`p-2 rounded-md ${
+            className={`p-2 rounded-lg transition-all duration-200 ${
               undoStack.length === 0
-                ? 'text-gray-400 cursor-not-allowed'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? 'text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-800'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 shadow-sm hover:shadow-md'
             }`}
             title="Undo (Ctrl+Z)"
           >
-            ↶
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
           </button>
           
           <button
             onClick={() => dispatch(redo())}
             disabled={redoStack.length === 0}
-            className={`p-2 rounded-md ${
+            className={`p-2 rounded-lg transition-all duration-200 ${
               redoStack.length === 0
-                ? 'text-gray-400 cursor-not-allowed'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                ? 'text-gray-400 cursor-not-allowed bg-gray-50 dark:bg-gray-800'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 shadow-sm hover:shadow-md'
             }`}
             title="Redo (Ctrl+Y)"
           >
-            ↷
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+            </svg>
           </button>
         </div>
       </div>
@@ -120,17 +144,30 @@ const tools = [
                 handleToolSelect(toolItem.id);
                 handleCanvasClick(toolItem.id);
               }}
-              className={`w-full flex items-center p-3 rounded-lg text-left transition-colors ${
+              className={`w-full flex items-center p-3 rounded-xl text-left transition-all duration-200 border ${
                 tool === toolItem.id
-                  ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 text-blue-900 dark:text-blue-100 border-blue-200 dark:border-blue-700 shadow-md'
+                  : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 border-transparent hover:border-gray-200 dark:hover:border-gray-600 hover:shadow-sm'
               }`}
-              title={`${toolItem.label} (${toolItem.shortcut})`}
+              title={`${toolItem.label} (${toolItem.shortcut}) - ${toolItem.description}`}
             >
-              <span className="text-lg mr-3">{toolItem.icon}</span>
-              <div>
-                <div className="font-medium">{toolItem.label}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className={`p-2 rounded-lg mr-3 ${
+                tool === toolItem.id
+                  ? 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-300'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
+              }`}>
+                {toolItem.icon}
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-sm">{toolItem.label}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {toolItem.description}
+                </div>
+                <div className={`text-xs mt-1 px-2 py-0.5 rounded-md inline-block ${
+                  tool === toolItem.id
+                    ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200'
+                    : 'bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300'
+                }`}>
                   {toolItem.shortcut}
                 </div>
               </div>

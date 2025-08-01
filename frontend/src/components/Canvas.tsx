@@ -147,6 +147,10 @@ const Canvas: React.FC = () => {
   };
 
 
+  // Generate grid pattern for background
+  const gridSize = 20;
+  const gridOpacity = 0.1;
+  
   return (
     <div
       ref={canvasRef}
@@ -156,16 +160,38 @@ const Canvas: React.FC = () => {
         height: '100%',
         overflow: 'hidden',
         position: 'relative',
-        cursor: 'grab',
+        cursor: tool === 'text' ? 'crosshair' : (dragging ? 'grabbing' : 'grab'),
+        background: '#f8fafc',
+        backgroundImage: `
+          radial-gradient(circle at ${gridSize}px ${gridSize}px, rgba(71, 85, 105, ${gridOpacity}) 1px, transparent 0),
+          radial-gradient(circle at 0px 0px, rgba(71, 85, 105, ${gridOpacity * 0.5}) 1px, transparent 0)
+        `,
+        backgroundSize: `${gridSize}px ${gridSize}px`,
+        backgroundPosition: `${pan.x % gridSize}px ${pan.y % gridSize}px, ${(pan.x % gridSize) - gridSize}px ${(pan.y % gridSize) - gridSize}px`,
       }}
       onMouseDown={handleMouseDown}
       onClick={handleCanvasClick}
     >
+      {/* Grid overlay for better depth */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: `
+            linear-gradient(rgba(71, 85, 105, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(71, 85, 105, 0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: `${gridSize * 4}px ${gridSize * 4}px`,
+          backgroundPosition: `${(pan.x % (gridSize * 4))}px ${(pan.y % (gridSize * 4))}px`,
+        }}
+      />
+      
       <div
         className="canvas-content"
         style={{
           transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
           transformOrigin: '0 0',
+          width: '100%',
+          height: '100%',
         }}
       >
         {objects.map((obj, index) => (
@@ -184,9 +210,15 @@ const Canvas: React.FC = () => {
               width: obj.size.width,
               height: obj.size.height,
               border: obj.type === WhiteboardObjectType.TEXT ? (obj.selected ? '2px solid #3B82F6' : '2px solid #E5E7EB') : 'none',
-              borderRadius: '8px',
-              backgroundColor: obj.type === WhiteboardObjectType.TEXT ? '#F8FAFC' : obj.data.color,
-              boxShadow: obj.type === WhiteboardObjectType.TEXT ? (obj.selected ? '0 4px 12px rgba(59, 130, 246, 0.3)' : '0 2px 8px rgba(0,0,0,0.1)') : 'none',
+              borderRadius: '12px',
+              backgroundColor: obj.type === WhiteboardObjectType.TEXT ? 'rgba(255, 255, 255, 0.95)' : obj.data.color,
+              boxShadow: obj.type === WhiteboardObjectType.TEXT ? 
+                (obj.selected ? 
+                  '0 8px 25px rgba(59, 130, 246, 0.15), 0 4px 10px rgba(0, 0, 0, 0.1)' : 
+                  '0 4px 15px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.06)'
+                ) : 'none',
+              backdropFilter: obj.type === WhiteboardObjectType.TEXT ? 'blur(10px)' : 'none',
+              transition: 'all 0.2s ease-in-out',
               zIndex: obj.zIndex || index + 1, // Use zIndex from object or fallback to array index
               cursor: tool === 'text' ? 'text' : 'pointer',
             }}
@@ -291,12 +323,68 @@ const Canvas: React.FC = () => {
         )}
       </div>
 
-      <button
-        onClick={() => setAddingComment(true)}
-        style={{ position: 'absolute', top: 10, left: 10 }}
-      >
-        Add Comment
-      </button>
+      {/* Canvas Controls */}
+      <div className="absolute top-4 left-4 flex flex-col gap-2 z-50">
+        <button
+          onClick={() => setAddingComment(true)}
+          className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          title="Add Comment"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          Comment
+        </button>
+      </div>
+      
+      {/* Zoom Controls */}
+      <div className="absolute top-4 right-4 flex flex-col gap-1 z-50">
+        <button
+          onClick={() => dispatch(setZoom(Math.min(zoom + 0.1, 3)))}
+          className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          title="Zoom In"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+        
+        <div className="w-10 h-8 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-400">
+          {Math.round(zoom * 100)}%
+        </div>
+        
+        <button
+          onClick={() => dispatch(setZoom(Math.max(zoom - 0.1, 0.1)))}
+          className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          title="Zoom Out"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+          </svg>
+        </button>
+        
+        <button
+          onClick={() => {
+            dispatch(setZoom(1));
+            dispatch(setPan({ x: 0, y: 0 }));
+          }}
+          className="w-10 h-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+          title="Reset View"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+        </button>
+      </div>
+      
+      {/* Canvas Info */}
+      <div className="absolute bottom-4 left-4 z-50">
+        <div className="px-3 py-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 rounded-lg shadow-md text-xs text-gray-600 dark:text-gray-400">
+          <div>Pan: {Math.round(pan.x)}, {Math.round(pan.y)}</div>
+          <div>Zoom: {Math.round(zoom * 100)}%</div>
+          <div>Objects: {objects.length}</div>
+        </div>
+      </div>
     </div>
   );
 };
