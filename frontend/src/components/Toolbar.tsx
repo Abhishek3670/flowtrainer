@@ -92,7 +92,7 @@ const tools = [
   return (
     <>
       {/* Floating left toolbar */}
-      <div className="absolute left-4 top-20 z-50 flex flex-col gap-2">
+      <div className="absolute left-4 top-16 z-50 flex flex-col gap-2">
         {/* Tools */}
         {tools.map((toolItem) => (
           <button

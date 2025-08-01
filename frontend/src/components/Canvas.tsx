@@ -324,7 +324,7 @@ const Canvas: React.FC = () => {
       </div>
 
       {/* Comment Control */}
-      <div className="absolute top-20 left-20 z-50">
+      <div className="absolute top-16 left-20 z-50">
         <button
           onClick={() => setAddingComment(true)}
           className="w-12 h-12 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"

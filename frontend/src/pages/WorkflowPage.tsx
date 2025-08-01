@@ -9,7 +9,7 @@ const WorkflowPage: React.FC = () => {
       <Toolbar />
 
       {/* Floating title */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-50">
+      <div className="absolute top-4 left-4 z-50">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
           FlowTrain
         </h1>
