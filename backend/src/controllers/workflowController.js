@@ -25,7 +25,7 @@ const getWorkflows = async (req, res) => {
     }
 
     const workflows = await Workflow.find(query)
-      .select('_id name description category status tags createdBy lastModified createdAt')
+      .select('_id name description nodes edges category status tags createdBy lastModified createdAt')
       .sort({ lastModified: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
