@@ -35,7 +35,7 @@ export interface NodeData {
     mimetype: string;
     uploadedAt: string;
   };
-  status?: 'empty' | 'ready' | 'processing' | 'error';
+  status?: 'empty' | 'uploading' | 'ready' | 'error' | 'configuring';
   onDelete?: (nodeId: string) => void;
 }
 

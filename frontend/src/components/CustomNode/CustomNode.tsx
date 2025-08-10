@@ -1,14 +1,16 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { 
-  Trash2, 
-  Play, 
-  Video, 
-  AlertTriangle, 
-  CheckCircle, 
+import {
+  Trash2,
+  Play,
+  Video,
+  AlertTriangle,
+  CheckCircle,
   Clock,
   FileVideo,
-  Wifi
+  Wifi,
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { NodeProps } from 'reactflow';
 import { NodeData } from '../../services/workflowApi';
@@ -42,32 +44,37 @@ const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id }) => {
 
   // Determine node status and styling
   const getNodeStatus = () => {
-    if (data.isLive && data.rtspUrl) {
-      return {
-        status: 'ready',
-        icon: <Wifi className="w-3 h-3" />,
-        color: 'border-green-500 bg-green-50',
-        statusText: 'Live Stream'
-      };
-    } else if (data.selectedFile) {
-      return {
-        status: 'ready',
-        icon: <FileVideo className="w-3 h-3" />,
-        color: 'border-blue-500 bg-blue-50',
-        statusText: 'File Loaded'
-      };
-    } else {
-      return {
-        status: 'empty',
-        icon: <AlertTriangle className="w-3 h-3" />,
-        color: 'border-orange-500 bg-orange-50',
-        statusText: 'No Input'
-      };
+    switch (data.status) {
+      case 'uploading':
+        return {
+          icon: <Loader2 className="w-3 h-3 animate-spin text-blue-500" />,
+          color: 'border-blue-500 bg-blue-50',
+          statusText: 'Uploading'
+        };
+      case 'ready':
+        return {
+          icon: <CheckCircle className="w-3 h-3 text-green-500" />,
+          color: 'border-green-500 bg-green-50',
+          statusText: 'Ready'
+        };
+      case 'error':
+        return {
+          icon: <AlertCircle className="w-3 h-3 text-red-500" />,
+          color: 'border-red-500 bg-red-50',
+          statusText: 'Error'
+        };
+      default: // 'empty'
+        return {
+          icon: <AlertTriangle className="w-3 h-3 text-orange-500" />,
+          color: 'border-orange-500 bg-orange-50',
+          statusText: 'Empty'
+        };
     }
   };
 
+
   const nodeStatus = getNodeStatus();
-  
+
   // Format file size helper
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 B';
@@ -146,7 +153,7 @@ const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id }) => {
         </div>
 
         {/* Processing status indicator */}
-        {data.status === 'processing' && (
+        {data.status === 'uploading' && (
           <div className="mt-2 flex items-center space-x-1 text-xs text-blue-600">
             <Clock className="w-3 h-3 animate-spin" />
             <span>Processing...</span>

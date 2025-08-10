@@ -36,7 +36,7 @@ const NodeSchema = new mongoose.Schema({
     // Node status
     status: {
       type: String,
-      enum: ['empty', 'ready', 'processing', 'error'],
+      enum: ['empty', 'uploading', 'ready', 'error'],
       default: 'empty'
     },
     
