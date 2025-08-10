@@ -2,17 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { ChevronRight, X, Upload, Video, ExternalLink, AlertCircle } from 'lucide-react';
 import { Node } from 'reactflow';
 import { fileAPI, FileData, UploadProgress } from '../../services/fileApi';
+import { NodeData } from '../../services/workflowApi';
 
 interface PropertiesPanelProps {
-  selectedNode: Node | null;
+  selectedNode: Node<NodeData> | null;
   collapsed: boolean;
   onToggle: () => void;
+  onNodeUpdate?: (nodeId: string, newData: Partial<NodeData>) => void;
 }
 
-const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ 
-  selectedNode, 
-  collapsed, 
-  onToggle 
+const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
+  selectedNode,
+  collapsed,
+  onToggle,
+  onNodeUpdate
 }) => {
   const [nodeName, setNodeName] = useState('');
   const [isLive, setIsLive] = useState(false);
@@ -23,45 +26,48 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<FileData | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  
+  const [nodeUpdates, setNodeUpdates] = useState<{ [key: string]: any }>({});
+
   const isVideoStream = selectedNode?.id?.includes('video-stream');
 
-  // Effect to update node name when a new node is selected
+  // When a new node is selected, reset all local state and then initialize from node data
   useEffect(() => {
     if (selectedNode) {
+      // Reset all fields
       setNodeName(selectedNode.data?.label || '');
-      // Reset state for the new node to avoid showing old data
       setIsLive(false);
       setRtspUrl('');
       setVideoFile(null);
-      setPreviewUrl(null);
-      setSelectedFile(null);
       setUploadError(null);
+
+      // Initialize from persisted file data if available
+      const persisted = selectedNode.data.selectedFile;
+      if (persisted) {
+        setSelectedFile(null);
+        setPreviewUrl(null); // we’ll stream from server
+      } else {
+        setSelectedFile(null);
+        setPreviewUrl(null);
+      }
     }
   }, [selectedNode]);
 
-  // Effect to create a local preview URL for the selected video file
+  // Create a local object URL for preview when uploading a fresh file
   useEffect(() => {
     if (videoFile) {
       const url = URL.createObjectURL(videoFile);
       setPreviewUrl(url);
-      // Clean up the object URL when the component unmounts or the file changes
       return () => URL.revokeObjectURL(url);
     } else {
-      setPreviewUrl(null);
+      // If no fresh upload, do not clear previewUrl here
+      // Let the selection effect handle it
     }
   }, [videoFile]);
-
   // Handler for file selection and upload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Reset previous errors and set the local file for preview
-    setUploadError(null);
-    setVideoFile(file);
-
-    // Validate file before uploading
     const validation = fileAPI.validateVideoFile(file);
     if (!validation.valid) {
       setUploadError(validation.error || 'Invalid file');
@@ -69,19 +75,37 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     }
 
     setUploading(true);
+    setUploadError(null);
+    setVideoFile(file);
+
     try {
       const response = await fileAPI.uploadFile(file, (progress) => {
         setUploadProgress(progress);
       });
 
       if (response.data) {
-        console.log('=== UPLOAD RESPONSE DEBUG ===');
-        console.log('Full response:', response);
-        console.log('File data:', response.data);
-        console.log('File ID:', response.data._id);
-        console.log('File ID type:', typeof response.data._id);
+        const fileData = {
+          fileId: response.data.fileId || response.data._id,
+          filename: response.data.filename,
+          originalName: response.data.originalName,
+          size: response.data.size,
+          mimetype: response.data.mimetype,
+          status: response.data.status,
+          uploadedAt: response.data.uploadedAt
+        };
+        
+
         setSelectedFile(response.data);
-        console.log('File uploaded successfully:', response.data);
+
+        // Update the node data with file association
+        if (selectedNode && onNodeUpdate) {
+          onNodeUpdate(selectedNode.id, {
+            selectedFile: fileData,
+            status: 'ready'
+          });
+        }
+
+        console.log('File uploaded and associated with node:', response.data);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Upload failed';
@@ -96,7 +120,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   if (collapsed) {
     return (
       <div className="w-12 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col items-center py-4">
-        <button 
+        <button
           onClick={onToggle}
           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
         >
@@ -114,7 +138,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Properties
           </h2>
-          <button 
+          <button
             onClick={onToggle}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
           >
@@ -146,7 +170,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-6">
                 Video Source
               </h3>
-              
+
               {/* Mode Toggle */}
               <div className="mb-6">
                 <label className="flex items-center justify-between cursor-pointer p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
@@ -171,18 +195,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               </div>
 
               {/* File Upload Section (shown when not in live mode) */}
-              <div 
-                className={`transition-all duration-300 ease-in-out ${
-                  isLive 
-                    ? 'opacity-0 max-h-0 overflow-hidden pointer-events-none' 
+              <div
+                className={`transition-all duration-300 ease-in-out ${isLive
+                    ? 'opacity-0 max-h-0 overflow-hidden pointer-events-none'
                     : 'opacity-100 max-h-[40rem]' // Adjusted max-height for content
-                }`}
+                  }`}
               >
                 <div className="space-y-4">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Upload Video File
                   </label>
-                  
+
                   {/* Upload Area */}
                   <div className="relative">
                     <input
@@ -195,11 +218,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     />
                     <label
                       htmlFor="video-upload"
-                      className={`flex items-center justify-center w-full px-4 py-6 border-2 border-dashed rounded-lg transition-colors cursor-pointer ${
-                        uploading 
+                      className={`flex items-center justify-center w-full px-4 py-6 border-2 border-dashed rounded-lg transition-colors cursor-pointer ${uploading
                           ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/10 cursor-not-allowed'
                           : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 bg-gray-50 dark:bg-gray-700/50'
-                      }`}
+                        }`}
                     >
                       <div className="text-center">
                         {uploading ? (
@@ -227,7 +249,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     {uploading && uploadProgress && (
                       <div className="mt-3 bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
                         <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                          <div 
+                          <div
                             className="bg-blue-600 h-2 rounded-full transition-all"
                             style={{ width: `${uploadProgress.percentage}%` }}
                           ></div>
@@ -265,23 +287,27 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                           {selectedFile ? 'Uploaded' : 'Local Preview'}
                         </span>
                       </div>
-                      
+
                       <video
                         className="w-full rounded-lg shadow-sm"
                         controls
                         key={selectedFile ? selectedFile._id : previewUrl}
                         style={{ maxHeight: '150px' }}
-                        src={selectedFile ? fileAPI.getVideoStreamUrl(selectedFile._id || selectedFile.fileId || '') : previewUrl || undefined}
+                        src={selectedFile
+                          ? fileAPI.getVideoStreamUrl(selectedFile.fileId || '')
+                          : undefined
+                        }
+
                       >
                         Your browser does not support video preview.
                       </video>
-                      
+
                       <div className="mt-2 flex items-center justify-between">
                         <span className="text-xs text-gray-500 dark:text-gray-400 truncate pr-2">
                           {selectedFile ? selectedFile.originalName : videoFile?.name}
                         </span>
                         <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                          {selectedFile 
+                          {selectedFile
                             ? fileAPI.formatFileSize(selectedFile.size)
                             : videoFile ? fileAPI.formatFileSize(videoFile.size) : ''
                           }
@@ -321,12 +347,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               </div>
 
               {/* RTSP Section (shown when in live mode) */}
-              <div 
-                className={`transition-all duration-300 ease-in-out ${
-                  !isLive 
-                    ? 'opacity-0 max-h-0 overflow-hidden pointer-events-none' 
+              <div
+                className={`transition-all duration-300 ease-in-out ${!isLive
+                    ? 'opacity-0 max-h-0 overflow-hidden pointer-events-none'
                     : 'opacity-100 max-h-96'
-                }`}
+                  }`}
               >
                 <div className="space-y-4">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">

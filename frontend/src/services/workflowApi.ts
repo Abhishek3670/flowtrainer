@@ -1,11 +1,13 @@
+import { Node as ReactFlowNode, Edge as ReactFlowEdge } from 'reactflow';
+
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
 
 export interface WorkflowData {
   _id?: string;
   name: string;
   description?: string;
-  nodes: any[];
-  edges: any[];
+  nodes: ReactFlowNode<NodeData>[];
+  edges: ReactFlowEdge[];
   viewport?: { x: number; y: number; zoom: number };
   category?: 'ml-training' | 'data-processing' | 'computer-vision' | 'other';
   status?: 'draft' | 'published' | 'archived';
@@ -20,6 +22,23 @@ export interface ApiResponse<T> {
   data?: T;
   error?: string;
 }
+export interface NodeData {
+  label: string;
+  nodeName?: string;
+  isLive?: boolean;
+  rtspUrl?: string;
+  selectedFile?: {
+    fileId: string;
+    filename: string;
+    originalName: string;
+    size: number;
+    mimetype: string;
+    uploadedAt: string;
+  };
+  status?: 'empty' | 'ready' | 'processing' | 'error';
+  onDelete?: (nodeId: string) => void;
+}
+
 
 class WorkflowAPI {
   private async request<T>(

@@ -10,20 +10,46 @@ const NodeSchema = new mongoose.Schema({
   },
   data: {
     label: { type: String, required: true },
+    // Video Stream specific properties
     nodeName: { type: String },
     isLive: { type: Boolean, default: false },
     rtspUrl: { type: String },
+    
+    // Enhanced file association
+    selectedFile: {
+      fileId: { type: String }, // Reference to File._id
+      filename: { type: String },
+      originalName: { type: String },
+      size: { type: Number },
+      mimetype: { type: String },
+      uploadedAt: { type: Date }
+    },
+    
+    // Legacy support
     videoFile: {
       name: { type: String },
       size: { type: Number },
       type: { type: String },
       uploadedAt: { type: Date }
     },
+    
+    // Node status
+    status: {
+      type: String,
+      enum: ['empty', 'ready', 'processing', 'error'],
+      default: 'empty'
+    },
+    
+    // Generic node configuration
     config: { type: mongoose.Schema.Types.Mixed }
   },
+  // React Flow specific properties
   selected: { type: Boolean, default: false },
   dragging: { type: Boolean, default: false }
 }, { _id: false });
+
+// Rest of the schema stays the same...
+
 
 // Define Edge schema more explicitly
 const EdgeSchema = new mongoose.Schema({

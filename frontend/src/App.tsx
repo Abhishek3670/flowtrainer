@@ -18,14 +18,14 @@ import PropertiesPanel from './components/PropertiesPanel/PropertiesPanel';
 import FloatingComponentsPanel from './components/FloatingComponentsPanel/FloatingComponentsPanel';
 import CustomNode from './components/CustomNode/CustomNode';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { workflowAPI, WorkflowData } from './services/workflowApi';
+import { workflowAPI, WorkflowData, NodeData } from './services/workflowApi';
 
 const nodeTypes = {
   customNode: CustomNode,
 };
 
 // Empty initial state - we'll load from API
-const initialNodes: Node[] = [];
+const initialNodes: Node<NodeData>[] = [];
 const initialEdges: Edge[] = [];
 
 function FlowCanvas() {
@@ -87,35 +87,44 @@ function FlowCanvas() {
   // Create a default workflow for new users
   const createDefaultWorkflow = async () => {
     try {
-      const defaultWorkflow = {
+      const defaultWorkflow: Omit<WorkflowData, '_id'> = {
         name: 'My First ML Pipeline',
         description: 'Object detection workflow with CCTV stream',
         nodes: [
           {
             id: 'video-stream-1',
             type: 'customNode',
-            data: { label: '📹 Video Stream' },
+            data: { 
+              label: '📹 Video Stream',
+              status: 'empty'
+            },
             position: { x: 200, y: 100 },
           },
           {
             id: 'frame-extractor-1',
             type: 'customNode', 
-            data: { label: '🖼️ Frame Extractor' },
+            data: { 
+              label: '🖼️ Frame Extractor',
+              status: 'empty'
+            },
             position: { x: 200, y: 220 },
           },
           {
             id: 'object-detection-1',
             type: 'customNode',
-            data: { label: '🎯 Object Detection' },
+            data: { 
+              label: '🎯 Object Detection',
+              status: 'empty'
+            },
             position: { x: 200, y: 340 },
           },
-        ],
+        ] as Node<NodeData>[],
         edges: [
           { id: 'e1-2', source: 'video-stream-1', target: 'frame-extractor-1', animated: true },
           { id: 'e2-3', source: 'frame-extractor-1', target: 'object-detection-1', animated: true },
         ],
         viewport: { x: 0, y: 0, zoom: 1 },
-        category: 'computer-vision' as const,
+        category: 'computer-vision',
         tags: ['cctv', 'object-detection', 'ml']
       };
 
@@ -130,11 +139,14 @@ function FlowCanvas() {
     } catch (error) {
       console.error('Failed to create default workflow:', error);
       // Fallback to local-only nodes if API fails
-      const fallbackNodes: Node[] = [
+      const fallbackNodes: Node<NodeData>[] = [
         {
           id: 'video-stream-1',
           type: 'customNode',
-          data: { label: '📹 Video Stream' },
+          data: { 
+            label: '📹 Video Stream',
+            status: 'empty'
+          },
           position: { x: 200, y: 100 },
         }
       ];
@@ -201,9 +213,21 @@ function FlowCanvas() {
     [setEdges]
   );
 
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeClick = useCallback((event: React.MouseEvent, node: Node<NodeData>) => {
     setSelectedNode(node);
   }, []);
+
+  // Add this function to handle node updates
+  const updateNodeData = useCallback((nodeId: string, newData: Partial<NodeData>) => {
+    setNodes((nds) =>
+      nds.map((node) =>
+        node.id === nodeId
+          ? { ...node, data: { ...node.data, ...newData } }
+          : node
+      )
+    );
+  }, [setNodes]);
+
 
   // Handle deleting nodes
   const handleNodeDelete = useCallback((nodeId: string) => {
@@ -229,7 +253,7 @@ function FlowCanvas() {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const onDrop = useCallback(
+const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
 
@@ -245,12 +269,13 @@ function FlowCanvas() {
         y: event.clientY - reactFlowBounds.top,
       };
       
-      const newNode: Node = {
+      const newNode: Node<NodeData> = {
         id: `${type}-${Date.now()}`,
         type: 'customNode',
         position,
         data: { 
           label: `${type.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
+          status: 'empty',
           onDelete: handleNodeDelete
         },
       };
@@ -321,6 +346,7 @@ function FlowCanvas() {
           selectedNode={selectedNode}
           collapsed={propertiesPanelCollapsed}
           onToggle={() => setPropertiesPanelCollapsed(!propertiesPanelCollapsed)}
+          onNodeUpdate={updateNodeData}         
         />
       </div>
     </div>
