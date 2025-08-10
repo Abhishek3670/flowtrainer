@@ -43,7 +43,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       // Initialize from persisted file data if available
       const persisted = selectedNode.data.selectedFile;
       if (persisted) {
-        setSelectedFile(null);
+        setSelectedFile(persisted);
         setPreviewUrl(null); // we’ll stream from server
       } else {
         setSelectedFile(null);
