@@ -6,7 +6,6 @@ import { Node } from 'reactflow';
 // This section replaces external imports for a self-contained example.
 
 interface FileData {
-  _id?: string; // Optional, for legacy data
   fileId: string;
   filename: string;
   originalName: string;
@@ -56,7 +55,7 @@ const fileAPI = {
       },
     };
   },
-  getVideoStreamUrl: (fileId: string) => `https://example.com/api/files/stream/${fileId}`,
+  getVideoStreamUrl: (fileId: string) => `http://localhost:4000/api/files/stream/${fileId}`,
   formatFileSize: (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -93,6 +92,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const isVideoStream = selectedNode?.id?.includes('video-stream');
+  const [showVideoModal, setShowVideoModal] = useState(false);
 
   // Effect to reset and initialize state when a new node is selected
   useEffect(() => {
@@ -128,6 +128,16 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       return () => URL.revokeObjectURL(url);
     }
   }, [videoFile]);
+
+  useEffect(() => {
+  const handle = (e: KeyboardEvent) => {
+    if (e.key === "Escape") setShowVideoModal(false);
+  };
+  if (showVideoModal) {
+    window.addEventListener("keydown", handle);
+    return () => window.removeEventListener("keydown", handle);
+  }
+}, [showVideoModal]);
 
   // Handler for file selection and upload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -269,6 +279,40 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       <button onClick={() => setUploadError(null)} className="ml-auto text-red-500 hover:text-red-700"><X className="h-4 w-4" /></button>
                     </div>
                   )}
+                  {showVideoModal && selectedFile && (
+                    <div
+                      className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+                      onClick={() => setShowVideoModal(false)}
+                    >
+                      <div
+                        className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-xl relative max-w-3xl w-full"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          className="absolute top-4 right-4 text-gray-600 dark:text-gray-300 hover:text-red-400"
+                          onClick={() => setShowVideoModal(false)}
+                        >
+                          <X className="w-7 h-7" />
+                        </button>
+                        <video
+                          className="w-full rounded-lg shadow"
+                          controls
+                          autoPlay
+                          style={{ maxHeight: '70vh', background: '#000' }}
+                          src={fileAPI.getVideoStreamUrl(selectedFile.fileId)}
+                        >
+                          Your browser does not support video playback.
+                        </video>
+                        <div className="mt-3 flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                            {selectedFile.originalName}
+                          </span>
+                          <span className="text-xs text-gray-500">{fileAPI.formatFileSize(selectedFile.size)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Unified Video Preview */}
                   {(previewUrl || selectedFile) && !uploading && (
                     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
@@ -291,7 +335,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       </div>
                       {selectedFile && (
                         <div className="mt-3 flex space-x-2">
-                          <button onClick={() => { if (selectedFile?.fileId) window.open(fileAPI.getVideoStreamUrl(selectedFile.fileId), '_blank'); }} className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800">Open Full Video</button>
+                          <button onClick={() => setShowVideoModal(true)} className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800">Open Full Video</button>
                           <button onClick={() => { setSelectedFile(null); setVideoFile(null); if (selectedNode) onNodeUpdate(selectedNode.id, { selectedFile: undefined }); }} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600">Clear</button>
                         </div>
                       )}
