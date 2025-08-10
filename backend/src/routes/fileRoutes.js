@@ -18,7 +18,7 @@ router.get('/', getFiles);
 router.get('/:id', getFile);
 
 // GET /api/files/:id/stream - Serve/stream video file
-router.get('/:id/stream', serveVideo);
+router.get('/files/stream/:id', serveVideo);
 
 // DELETE /api/files/:id - Delete file
 router.delete('/:id', deleteFile);
