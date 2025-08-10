@@ -1,8 +1,7 @@
 import React from 'react';
 import { 
   Save, 
-  Share, 
-  Download, 
+  Share,  
   Undo, 
   Redo, 
   Brain,
@@ -10,8 +9,6 @@ import {
   Sun,
   Moon,
   Play,
-  Square,
-  BarChart3
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 

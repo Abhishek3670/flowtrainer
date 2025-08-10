@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, X, Upload, Play, Video, ExternalLink } from 'lucide-react';
+import { ChevronRight, X, Upload, Video, ExternalLink, AlertCircle } from 'lucide-react';
 import { Node } from 'reactflow';
+import { fileAPI, FileData, UploadProgress } from '../../services/fileApi';
 
 interface PropertiesPanelProps {
   selectedNode: Node | null;
@@ -14,34 +15,81 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onToggle 
 }) => {
   const [nodeName, setNodeName] = useState('');
-  const [isLive, setIsLive] = useState(false); // Default: file upload shown
+  const [isLive, setIsLive] = useState(false);
   const [rtspUrl, setRtspUrl] = useState('');
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-
-  // Check if selected node is a video stream
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<FileData | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  
   const isVideoStream = selectedNode?.id?.includes('video-stream');
 
+  // Effect to update node name when a new node is selected
   useEffect(() => {
     if (selectedNode) {
       setNodeName(selectedNode.data?.label || '');
+      // Reset state for the new node to avoid showing old data
+      setIsLive(false);
+      setRtspUrl('');
+      setVideoFile(null);
+      setPreviewUrl(null);
+      setSelectedFile(null);
+      setUploadError(null);
     }
   }, [selectedNode]);
 
+  // Effect to create a local preview URL for the selected video file
   useEffect(() => {
     if (videoFile) {
       const url = URL.createObjectURL(videoFile);
       setPreviewUrl(url);
+      // Clean up the object URL when the component unmounts or the file changes
       return () => URL.revokeObjectURL(url);
     } else {
       setPreviewUrl(null);
     }
   }, [videoFile]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handler for file selection and upload
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setVideoFile(file);
+    if (!file) return;
+
+    // Reset previous errors and set the local file for preview
+    setUploadError(null);
+    setVideoFile(file);
+
+    // Validate file before uploading
+    const validation = fileAPI.validateVideoFile(file);
+    if (!validation.valid) {
+      setUploadError(validation.error || 'Invalid file');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const response = await fileAPI.uploadFile(file, (progress) => {
+        setUploadProgress(progress);
+      });
+
+      if (response.data) {
+        console.log('=== UPLOAD RESPONSE DEBUG ===');
+        console.log('Full response:', response);
+        console.log('File data:', response.data);
+        console.log('File ID:', response.data._id);
+        console.log('File ID type:', typeof response.data._id);
+        setSelectedFile(response.data);
+        console.log('File uploaded successfully:', response.data);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
+      setUploadError(errorMessage);
+      console.error('File upload error:', error);
+    } finally {
+      setUploading(false);
+      setUploadProgress(null);
     }
   };
 
@@ -122,75 +170,157 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 </label>
               </div>
 
-              {/* File Upload Section - Show when NOT live */}
+              {/* File Upload Section (shown when not in live mode) */}
               <div 
                 className={`transition-all duration-300 ease-in-out ${
                   isLive 
                     ? 'opacity-0 max-h-0 overflow-hidden pointer-events-none' 
-                    : 'opacity-100 max-h-96'
+                    : 'opacity-100 max-h-[40rem]' // Adjusted max-height for content
                 }`}
               >
                 <div className="space-y-4">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     Upload Video File
                   </label>
+                  
+                  {/* Upload Area */}
                   <div className="relative">
                     <input
                       type="file"
-                      accept="video/*"
+                      accept="video/*,.mp4,.mov,.avi"
                       onChange={handleFileChange}
                       className="hidden"
                       id="video-upload"
+                      disabled={uploading}
                     />
                     <label
                       htmlFor="video-upload"
-                      className="flex items-center justify-center w-full px-4 py-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer transition-colors bg-gray-50 dark:bg-gray-700/50"
+                      className={`flex items-center justify-center w-full px-4 py-6 border-2 border-dashed rounded-lg transition-colors cursor-pointer ${
+                        uploading 
+                          ? 'border-blue-400 bg-blue-50 dark:bg-blue-900/10 cursor-not-allowed'
+                          : 'border-gray-300 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 bg-gray-50 dark:bg-gray-700/50'
+                      }`}
                     >
                       <div className="text-center">
-                        <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          Click to upload video
-                        </p>
+                        {uploading ? (
+                          <>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              Uploading... {uploadProgress?.percentage || 0}%
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              Click to upload video
+                            </p>
+                          </>
+                        )}
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          MP4, AVI, MOV up to 500MB
+                          MP4, MOV, AVI up to 500MB
                         </p>
                       </div>
                     </label>
+
+                    {/* Upload Progress Bar */}
+                    {uploading && uploadProgress && (
+                      <div className="mt-3 bg-gray-50 dark:bg-gray-700 rounded-lg p-3">
+                        <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full transition-all"
+                            style={{ width: `${uploadProgress.percentage}%` }}
+                          ></div>
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500 mt-1">
+                          <span>{fileAPI.formatFileSize(uploadProgress.loaded)}</span>
+                          <span>{fileAPI.formatFileSize(uploadProgress.total)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Video Preview */}
-                  {previewUrl && videoFile && (
+                  {/* Error Message */}
+                  {uploadError && (
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-3 flex items-center space-x-2">
+                      <AlertCircle className="h-4 w-4 text-red-500" />
+                      <span className="text-sm text-red-700 dark:text-red-400">{uploadError}</span>
+                      <button
+                        onClick={() => setUploadError(null)}
+                        className="ml-auto text-red-500 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Unified Video Preview */}
+                  {(previewUrl || selectedFile) && !uploading && (
                     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-sm font-medium text-gray-900 dark:text-white">
                           Preview
                         </span>
-                        <span className="text-xs text-gray-500 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 px-2 py-1 rounded">
-                          Ready
+                        <span className={`text-xs px-2 py-1 rounded ${selectedFile ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'}`}>
+                          {selectedFile ? 'Uploaded' : 'Local Preview'}
                         </span>
                       </div>
+                      
                       <video
                         className="w-full rounded-lg shadow-sm"
                         controls
+                        key={selectedFile ? selectedFile._id : previewUrl}
                         style={{ maxHeight: '150px' }}
+                        src={selectedFile ? fileAPI.getVideoStreamUrl(selectedFile._id || selectedFile.fileId || '') : previewUrl || undefined}
                       >
-                        <source src={previewUrl} type={videoFile.type} />
                         Your browser does not support video preview.
                       </video>
+                      
                       <div className="mt-2 flex items-center justify-between">
-                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {videoFile.name}
+                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate pr-2">
+                          {selectedFile ? selectedFile.originalName : videoFile?.name}
                         </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
+                        <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                          {selectedFile 
+                            ? fileAPI.formatFileSize(selectedFile.size)
+                            : videoFile ? fileAPI.formatFileSize(videoFile.size) : ''
+                          }
                         </span>
                       </div>
+
+                      {/* File Actions */}
+                      {selectedFile && (
+                        <div className="mt-3 flex space-x-2">
+                          <button
+                            onClick={() => {
+                              const fileId = selectedFile.fileId || selectedFile._id;
+                              if (fileId) {
+                                window.open(fileAPI.getVideoStreamUrl(fileId), '_blank');
+                              } else {
+                                alert('Error: File ID not available');
+                              }
+                            }}
+                            className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+                          >
+                            Open Full Video
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedFile(null);
+                              setVideoFile(null);
+                            }}
+                            className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* RTSP Section - Show when live is checked */}
+              {/* RTSP Section (shown when in live mode) */}
               <div 
                 className={`transition-all duration-300 ease-in-out ${
                   !isLive 

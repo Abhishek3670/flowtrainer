@@ -6,10 +6,11 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import path from 'path';
 
 // Import routes (Note: using require for now since routes are in JS)
 const workflowRoutes = require('./routes/workflowRoutes');
-
+const fileRoutes = require('./routes/fileRoutes');
 const app = express();
 const server = createServer(app);
 const io = new SocketIOServer(server, { 
@@ -26,6 +27,10 @@ app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/workflows', workflowRoutes);
+
+// File Routes
+app.use('/api/files', fileRoutes);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
