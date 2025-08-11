@@ -94,7 +94,11 @@ const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id }) => {
       >
         <Trash2 className="w-3 h-3" />
       </button>
-
+      {data.hasError && (
+        <div className="absolute top-1 right-1">
+          <AlertCircle className="w-5 h-5 text-red-500" />
+        </div>
+      )}
       {/* Main node container */}
       <div className={`border-2 rounded-lg p-3 bg-white dark:bg-gray-800 shadow-sm transition-all ${nodeStatus.color}`}>
         {/* Node header */}

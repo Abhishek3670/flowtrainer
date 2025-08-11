@@ -23,6 +23,7 @@ export interface ApiResponse<T> {
   error?: string;
 }
 export interface NodeData {
+  hasError?: boolean;
   label: string;
   nodeName?: string;
   isLive?: boolean;

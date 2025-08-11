@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { debounce } from 'lodash';
-
+import debounce from 'lodash/debounce';
+import toast, { Toaster } from 'react-hot-toast';
+import ValidationPanel from './components/ValidationPanel/ValidationPanel';
 import ReactFlow, {
   ReactFlowProvider,
   addEdge,
@@ -31,22 +32,25 @@ const initialEdges: Edge[] = [];
 function FlowCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
+  const [showValidation, setShowValidation] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [propertiesPanelCollapsed, setPropertiesPanelCollapsed] = useState(false);
-
+  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [validationErrors, setValidationErrors] = useState<{ nodeId: string; message: string }[]>([]);
 
+  // Restore auto-save preference
   useEffect(() => {
     const saved = localStorage.getItem('autosave_enabled');
     if (saved !== null) setAutoSaveEnabled(saved === 'true');
   }, []);
 
+  // Persist auto-save toggle
   useEffect(() => {
     localStorage.setItem('autosave_enabled', autoSaveEnabled.toString());
   }, [autoSaveEnabled]);
@@ -55,21 +59,20 @@ function FlowCanvas() {
     setAutoSaveEnabled(prev => !prev);
   }, []);
 
+  // User edit handlers
   const updateNodeData = useCallback((nodeId: string, newData: Partial<NodeData>) => {
     setNodes(nds =>
-      nds.map(node =>
-        node.id === nodeId ? { ...node, data: { ...node.data, ...newData } } : node
-      )
+      nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data!, ...newData } } : n)
     );
     setHasChanges(true);
   }, [setNodes]);
 
-  const handleNodesChange: OnNodesChange = useCallback((changes) => {
+  const handleNodesChange: OnNodesChange = useCallback(changes => {
     onNodesChange(changes);
     setHasChanges(true);
   }, [onNodesChange]);
 
-  const handleEdgesChange: OnEdgesChange = useCallback((changes) => {
+  const handleEdgesChange: OnEdgesChange = useCallback(changes => {
     onEdgesChange(changes);
     setHasChanges(true);
   }, [onEdgesChange]);
@@ -79,38 +82,35 @@ function FlowCanvas() {
     setHasChanges(true);
   }, [setEdges]);
 
+  const handleNodeDelete = useCallback((nodeId: string) => {
+    setNodes(nds => nds.filter(n => n.id !== nodeId));
+    setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
+    setHasChanges(true);
+    if (selectedNode?.id === nodeId) setSelectedNode(null);
+  }, [setNodes, setEdges, selectedNode]);
+
   const onDrop = useCallback((event: React.DragEvent) => {
     event.preventDefault();
-    const reactFlowBounds = event.currentTarget.getBoundingClientRect();
+    const bounds = event.currentTarget.getBoundingClientRect();
     const type = event.dataTransfer.getData('application/reactflow');
     if (!type) return;
-
-    const position = {
-      x: event.clientX - reactFlowBounds.left,
-      y: event.clientY - reactFlowBounds.top,
-    };
-
+    const position = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
     const newNode: Node<NodeData> = {
       id: `${type}-${Date.now()}`,
       type: 'customNode',
       position,
       data: {
-        label: `${type.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}`,
+        label: type,
         status: 'empty',
-        onDelete: handleNodeDelete
+        onDelete: handleNodeDelete,
+        hasError: false,
       },
     };
-
     setNodes(nds => nds.concat(newNode));
     setHasChanges(true);
-  }, [setNodes]);
+  }, [setNodes, handleNodeDelete]);
 
-  const handleNodeDelete = useCallback((nodeId: string) => {
-    setNodes(nds => nds.filter(node => node.id !== nodeId));
-    setEdges(eds => eds.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
-    setHasChanges(true);
-    if (selectedNode?.id === nodeId) setSelectedNode(null);
-  }, [setNodes, setEdges, selectedNode]);
+
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -122,99 +122,152 @@ function FlowCanvas() {
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  useEffect(() => {
-    const loadLatestWorkflow = async () => {
-      try {
-        setIsLoading(true);
-        const response = await workflowAPI.getWorkflows({ limit: 1, status: 'draft' });
-        if (response.data?.workflows && response.data.workflows.length > 0) {
-          const workflow = response.data.workflows[0];
-          setNodes(workflow.nodes || []);
-          setEdges(workflow.edges || []);
-          setCurrentWorkflow(workflow);
-          setLastSaved(new Date(workflow.lastModified || workflow.updatedAt || Date.now()));
-        } else {
-          await createDefaultWorkflow();
-        }
-      } catch (error) {
-        console.error('Failed to load workflow:', error);
-        await createDefaultWorkflow();
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadLatestWorkflow();
-  }, [setNodes, setEdges]);
+  // Validation
+  const validateWorkflow = useCallback(() => {
+  console.log('Validating nodes:', nodes);
 
-  const createDefaultWorkflow = async () => {
+  const invalidNodes = nodes.filter(n => {
+    if (!n.data) return false; // skip if no data
+    const d = n.data;
+
+    const isVideoNode =
+      n.type === 'customNode' &&
+      (n.id.startsWith('video-stream') ||
+       (typeof d.label === 'string' && d.label.includes('Video Stream')));
+
+    const hasFile =
+      typeof d.selectedFile === 'string'
+        ? (d.selectedFile as string).trim().length > 0
+        : Boolean(d.selectedFile && (d.selectedFile.filename || d.selectedFile.originalName));
+
+    const hasRtspUrl =
+      typeof d.rtspUrl === 'string'
+        ? d.rtspUrl.trim().length > 0
+        : false;
+
+    const hasSource = hasFile || hasRtspUrl;
+
+    return isVideoNode && !hasSource;
+  });
+
+  console.log('Invalid nodes found:', invalidNodes.map(n => n.id));
+
+  const errors = invalidNodes.map(n => ({
+    nodeId: n.id,
+    message: 'Video Stream node requires a file or RTSP URL'
+  }));
+
+  return { isValid: errors.length === 0, errors };
+}, [nodes]);
+
+  // Pipeline execution placeholder
+  const executePipeline = useCallback(() => {
+    console.log('🚀 Starting pipeline execution...');
+    toast.success('Pipeline execution started!', { icon: '🚀' });
+  }, []);
+
+  // Run with validation
+const handleRunPipeline = useCallback(() => {
+  const { isValid, errors } = validateWorkflow();
+  setValidationErrors(errors);
+  setShowValidation(true);
+
+  setNodes(nds =>
+    nds.map(n => ({
+      ...n,
+      data: { ...(n.data ?? {}), hasError: errors.some(err => err.nodeId === n.id) }
+    }))
+  );
+
+  if (!isValid) {
+    console.warn('Pipeline blocked due to validation errors');
+    return;
+  }
+
+  // clear errors and icons
+  setShowValidation(false);
+  setNodes(nds =>
+    nds.map(n => ({
+      ...n,
+      data: { ...(n.data ?? {}), hasError: false }
+    }))
+  );
+
+  executePipeline();
+}, [validateWorkflow, setNodes, executePipeline]);
+
+  // Focus node
+  const focusNode = useCallback((nodeId: string) => {
+    const node = nodes.find(n => n.id === nodeId);
+    if (node && reactFlowInstance) {
+      reactFlowInstance.setCenter(node.position.x, node.position.y, { zoom: 1.5 });
+    }
+    setShowValidation(false);
+  }, [nodes, reactFlowInstance]);
+
+  // Clear highlights on node change
+  useEffect(() => {
+    if (validationErrors.length > 0) {
+      setNodes(nds => nds.map(n => ({
+        ...n,
+        data: { ...n.data!, hasError: false }
+      })));
+      setValidationErrors([]);
+    }
+  }, [nodes, validationErrors, setNodes]);
+
+  // Load workflow
+useEffect(() => {
+  const load = async () => {
+    setIsLoading(true);
     try {
-      const defaultWorkflow: Omit<WorkflowData, '_id'> = {
-        name: 'My First ML Pipeline',
-        description: 'Object detection workflow with CCTV stream',
-        nodes: [
-          { id: 'video-stream-1', type: 'customNode', data: { label: '📹 Video Stream', status: 'empty' }, position: { x: 200, y: 100 } },
-          { id: 'frame-extractor-1', type: 'customNode', data: { label: '🖼️ Frame Extractor', status: 'empty' }, position: { x: 200, y: 220 } },
-          { id: 'object-detection-1', type: 'customNode', data: { label: '🎯 Object Detection', status: 'empty' }, position: { x: 200, y: 340 } },
-        ],
-        edges: [
-          { id: 'e1-2', source: 'video-stream-1', target: 'frame-extractor-1', animated: true },
-          { id: 'e2-3', source: 'frame-extractor-1', target: 'object-detection-1', animated: true },
-        ],
-        viewport: { x: 0, y: 0, zoom: 1 },
-        category: 'computer-vision',
-        tags: ['cctv', 'object-detection', 'ml'],
-      };
-      const response = await workflowAPI.createWorkflow(defaultWorkflow);
-      if (response.data) {
-        setNodes(defaultWorkflow.nodes);
-        setEdges(defaultWorkflow.edges);
-        setCurrentWorkflow(response.data);
-        setLastSaved(new Date());
+      const resp = await workflowAPI.getWorkflows({ limit: 1, status: 'draft' });
+      if (resp?.data?.workflows?.length) {
+        const wf = resp.data.workflows[0];
+        setNodes(wf.nodes || []);
+        setEdges(wf.edges || []);
+        setCurrentWorkflow(wf);
+        setLastSaved(new Date(wf.lastModified || wf.updatedAt || Date.now()));
       }
-    } catch (error) {
-      console.error('Failed to create default workflow:', error);
-      setNodes([
-        {
-          id: 'video-stream-1',
-          type: 'customNode',
-          data: { label: '📹 Video Stream', status: 'empty' },
-          position: { x: 200, y: 100 },
-        },
-      ]);
+    } catch {
+      // handle error or default
+    } finally {
+      setIsLoading(false);
     }
   };
+  load();
+}, [setNodes, setEdges]);
 
-  // === Debounced Save ===
-  const debouncedSave = useCallback(debounce(async (nodesToSave: Node<NodeData>[], edgesToSave: Edge[]) => {
-    if (nodesToSave.length === 0) return;
+
+  // Auto-save
+const debouncedSave = useCallback(
+  debounce(async (ns: Node<NodeData>[], es: Edge[]) => {
+    if (!ns.length) return;
+    setIsSaving(true);
     try {
-      setIsSaving(true);
-      const workflowToSave: Partial<WorkflowData> = {
-        name: currentWorkflow?.name || 'Untitled Workflow',
-        description: currentWorkflow?.description || 'Auto-saved ML pipeline',
-        nodes: nodesToSave,
-        edges: edgesToSave,
+      const partial: Partial<WorkflowData> = {
+        name: currentWorkflow?.name || 'Untitled',
+        description: currentWorkflow?.description || '',
+        nodes: ns,
+        edges: es,
         viewport: { x: 0, y: 0, zoom: 1 },
-        category: 'computer-vision',
+        category: 'computer-vision'
       };
+      const resp = currentWorkflow?._id
+        ? await workflowAPI.updateWorkflow(currentWorkflow._id, partial)
+        : await workflowAPI.createWorkflow(partial as Omit<WorkflowData, '_id'>);
 
-      let savedWorkflow;
-      if (currentWorkflow?._id) {
-        const response = await workflowAPI.updateWorkflow(currentWorkflow._id, workflowToSave);
-        savedWorkflow = response.data;
-      } else {
-        const response = await workflowAPI.createWorkflow(workflowToSave as Omit<WorkflowData, '_id'>);
-        savedWorkflow = response.data;
-      }
-
-      setCurrentWorkflow(savedWorkflow!);
+      setCurrentWorkflow(resp?.data ?? null); 
       setLastSaved(new Date());
-    } catch (err) {
-      console.error('❌ Auto-save failed', err);
+    } catch {
+      toast.error('Auto-save failed', { icon: '💾' });
     } finally {
       setIsSaving(false);
     }
-  }, 1000), [currentWorkflow]);
+  }, 1000),
+  [currentWorkflow]
+);
+
 
   useEffect(() => {
     if (autoSaveEnabled && hasChanges && !isLoading) {
@@ -223,32 +276,27 @@ function FlowCanvas() {
     }
   }, [autoSaveEnabled, hasChanges, isLoading, debouncedSave, nodes, edges]);
 
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node<NodeData>) => {
-    setSelectedNode(node);
-  }, []);
-
-  const nodesWithDelete = nodes.map(node => ({
-    ...node,
-    data: {
-      ...node.data,
-      onDelete: handleNodeDelete,
-    },
-  }));
-
+  // Loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Loading FlowCraft</h2>
-          <p className="text-gray-600 dark:text-gray-400">Restoring your latest workflow...</p>
         </div>
       </div>
     );
   }
 
+  const nodesWithDelete = nodes.map(n => ({
+    ...n,
+    data: { ...n.data!, onDelete: handleNodeDelete }
+  }));
+
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+      <Toaster position="top-right" />
+
       <Header
         isSaving={isSaving}
         lastSaved={lastSaved}
@@ -256,18 +304,28 @@ function FlowCanvas() {
         workflowName={currentWorkflow?.name}
         autoSaveEnabled={autoSaveEnabled}
         onToggleAutoSave={handleAutoSaveToggle}
+        onRun={handleRunPipeline}
       />
-      <div className="flex flex-1 overflow-hidden relative">
+
+      <div className="flex flex-1 relative overflow-hidden flow-canvas">
+        {showValidation && (
+          <ValidationPanel
+            errors={validationErrors}
+            onClose={() => setShowValidation(false)}
+            onFocusNode={focusNode}
+          />
+        )}
         <FloatingComponentsPanel onNodeDrag={handleNodeDrag} />
         <div className="flex-1 relative">
           <ReactFlow
+            onInit={setReactFlowInstance}
             nodes={nodesWithDelete}
             edges={edges}
             nodeTypes={nodeTypes}
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
             onConnect={onConnect}
-            onNodeClick={onNodeClick}
+            onNodeClick={(_event, node) => setSelectedNode(node)}
             onDrop={onDrop}
             onDragOver={onDragOver}
             fitView

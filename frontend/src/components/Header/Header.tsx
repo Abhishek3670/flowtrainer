@@ -16,6 +16,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 interface HeaderProps {
   isSaving?: boolean;
   lastSaved?: Date | null;
+  onRun: () => void;
   onSave?: () => void;
   workflowName?: string;
 
@@ -27,6 +28,7 @@ const Header: React.FC<HeaderProps> = ({
   isSaving = false,
   lastSaved = null,
   onSave,
+  onRun,
   workflowName = "Object Detection Pipeline",
   autoSaveEnabled,
   onToggleAutoSave
@@ -53,7 +55,7 @@ const Header: React.FC<HeaderProps> = ({
       {/* Center Section */}
       <div className="flex-1 flex justify-center">
         <div className="flex items-center space-x-2">
-          <button className="btn btn-primary">
+            <button className="btn btn-primary" onClick={onRun}>
             <Play className="w-4 h-4 mr-2" />
             Run Pipeline
           </button>
