@@ -15,6 +15,12 @@ import {
 import { NodeProps } from 'reactflow';
 import { NodeData } from '../../services/workflowApi';
 
+// Debug utility function
+const debugLog = (component: string, action: string, data?: any) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [${component}] ${action}`, data || '');
+};
+
 interface CustomNodeProps {
   data: NodeData & {
     label: string;
@@ -37,8 +43,18 @@ interface CustomNodeProps {
 }
 
 const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id, ...props }) => {
+  debugLog('CustomNode', 'Component rendered', { 
+    nodeId: id, 
+    nodeType: data.label,
+    status: data.status,
+    hasError: data.hasError,
+    hasFile: !!data.selectedFile,
+    isLive: data.isLive
+  });
+
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
+    debugLog('CustomNode', 'Delete button clicked', { nodeId: id });
     if (data.onDelete) {
       data.onDelete(id);
     }
@@ -46,6 +62,11 @@ const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id, ...props }) => {
 
   // Determine node status and styling
   const getNodeStatus = () => {
+    debugLog('CustomNode', 'Getting node status', { 
+      nodeId: id, 
+      status: data.status 
+    });
+    
     switch (data.status) {
       case 'uploading':
         return {
@@ -85,6 +106,12 @@ const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id, ...props }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
+  debugLog('CustomNode', 'Rendering node', { 
+    nodeId: id,
+    status: nodeStatus.statusText,
+    hasError: data.hasError
+  });
+
   return (
     <div className="relative group min-w-[180px] max-w-[220px]">
       {/* Delete button - existing */}
@@ -98,76 +125,80 @@ const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id, ...props }) => {
 
       {/* Error/Warning icon - NEW: positioned on the edge like delete button */}
       {data.hasError && (
-        <div
-          className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10 animate-pulse"
-          title="Validation error - click to view details"
-        >
-          <AlertCircle className="w-4 h-4" />
+        <div className="absolute -top-2 -left-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10">
+          <AlertCircle className="w-3 h-3" />
         </div>
       )}
 
-      {/* Main node container */}
-      <div className={`border-2 rounded-lg p-3 bg-white dark:bg-gray-800 shadow-sm transition-all ${nodeStatus.color}`}>
+      {/* Main node content */}
+      <div className={`border-2 rounded-lg p-3 bg-white shadow-sm ${nodeStatus.color} ${data.hasError ? 'border-red-500' : ''}`}>
         {/* Node header */}
-        <div className="flex items-center space-x-2 mb-2">
-          <div className="flex items-center space-x-1">
-            {nodeStatus.icon}
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-              {nodeStatus.statusText}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            {data.label.includes('Video Stream') ? (
+              <Video className="w-4 h-4 text-blue-600" />
+            ) : (
+              <Play className="w-4 h-4 text-purple-600" />
+            )}
+            <span className="text-sm font-medium text-gray-900 truncate">
+              {data.label}
             </span>
           </div>
+          {nodeStatus.icon}
         </div>
 
-        {/* Node title */}
-        <div className="mb-2">
-          <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
-            {data.label}
-          </h3>
-          {data.nodeName && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-              {data.nodeName}
-            </p>
-          )}
-        </div>
-
-        {/* File/Stream info */}
-        <div className="space-y-1">
-          {data.isLive && data.rtspUrl ? (
-            <div className="text-xs text-gray-600 dark:text-gray-400">
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span>Live RTSP Stream</span>
-              </div>
-              <div className="truncate mt-1 font-mono text-xs">
-                {data.rtspUrl}
-              </div>
+        {/* Node content based on type */}
+        {data.label.includes('Video Stream') && (
+          <div className="space-y-2">
+            {/* Status indicator */}
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-600">{nodeStatus.statusText}</span>
+              {data.isLive && (
+                <div className="flex items-center space-x-1">
+                  <Wifi className="w-3 h-3 text-green-500" />
+                  <span className="text-green-600">Live</span>
+                </div>
+              )}
             </div>
-          ) : data.selectedFile ? (
-            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-              <div className="flex items-center space-x-1">
-                <CheckCircle className="w-3 h-3 text-green-500" />
-                <span className="truncate font-medium">
+
+            {/* File info or RTSP info */}
+            {data.selectedFile ? (
+              <div className="bg-gray-50 rounded p-2">
+                <div className="flex items-center space-x-1 mb-1">
+                  <FileVideo className="w-3 h-3 text-gray-500" />
+                  <span className="text-xs font-medium text-gray-700">File</span>
+                </div>
+                <p className="text-xs text-gray-600 truncate">
                   {data.selectedFile.originalName}
-                </span>
+                </p>
+                <p className="text-xs text-gray-500">
+                  {formatFileSize(data.selectedFile.size)}
+                </p>
               </div>
-              <div className="flex justify-between">
-                <span>{formatFileSize(data.selectedFile.size)}</span>
-                <span className="text-green-600">Ready</span>
+            ) : data.rtspUrl ? (
+              <div className="bg-gray-50 rounded p-2">
+                <div className="flex items-center space-x-1 mb-1">
+                  <Wifi className="w-3 h-3 text-green-500" />
+                  <span className="text-xs font-medium text-gray-700">RTSP</span>
+                </div>
+                <p className="text-xs text-gray-600 truncate">
+                  {data.rtspUrl}
+                </p>
               </div>
-            </div>
-          ) : (
-            <div className="text-xs text-orange-600 dark:text-orange-400 flex items-center space-x-1">
-              <AlertTriangle className="w-3 h-3" />
-              <span>Configure input source</span>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="bg-gray-50 rounded p-2">
+                <p className="text-xs text-gray-500 text-center">
+                  {data.isLive ? 'Configure RTSP URL' : 'Upload video file'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Processing status indicator */}
-        {data.status === 'uploading' && (
-          <div className="mt-2 flex items-center space-x-1 text-xs text-blue-600">
-            <Clock className="w-3 h-3 animate-spin" />
-            <span>Processing...</span>
+        {/* Generic node content */}
+        {!data.label.includes('Video Stream') && (
+          <div className="text-xs text-gray-600">
+            <p>Configure node settings</p>
           </div>
         )}
       </div>
@@ -176,12 +207,12 @@ const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id, ...props }) => {
       <Handle
         type="target"
         position={Position.Left}
-        className="w-3 h-3 !bg-gray-400 border-2 border-white"
+        className="w-3 h-3 bg-gray-400 border-2 border-white"
       />
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3 h-3 !bg-gray-400 border-2 border-white"
+        className="w-3 h-3 bg-gray-400 border-2 border-white"
       />
     </div>
   );

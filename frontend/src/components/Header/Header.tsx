@@ -12,6 +12,12 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
+// Debug utility function
+const debugLog = (component: string, action: string, data?: any) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [${component}] ${action}`, data || '');
+};
+
 // Update interface for props
 interface HeaderProps {
   isSaving?: boolean;
@@ -33,7 +39,51 @@ const Header: React.FC<HeaderProps> = ({
   autoSaveEnabled,
   onToggleAutoSave
 }) => {
+  debugLog('Header', 'Component rendered', { 
+    isSaving, 
+    lastSaved: lastSaved?.toISOString(), 
+    workflowName,
+    autoSaveEnabled 
+  });
+  
   const { theme, toggleTheme } = useTheme();
+
+  const handleRunClick = () => {
+    debugLog('Header', 'Run pipeline button clicked');
+    onRun();
+  };
+
+  const handleSaveClick = () => {
+    debugLog('Header', 'Save button clicked', { isSaving });
+    if (onSave && !isSaving) {
+      onSave();
+    }
+  };
+
+  const handleShareClick = () => {
+    debugLog('Header', 'Share button clicked');
+    // TODO: Implement share functionality
+  };
+
+  const handleUndoClick = () => {
+    debugLog('Header', 'Undo button clicked');
+    // TODO: Implement undo functionality
+  };
+
+  const handleRedoClick = () => {
+    debugLog('Header', 'Redo button clicked');
+    // TODO: Implement redo functionality
+  };
+
+  const handleAutoSaveToggle = () => {
+    debugLog('Header', 'Auto-save toggle clicked', { currentState: autoSaveEnabled });
+    onToggleAutoSave();
+  };
+
+  const handleThemeToggle = () => {
+    debugLog('Header', 'Theme toggle clicked', { currentTheme: theme });
+    toggleTheme();
+  };
 
   return (
     <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-4">
@@ -55,31 +105,31 @@ const Header: React.FC<HeaderProps> = ({
       {/* Center Section */}
       <div className="flex-1 flex justify-center">
         <div className="flex items-center space-x-2">
-            <button className="btn btn-primary" onClick={onRun}>
+            <button className="btn btn-primary" onClick={handleRunClick}>
             <Play className="w-4 h-4 mr-2" />
             Run Pipeline
           </button>
 
           <button
             className={`btn ${isSaving ? 'opacity-50 cursor-not-allowed' : ''} btn-secondary`}
-            onClick={onSave}
+            onClick={handleSaveClick}
             disabled={isSaving}
           >
             <Save className="w-4 h-4 mr-2" />
             {isSaving ? 'Saving...' : 'Save'}
           </button>
 
-          <button className="btn btn-secondary">
+          <button className="btn btn-secondary" onClick={handleShareClick}>
             <Share className="w-4 h-4 mr-2" />
             Share
           </button>
 
           <div className="w-px h-6 bg-gray-300 mx-2" />
 
-          <button className="btn btn-outline">
+          <button className="btn btn-outline" onClick={handleUndoClick}>
             <Undo className="w-4 h-4" />
           </button>
-          <button className="btn btn-outline">
+          <button className="btn btn-outline" onClick={handleRedoClick}>
             <Redo className="w-4 h-4" />
           </button>
         </div>
@@ -100,34 +150,29 @@ const Header: React.FC<HeaderProps> = ({
           <span className="text-sm text-gray-600 dark:text-gray-300">Ready</span>
         </div>
 
-        {/* Auto-save toggle */}
-        <div className="flex items-center space-x-2 cursor-pointer select-none text-gray-700 dark:text-gray-300">
-          <span className="text-sm">Auto-save</span>
-          <button
-            onClick={onToggleAutoSave}
-            aria-pressed={autoSaveEnabled}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 ${autoSaveEnabled ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'
-              }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoSaveEnabled ? 'translate-x-6' : 'translate-x-1'
-                }`}
-            />
-          </button>
-        </div>
-
-
+        {/* Auto-save Toggle */}
         <button
-          onClick={toggleTheme}
-          className="btn btn-outline p-2"
+          onClick={handleAutoSaveToggle}
+          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+            autoSaveEnabled
+              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+              : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
+          }`}
         >
-          {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
+          {autoSaveEnabled ? 'Auto-save ON' : 'Auto-save OFF'}
         </button>
 
-        <div className="flex -space-x-2">
-          <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">DS</div>
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">ML</div>
-        </div>
+        {/* Theme Toggle */}
+        <button
+          onClick={handleThemeToggle}
+          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          {theme === 'dark' ? (
+            <Sun className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          ) : (
+            <Moon className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          )}
+        </button>
       </div>
     </header>
   );

@@ -1,5 +1,11 @@
 import { Node as ReactFlowNode, Edge as ReactFlowEdge } from 'reactflow';
 
+// Debug utility function
+const debugLog = (component: string, action: string, data?: any) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [${component}] ${action}`, data || '');
+};
+
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
 
 export interface WorkflowData {
@@ -53,8 +59,15 @@ class WorkflowAPI {
     endpoint: string, 
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
+    const url = `${API_BASE}${endpoint}`;
+    debugLog('WorkflowAPI', 'Making API request', { 
+      url, 
+      method: options.method || 'GET',
+      hasBody: !!options.body 
+    });
+    
     try {
-      const response = await fetch(`${API_BASE}${endpoint}`, {
+      const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
           ...options.headers,
@@ -62,12 +75,35 @@ class WorkflowAPI {
         ...options,
       });
 
+      debugLog('WorkflowAPI', 'API response received', { 
+        status: response.status, 
+        statusText: response.statusText,
+        url 
+      });
+
       const data = await response.json();
+      
       if (!response.ok) {
+        debugLog('WorkflowAPI', 'API request failed', { 
+          status: response.status, 
+          error: data.message || data.error,
+          url 
+        });
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
+      
+      debugLog('WorkflowAPI', 'API request successful', { 
+        url, 
+        dataKeys: Object.keys(data || {}),
+        hasData: !!data?.data 
+      });
+      
       return data;
     } catch (error) {
+      debugLog('WorkflowAPI', 'API request error', { 
+        url, 
+        error: error instanceof Error ? error.message : error 
+      });
       console.error('API request failed:', error);
       throw error;
     }
@@ -81,6 +117,8 @@ class WorkflowAPI {
     search?: string;
     tags?: string;
   }) {
+    debugLog('WorkflowAPI', 'Getting workflows', { params });
+    
     const queryParams = new URLSearchParams();
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -90,16 +128,24 @@ class WorkflowAPI {
       });
     }
     const queryString = queryParams.toString();
-    return this.request<{ workflows: WorkflowData[]; pagination: any }>(
-      `/workflows${queryString ? `?${queryString}` : ''}`
-    );
+    const endpoint = `/workflows${queryString ? `?${queryString}` : ''}`;
+    
+    return this.request<{ workflows: WorkflowData[]; pagination: any }>(endpoint);
   }
 
   async getWorkflow(id: string) {
+    debugLog('WorkflowAPI', 'Getting workflow by ID', { workflowId: id });
     return this.request<WorkflowData>(`/workflows/${id}`);
   }
 
   async createWorkflow(workflow: Omit<WorkflowData, '_id'>) {
+    debugLog('WorkflowAPI', 'Creating new workflow', { 
+      name: workflow.name,
+      category: workflow.category,
+      nodeCount: workflow.nodes?.length || 0,
+      edgeCount: workflow.edges?.length || 0
+    });
+    
     return this.request<WorkflowData>('/workflows', {
       method: 'POST',
       body: JSON.stringify(workflow),
@@ -107,6 +153,13 @@ class WorkflowAPI {
   }
 
   async updateWorkflow(id: string, workflow: Partial<WorkflowData>) {
+    debugLog('WorkflowAPI', 'Updating workflow', { 
+      workflowId: id,
+      updateFields: Object.keys(workflow),
+      nodeCount: workflow.nodes?.length,
+      edgeCount: workflow.edges?.length
+    });
+    
     return this.request<WorkflowData>(`/workflows/${id}`, {
       method: 'PUT',
       body: JSON.stringify(workflow),
@@ -114,24 +167,28 @@ class WorkflowAPI {
   }
 
   async deleteWorkflow(id: string) {
-    return this.request(`/workflows/${id}`, {
+    debugLog('WorkflowAPI', 'Deleting workflow', { workflowId: id });
+    
+    return this.request<void>(`/workflows/${id}`, {
       method: 'DELETE',
     });
   }
 
   async duplicateWorkflow(id: string) {
+    debugLog('WorkflowAPI', 'Duplicating workflow', { workflowId: id });
+    
     return this.request<WorkflowData>(`/workflows/${id}/duplicate`, {
       method: 'POST',
     });
   }
 
   async executeWorkflow(workflowId: string) {
-    return this.request<ExecutionResponse>(
-      `/workflows/${workflowId}/execute`,
-      { method: 'POST' }
-    );
+    debugLog('WorkflowAPI', 'Executing workflow', { workflowId });
+    
+    return this.request<ExecutionResponse>(`/workflows/${workflowId}/execute`, {
+      method: 'POST',
+    });
   }
 }
-
 
 export const workflowAPI = new WorkflowAPI();

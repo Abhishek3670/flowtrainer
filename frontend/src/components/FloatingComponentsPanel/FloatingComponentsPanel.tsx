@@ -20,6 +20,12 @@ import {
   Bell
 } from 'lucide-react';
 
+// Debug utility function
+const debugLog = (component: string, action: string, data?: any) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [${component}] ${action}`, data || '');
+};
+
 interface FloatingComponentsPanelProps {
   onNodeDrag: (event: React.DragEvent, nodeType: string) => void;
 }
@@ -97,100 +103,103 @@ const componentCategories = [
 ];
 
 const FloatingComponentsPanel: React.FC<FloatingComponentsPanelProps> = ({ onNodeDrag }) => {
+  debugLog('FloatingComponentsPanel', 'Component rendered');
+  
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
   const toggleCategory = (categoryId: string) => {
-    const newExpanded = new Set(expandedCategories);
-    if (newExpanded.has(categoryId)) {
-      newExpanded.delete(categoryId);
-    } else {
-      newExpanded.add(categoryId);
-    }
-    setExpandedCategories(newExpanded);
+    debugLog('FloatingComponentsPanel', 'Toggling category', { 
+      categoryId, 
+      currentlyExpanded: expandedCategories.has(categoryId) 
+    });
+    
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId);
+      } else {
+        newSet.add(categoryId);
+      }
+      return newSet;
+    });
   };
 
-  // Auto-collapse all categories after drag starts
   const handleNodeDragStart = (event: React.DragEvent, nodeType: string) => {
+    debugLog('FloatingComponentsPanel', 'Node drag started', { 
+      nodeType, 
+      clientX: event.clientX, 
+      clientY: event.clientY 
+    });
     onNodeDrag(event, nodeType);
-    
-    // Auto-collapse all categories after a short delay
-    setTimeout(() => {
-      setExpandedCategories(new Set());
-    }, 100);
   };
+
+  debugLog('FloatingComponentsPanel', 'Rendering panel', { 
+    expandedCategories: Array.from(expandedCategories),
+    totalCategories: componentCategories.length
+  });
 
   return (
-    <div className="fixed left-4 top-1/2 transform -translate-y-1/2 z-50">
-      {/* Main floating tab */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-        {componentCategories.map((category, index) => {
-          const CategoryIcon = category.icon;
-          const isExpanded = expandedCategories.has(category.id);
-          
-          return (
-            <div key={category.id} className="relative">
-              {/* Category button */}
-              <button
-                onClick={() => toggleCategory(category.id)}
-                className={`
-                  w-16 h-16 flex items-center justify-center
-                  hover:bg-gray-50 dark:hover:bg-gray-700 
-                  transition-colors duration-200
-                  ${index === 0 ? 'rounded-t-lg' : ''}
-                  ${index === componentCategories.length - 1 && !isExpanded ? 'rounded-b-lg' : ''}
-                  ${isExpanded ? 'bg-gray-50 dark:bg-gray-700' : ''}
-                `}
-                title={category.title}
-              >
-                <div className={`w-8 h-8 ${category.color} rounded-lg flex items-center justify-center`}>
-                  <CategoryIcon className="w-4 h-4 text-white" />
-                </div>
-              </button>
-
-              {/* Expanded submenu */}
-              {isExpanded && (
-                <div className="absolute left-full top-0 ml-2 w-80 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-10">
-                  <div className="p-4">
-                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+    <div className="absolute left-4 top-4 z-10 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 w-64 max-h-[calc(100vh-2rem)] overflow-y-auto">
+      <div className="p-4">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+          Components
+        </h3>
+        
+        <div className="space-y-2">
+          {componentCategories.map((category) => {
+            const isExpanded = expandedCategories.has(category.id);
+            const IconComponent = category.icon;
+            
+            return (
+              <div key={category.id} className="border border-gray-200 dark:border-gray-600 rounded-lg">
+                <button
+                  onClick={() => toggleCategory(category.id)}
+                  className="w-full px-3 py-2 flex items-center justify-between text-left hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors rounded-t-lg"
+                >
+                  <div className="flex items-center space-x-2">
+                    <div className={`w-3 h-3 rounded-full ${category.color}`} />
+                    <IconComponent className="w-4 h-4 text-gray-600 dark:text-gray-300" />
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">
                       {category.title}
-                    </h3>
-                    
-                    <div className="space-y-2">
-                      {category.nodes.map((node) => {
-                        const NodeIcon = node.icon;
-                        return (
-                          <div
-                            key={node.id}
-                            draggable
-                            onDragStart={(event) => handleNodeDragStart(event, node.id)}
-                            className="flex items-center p-3 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 cursor-move transition-colors group"
-                          >
-                            <div className={`w-10 h-10 ${category.color} rounded-lg flex items-center justify-center mr-3`}>
-                              <NodeIcon className="w-5 h-5 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                {node.title}
-                              </h4>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                {node.description}
-                              </p>
-                            </div>
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="text-xs text-gray-400 bg-gray-100 dark:bg-gray-600 px-2 py-1 rounded">
-                                Drag
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                    </span>
                   </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                  <div className={`transform transition-transform ${isExpanded ? 'rotate-90' : ''}`}>
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </button>
+                
+                {isExpanded && (
+                  <div className="px-3 pb-3 space-y-1">
+                    {category.nodes.map((node) => {
+                      const NodeIcon = node.icon;
+                      
+                      return (
+                        <div
+                          key={node.id}
+                          draggable
+                          onDragStart={(e) => handleNodeDragStart(e, node.id)}
+                          className="flex items-center space-x-2 px-2 py-1 rounded cursor-move hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <NodeIcon className="w-4 h-4 text-gray-500" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                              {node.title}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                              {node.description}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

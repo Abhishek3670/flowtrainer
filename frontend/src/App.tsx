@@ -26,11 +26,19 @@ import CustomNode from './components/CustomNode/CustomNode';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { workflowAPI, WorkflowData, NodeData } from './services/workflowApi';
 
+// Debug utility function
+const debugLog = (component: string, action: string, data?: any) => {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] [${component}] ${action}`, data || '');
+};
+
 const nodeTypes = { customNode: CustomNode };
 const initialNodes: Node<NodeData>[] = [];
 const initialEdges: Edge[] = [];
 
 function FlowCanvas() {
+  debugLog('FlowCanvas', 'Component initialized');
+  
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [showValidation, setShowValidation] = useState(false);
@@ -48,21 +56,28 @@ function FlowCanvas() {
 
   // Restore auto-save preference
   useEffect(() => {
+    debugLog('FlowCanvas', 'Loading auto-save preference from localStorage');
     const saved = localStorage.getItem('autosave_enabled');
-    if (saved !== null) setAutoSaveEnabled(saved === 'true');
+    if (saved !== null) {
+      setAutoSaveEnabled(saved === 'true');
+      debugLog('FlowCanvas', 'Auto-save preference loaded', { enabled: saved === 'true' });
+    }
   }, []);
 
   // Persist auto-save toggle
   useEffect(() => {
+    debugLog('FlowCanvas', 'Saving auto-save preference to localStorage', { enabled: autoSaveEnabled });
     localStorage.setItem('autosave_enabled', autoSaveEnabled.toString());
   }, [autoSaveEnabled]);
 
   const handleAutoSaveToggle = useCallback(() => {
+    debugLog('FlowCanvas', 'Auto-save toggle triggered', { currentState: autoSaveEnabled });
     setAutoSaveEnabled(prev => !prev);
-  }, []);
+  }, [autoSaveEnabled]);
 
   // User edit handlers
   const updateNodeData = useCallback((nodeId: string, newData: Partial<NodeData>) => {
+    debugLog('FlowCanvas', 'Updating node data', { nodeId, newData });
     setNodes(nds =>
       nds.map(n => (n.id === nodeId ? { ...n, data: { ...n.data!, ...newData } } : n))
     );
@@ -71,6 +86,7 @@ function FlowCanvas() {
 
   const handleNodesChange: OnNodesChange = useCallback(
     changes => {
+      debugLog('FlowCanvas', 'Nodes changed', { changesCount: changes.length, changes });
       onNodesChange(changes);
       setHasChanges(true);
     },
@@ -79,6 +95,7 @@ function FlowCanvas() {
 
   const handleEdgesChange: OnEdgesChange = useCallback(
     changes => {
+      debugLog('FlowCanvas', 'Edges changed', { changesCount: changes.length, changes });
       onEdgesChange(changes);
       setHasChanges(true);
     },
@@ -87,6 +104,7 @@ function FlowCanvas() {
 
   const onConnect = useCallback(
     (params: Edge | Connection) => {
+      debugLog('FlowCanvas', 'New connection created', { params });
       setEdges(eds => addEdge(params, eds));
       setHasChanges(true);
     },
@@ -95,10 +113,14 @@ function FlowCanvas() {
 
   const handleNodeDelete = useCallback(
     (nodeId: string) => {
+      debugLog('FlowCanvas', 'Deleting node', { nodeId });
       setNodes(nds => nds.filter(n => n.id !== nodeId));
       setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
       setHasChanges(true);
-      if (selectedNode?.id === nodeId) setSelectedNode(null);
+      if (selectedNode?.id === nodeId) {
+        debugLog('FlowCanvas', 'Clearing selected node (deleted)', { nodeId });
+        setSelectedNode(null);
+      }
     },
     [setNodes, setEdges, selectedNode]
   );
@@ -108,7 +130,10 @@ function FlowCanvas() {
       event.preventDefault();
       const bounds = event.currentTarget.getBoundingClientRect();
       const type = event.dataTransfer.getData('application/reactflow');
-      if (!type) return;
+      if (!type) {
+        debugLog('FlowCanvas', 'Drop event ignored - no valid type', { type });
+        return;
+      }
       const position = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
       const newNode: Node<NodeData> = {
         id: `${type}-${Date.now()}`,
@@ -121,6 +146,7 @@ function FlowCanvas() {
           hasError: false,
         },
       };
+      debugLog('FlowCanvas', 'New node dropped', { nodeType: type, position, nodeId: newNode.id });
       setNodes(nds => nds.concat(newNode));
       setHasChanges(true);
     },
@@ -133,19 +159,26 @@ function FlowCanvas() {
   }, []);
 
   const handleNodeDrag = (event: React.DragEvent, nodeType: string) => {
+    debugLog('FlowCanvas', 'Node drag started', { nodeType });
     event.dataTransfer.setData('application/reactflow', nodeType);
     event.dataTransfer.effectAllowed = 'move';
   };
 
   // Pipeline execution handler
   const executePipeline = useCallback(async () => {
-    if (!currentWorkflow?._id) return;
+    if (!currentWorkflow?._id) {
+      debugLog('FlowCanvas', 'Pipeline execution blocked - no workflow ID');
+      return;
+    }
+    debugLog('FlowCanvas', 'Starting pipeline execution', { workflowId: currentWorkflow._id });
     setIsSaving(true);
     try {
       const exec = await workflowAPI.executeWorkflow(currentWorkflow._id);
+      debugLog('FlowCanvas', 'Pipeline execution started successfully', { executionId: exec.data?.executionId });
       toast.success(`Pipeline queued (ID: ${exec.data?.executionId || 'unknown'})`, { icon: '🚀' });
       setCurrentExecution(exec.data?.executionId || null);
     } catch (err) {
+      debugLog('FlowCanvas', 'Pipeline execution failed', { error: err });
       toast.error('Failed to start execution', { icon: '❌' });
     } finally {
       setIsSaving(false);
@@ -154,7 +187,7 @@ function FlowCanvas() {
 
   // Validation logic
   const validateWorkflow = useCallback(() => {
-    console.log('Validating nodes:', nodes);
+    debugLog('FlowCanvas', 'Starting workflow validation', { nodeCount: nodes.length });
 
     const invalidNodes = nodes.filter(n => {
       if (!n.data) return false; // skip if no data
@@ -178,7 +211,11 @@ function FlowCanvas() {
       return isVideoNode && !hasSource;
     });
 
-    console.log('Invalid nodes found:', invalidNodes.map(n => n.id));
+    debugLog('FlowCanvas', 'Validation results', { 
+      totalNodes: nodes.length, 
+      invalidNodes: invalidNodes.length,
+      invalidNodeIds: invalidNodes.map(n => n.id)
+    });
 
     const errors = invalidNodes.map(n => ({
       nodeId: n.id,
@@ -190,6 +227,7 @@ function FlowCanvas() {
 
   // Run with validation
   const handleRunPipeline = useCallback(() => {
+    debugLog('FlowCanvas', 'Run pipeline triggered');
     const { isValid, errors } = validateWorkflow();
     setValidationErrors(errors);
     setShowValidation(true);
@@ -202,11 +240,13 @@ function FlowCanvas() {
     );
 
     if (!isValid) {
+      debugLog('FlowCanvas', 'Pipeline blocked due to validation errors', { errorCount: errors.length });
       console.warn('Pipeline blocked due to validation errors');
       return;
     }
 
     // clear errors and icons
+    debugLog('FlowCanvas', 'Validation passed, clearing errors and executing pipeline');
     setShowValidation(false);
     setNodes(nds =>
       nds.map(n => ({
@@ -221,6 +261,7 @@ function FlowCanvas() {
   // Focus node
   const focusNode = useCallback(
     (nodeId: string) => {
+      debugLog('FlowCanvas', 'Focusing node', { nodeId });
       const node = nodes.find(n => n.id === nodeId);
       if (node && reactFlowInstance) {
         reactFlowInstance.setCenter(node.position.x, node.position.y, { zoom: 1.5 });
@@ -233,6 +274,7 @@ function FlowCanvas() {
   // Clear highlights on node change
   useEffect(() => {
     if (validationErrors.length > 0) {
+      debugLog('FlowCanvas', 'Clearing validation errors due to node changes');
       setNodes(nds =>
         nds.map(n => ({
           ...n,
@@ -246,6 +288,7 @@ function FlowCanvas() {
   // Update node status from execution events
   const updateNodeStatus = useCallback(
     (nodeId: string, status: string) => {
+      debugLog('FlowCanvas', 'Updating node status', { nodeId, status });
       setNodes(nds =>
         nds.map(n =>
           n.id === nodeId ? { ...n, data: { ...n.data!, status: status as any } } : n
@@ -261,17 +304,26 @@ function FlowCanvas() {
   // Load workflow effect
   useEffect(() => {
     const load = async () => {
+      debugLog('FlowCanvas', 'Loading workflow from API');
       setIsLoading(true);
       try {
         const resp = await workflowAPI.getWorkflows({ limit: 1, status: 'draft' });
         if (resp?.data?.workflows?.length) {
           const wf = resp.data.workflows[0];
+          debugLog('FlowCanvas', 'Workflow loaded successfully', { 
+            workflowId: wf._id, 
+            nodeCount: wf.nodes?.length || 0,
+            edgeCount: wf.edges?.length || 0
+          });
           setNodes(wf.nodes || []);
           setEdges(wf.edges || []);
           setCurrentWorkflow(wf);
           setLastSaved(new Date(wf.lastModified || wf.updatedAt || Date.now()));
+        } else {
+          debugLog('FlowCanvas', 'No existing workflows found, starting with empty canvas');
         }
-      } catch {
+      } catch (error) {
+        debugLog('FlowCanvas', 'Failed to load workflow', { error });
         // handle error or fallback if needed
       } finally {
         setIsLoading(false);
@@ -302,7 +354,11 @@ function FlowCanvas() {
   // Auto-save with debounce
   const debouncedSave = useCallback(
     debounce(async (ns: Node<NodeData>[], es: Edge[]) => {
-      if (!ns.length) return;
+      if (!ns.length) {
+        debugLog('FlowCanvas', 'Auto-save skipped - no nodes');
+        return;
+      }
+      debugLog('FlowCanvas', 'Auto-save triggered', { nodeCount: ns.length, edgeCount: es.length });
       setIsSaving(true);
       try {
         const partial: Partial<WorkflowData> = {
@@ -317,9 +373,14 @@ function FlowCanvas() {
           ? await workflowAPI.updateWorkflow(currentWorkflow._id, partial)
           : await workflowAPI.createWorkflow(partial as Omit<WorkflowData, '_id'>);
 
+        debugLog('FlowCanvas', 'Auto-save completed successfully', { 
+          workflowId: resp?.data?._id,
+          isUpdate: !!currentWorkflow?._id
+        });
         setCurrentWorkflow(resp?.data ?? null);
         setLastSaved(new Date());
-      } catch {
+      } catch (error) {
+        debugLog('FlowCanvas', 'Auto-save failed', { error });
         toast.error('Auto-save failed', { icon: '💾' });
       } finally {
         setIsSaving(false);
@@ -330,6 +391,7 @@ function FlowCanvas() {
 
   useEffect(() => {
     if (autoSaveEnabled && hasChanges && !isLoading) {
+      debugLog('FlowCanvas', 'Auto-save conditions met', { autoSaveEnabled, hasChanges, isLoading });
       debouncedSave(nodes, edges);
       setHasChanges(false);
     }
@@ -337,6 +399,7 @@ function FlowCanvas() {
 
   // Loading state display
   if (isLoading) {
+    debugLog('FlowCanvas', 'Rendering loading state');
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
@@ -351,6 +414,14 @@ function FlowCanvas() {
     ...n,
     data: { ...n.data!, onDelete: handleNodeDelete },
   }));
+
+  debugLog('FlowCanvas', 'Rendering main canvas', { 
+    nodeCount: nodes.length, 
+    edgeCount: edges.length,
+    selectedNode: selectedNode?.id || null,
+    showValidation,
+    validationErrorCount: validationErrors.length
+  });
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
@@ -384,7 +455,10 @@ function FlowCanvas() {
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
             onConnect={onConnect}
-            onNodeClick={(_event, node) => setSelectedNode(node)}
+            onNodeClick={(_event, node) => {
+              debugLog('FlowCanvas', 'Node clicked', { nodeId: node.id, nodeType: node.type });
+              setSelectedNode(node);
+            }}
             onDrop={onDrop}
             onDragOver={onDragOver}
             fitView
@@ -401,7 +475,10 @@ function FlowCanvas() {
         <PropertiesPanel
           selectedNode={selectedNode}
           collapsed={propertiesPanelCollapsed}
-          onToggle={() => setPropertiesPanelCollapsed(!propertiesPanelCollapsed)}
+          onToggle={() => {
+            debugLog('FlowCanvas', 'Properties panel toggle', { currentState: propertiesPanelCollapsed });
+            setPropertiesPanelCollapsed(!propertiesPanelCollapsed);
+          }}
           onNodeUpdate={updateNodeData}
         />
       </div>
@@ -410,6 +487,7 @@ function FlowCanvas() {
 }
 
 export default function App() {
+  debugLog('App', 'App component rendered');
   return (
     <ThemeProvider>
       <ReactFlowProvider>
