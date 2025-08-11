@@ -1,9 +1,9 @@
 import React from 'react';
-import { 
-  Save, 
-  Share,  
-  Undo, 
-  Redo, 
+import {
+  Save,
+  Share,
+  Undo,
+  Redo,
   Brain,
   ChevronRight,
   Sun,
@@ -12,19 +12,24 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
-// Add interface for props
+// Update interface for props
 interface HeaderProps {
   isSaving?: boolean;
   lastSaved?: Date | null;
   onSave?: () => void;
   workflowName?: string;
+
+  autoSaveEnabled: boolean;          // <-- add this
+  onToggleAutoSave: () => void;      // <-- add this
 }
 
-const Header: React.FC<HeaderProps> = ({ 
-  isSaving = false, 
-  lastSaved = null, 
+const Header: React.FC<HeaderProps> = ({
+  isSaving = false,
+  lastSaved = null,
   onSave,
-  workflowName = "Object Detection Pipeline"
+  workflowName = "Object Detection Pipeline",
+  autoSaveEnabled,
+  onToggleAutoSave
 }) => {
   const { theme, toggleTheme } = useTheme();
 
@@ -37,7 +42,7 @@ const Header: React.FC<HeaderProps> = ({
           <span className="text-xl font-bold text-gray-900 dark:text-white">FlowCraft</span>
           <span className="text-sm text-gray-500 bg-purple-100 dark:bg-purple-900 px-2 py-1 rounded">ML</span>
         </div>
-        
+
         <nav className="flex items-center space-x-2 text-sm text-gray-500">
           <span>Workspace</span>
           <ChevronRight className="w-4 h-4" />
@@ -52,8 +57,8 @@ const Header: React.FC<HeaderProps> = ({
             <Play className="w-4 h-4 mr-2" />
             Run Pipeline
           </button>
-          
-          <button 
+
+          <button
             className={`btn ${isSaving ? 'opacity-50 cursor-not-allowed' : ''} btn-secondary`}
             onClick={onSave}
             disabled={isSaving}
@@ -61,14 +66,14 @@ const Header: React.FC<HeaderProps> = ({
             <Save className="w-4 h-4 mr-2" />
             {isSaving ? 'Saving...' : 'Save'}
           </button>
-          
+
           <button className="btn btn-secondary">
             <Share className="w-4 h-4 mr-2" />
             Share
           </button>
-          
+
           <div className="w-px h-6 bg-gray-300 mx-2" />
-          
+
           <button className="btn btn-outline">
             <Undo className="w-4 h-4" />
           </button>
@@ -86,20 +91,37 @@ const Header: React.FC<HeaderProps> = ({
             Saved at {lastSaved.toLocaleTimeString()}
           </div>
         )}
-        
+
         {/* Pipeline Status */}
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           <span className="text-sm text-gray-600 dark:text-gray-300">Ready</span>
         </div>
-        
-        <button 
+
+        {/* Auto-save toggle */}
+        <div className="flex items-center space-x-2 cursor-pointer select-none text-gray-700 dark:text-gray-300">
+          <span className="text-sm">Auto-save</span>
+          <button
+            onClick={onToggleAutoSave}
+            aria-pressed={autoSaveEnabled}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 ${autoSaveEnabled ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoSaveEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
+            />
+          </button>
+        </div>
+
+
+        <button
           onClick={toggleTheme}
           className="btn btn-outline p-2"
         >
           {theme === 'light' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
         </button>
-        
+
         <div className="flex -space-x-2">
           <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">DS</div>
           <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">ML</div>
