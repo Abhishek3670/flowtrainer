@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import debounce from 'lodash/debounce';
 import toast, { Toaster } from 'react-hot-toast';
 import ValidationPanel from './components/ValidationPanel/ValidationPanel';
+import { useExecutionStatus } from '../hooks/useExecutionStatus';
 import ReactFlow, {
   ReactFlowProvider,
   addEdge,
@@ -43,6 +44,7 @@ function FlowCanvas() {
   const [hasChanges, setHasChanges] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [validationErrors, setValidationErrors] = useState<{ nodeId: string; message: string }[]>([]);
+  const [currentExecution, setCurrentExecution] = useState<string | null>(null);
 
   // Restore auto-save preference
   useEffect(() => {
@@ -62,55 +64,68 @@ function FlowCanvas() {
   // User edit handlers
   const updateNodeData = useCallback((nodeId: string, newData: Partial<NodeData>) => {
     setNodes(nds =>
-      nds.map(n => n.id === nodeId ? { ...n, data: { ...n.data!, ...newData } } : n)
+      nds.map(n => (n.id === nodeId ? { ...n, data: { ...n.data!, ...newData } } : n))
     );
     setHasChanges(true);
   }, [setNodes]);
 
-  const handleNodesChange: OnNodesChange = useCallback(changes => {
-    onNodesChange(changes);
-    setHasChanges(true);
-  }, [onNodesChange]);
+  const handleNodesChange: OnNodesChange = useCallback(
+    changes => {
+      onNodesChange(changes);
+      setHasChanges(true);
+    },
+    [onNodesChange]
+  );
 
-  const handleEdgesChange: OnEdgesChange = useCallback(changes => {
-    onEdgesChange(changes);
-    setHasChanges(true);
-  }, [onEdgesChange]);
+  const handleEdgesChange: OnEdgesChange = useCallback(
+    changes => {
+      onEdgesChange(changes);
+      setHasChanges(true);
+    },
+    [onEdgesChange]
+  );
 
-  const onConnect = useCallback((params: Edge | Connection) => {
-    setEdges(eds => addEdge(params, eds));
-    setHasChanges(true);
-  }, [setEdges]);
+  const onConnect = useCallback(
+    (params: Edge | Connection) => {
+      setEdges(eds => addEdge(params, eds));
+      setHasChanges(true);
+    },
+    [setEdges]
+  );
 
-  const handleNodeDelete = useCallback((nodeId: string) => {
-    setNodes(nds => nds.filter(n => n.id !== nodeId));
-    setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
-    setHasChanges(true);
-    if (selectedNode?.id === nodeId) setSelectedNode(null);
-  }, [setNodes, setEdges, selectedNode]);
+  const handleNodeDelete = useCallback(
+    (nodeId: string) => {
+      setNodes(nds => nds.filter(n => n.id !== nodeId));
+      setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
+      setHasChanges(true);
+      if (selectedNode?.id === nodeId) setSelectedNode(null);
+    },
+    [setNodes, setEdges, selectedNode]
+  );
 
-  const onDrop = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const type = event.dataTransfer.getData('application/reactflow');
-    if (!type) return;
-    const position = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
-    const newNode: Node<NodeData> = {
-      id: `${type}-${Date.now()}`,
-      type: 'customNode',
-      position,
-      data: {
-        label: type,
-        status: 'empty',
-        onDelete: handleNodeDelete,
-        hasError: false,
-      },
-    };
-    setNodes(nds => nds.concat(newNode));
-    setHasChanges(true);
-  }, [setNodes, handleNodeDelete]);
-
-
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      const bounds = event.currentTarget.getBoundingClientRect();
+      const type = event.dataTransfer.getData('application/reactflow');
+      if (!type) return;
+      const position = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+      const newNode: Node<NodeData> = {
+        id: `${type}-${Date.now()}`,
+        type: 'customNode',
+        position,
+        data: {
+          label: type,
+          status: 'empty',
+          onDelete: handleNodeDelete,
+          hasError: false,
+        },
+      };
+      setNodes(nds => nds.concat(newNode));
+      setHasChanges(true);
+    },
+    [setNodes, handleNodeDelete]
+  );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
@@ -122,152 +137,196 @@ function FlowCanvas() {
     event.dataTransfer.effectAllowed = 'move';
   };
 
-  // Validation
+  // Pipeline execution handler
+  const executePipeline = useCallback(async () => {
+    if (!currentWorkflow?._id) return;
+    setIsSaving(true);
+    try {
+      const exec = await workflowAPI.executeWorkflow(currentWorkflow._id);
+      toast.success(`Pipeline queued (ID: ${exec.data?.executionId || 'unknown'})`, { icon: '🚀' });
+      setCurrentExecution(exec.data?.executionId || null);
+    } catch (err) {
+      toast.error('Failed to start execution', { icon: '❌' });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [currentWorkflow]);
+
+  // Validation logic
   const validateWorkflow = useCallback(() => {
-  console.log('Validating nodes:', nodes);
+    console.log('Validating nodes:', nodes);
 
-  const invalidNodes = nodes.filter(n => {
-    if (!n.data) return false; // skip if no data
-    const d = n.data;
+    const invalidNodes = nodes.filter(n => {
+      if (!n.data) return false; // skip if no data
+      const d = n.data;
 
-    const isVideoNode =
-      n.type === 'customNode' &&
-      (n.id.startsWith('video-stream') ||
-       (typeof d.label === 'string' && d.label.includes('Video Stream')));
+      const isVideoNode =
+        n.type === 'customNode' &&
+        (n.id.startsWith('video-stream') ||
+          (typeof d.label === 'string' && d.label.includes('Video Stream')));
 
-    const hasFile =
-      typeof d.selectedFile === 'string'
-        ? (d.selectedFile as string).trim().length > 0
-        : Boolean(d.selectedFile && (d.selectedFile.filename || d.selectedFile.originalName));
+      const hasFile =
+        typeof d.selectedFile === 'string'
+          ? (d.selectedFile as string).trim().length > 0
+          : Boolean(d.selectedFile && (d.selectedFile.filename || d.selectedFile.originalName));
 
-    const hasRtspUrl =
-      typeof d.rtspUrl === 'string'
-        ? d.rtspUrl.trim().length > 0
-        : false;
+      const hasRtspUrl =
+        typeof d.rtspUrl === 'string' ? d.rtspUrl.trim().length > 0 : false;
 
-    const hasSource = hasFile || hasRtspUrl;
+      const hasSource = hasFile || hasRtspUrl;
 
-    return isVideoNode && !hasSource;
-  });
+      return isVideoNode && !hasSource;
+    });
 
-  console.log('Invalid nodes found:', invalidNodes.map(n => n.id));
+    console.log('Invalid nodes found:', invalidNodes.map(n => n.id));
 
-  const errors = invalidNodes.map(n => ({
-    nodeId: n.id,
-    message: 'Video Stream node requires a file or RTSP URL'
-  }));
+    const errors = invalidNodes.map(n => ({
+      nodeId: n.id,
+      message: 'Video Stream node requires a file or RTSP URL',
+    }));
 
-  return { isValid: errors.length === 0, errors };
-}, [nodes]);
-
-  // Pipeline execution placeholder
-  const executePipeline = useCallback(() => {
-    console.log('🚀 Starting pipeline execution...');
-    toast.success('Pipeline execution started!', { icon: '🚀' });
-  }, []);
+    return { isValid: errors.length === 0, errors };
+  }, [nodes]);
 
   // Run with validation
-const handleRunPipeline = useCallback(() => {
-  const { isValid, errors } = validateWorkflow();
-  setValidationErrors(errors);
-  setShowValidation(true);
+  const handleRunPipeline = useCallback(() => {
+    const { isValid, errors } = validateWorkflow();
+    setValidationErrors(errors);
+    setShowValidation(true);
 
-  setNodes(nds =>
-    nds.map(n => ({
-      ...n,
-      data: { ...(n.data ?? {}), hasError: errors.some(err => err.nodeId === n.id) }
-    }))
-  );
+    setNodes(nds =>
+      nds.map(n => ({
+        ...n,
+        data: { ...(n.data ?? {}), hasError: errors.some(err => err.nodeId === n.id) },
+      }))
+    );
 
-  if (!isValid) {
-    console.warn('Pipeline blocked due to validation errors');
-    return;
-  }
+    if (!isValid) {
+      console.warn('Pipeline blocked due to validation errors');
+      return;
+    }
 
-  // clear errors and icons
-  setShowValidation(false);
-  setNodes(nds =>
-    nds.map(n => ({
-      ...n,
-      data: { ...(n.data ?? {}), hasError: false }
-    }))
-  );
+    // clear errors and icons
+    setShowValidation(false);
+    setNodes(nds =>
+      nds.map(n => ({
+        ...n,
+        data: { ...(n.data ?? {}), hasError: false },
+      }))
+    );
 
-  executePipeline();
-}, [validateWorkflow, setNodes, executePipeline]);
+    executePipeline();
+  }, [validateWorkflow, setNodes, executePipeline]);
 
   // Focus node
-  const focusNode = useCallback((nodeId: string) => {
-    const node = nodes.find(n => n.id === nodeId);
-    if (node && reactFlowInstance) {
-      reactFlowInstance.setCenter(node.position.x, node.position.y, { zoom: 1.5 });
-    }
-    setShowValidation(false);
-  }, [nodes, reactFlowInstance]);
+  const focusNode = useCallback(
+    (nodeId: string) => {
+      const node = nodes.find(n => n.id === nodeId);
+      if (node && reactFlowInstance) {
+        reactFlowInstance.setCenter(node.position.x, node.position.y, { zoom: 1.5 });
+      }
+      setShowValidation(false);
+    },
+    [nodes, reactFlowInstance]
+  );
 
   // Clear highlights on node change
   useEffect(() => {
     if (validationErrors.length > 0) {
-      setNodes(nds => nds.map(n => ({
-        ...n,
-        data: { ...n.data!, hasError: false }
-      })));
+      setNodes(nds =>
+        nds.map(n => ({
+          ...n,
+          data: { ...n.data!, hasError: false },
+        }))
+      );
       setValidationErrors([]);
     }
   }, [nodes, validationErrors, setNodes]);
 
-  // Load workflow
-useEffect(() => {
-  const load = async () => {
-    setIsLoading(true);
-    try {
-      const resp = await workflowAPI.getWorkflows({ limit: 1, status: 'draft' });
-      if (resp?.data?.workflows?.length) {
-        const wf = resp.data.workflows[0];
-        setNodes(wf.nodes || []);
-        setEdges(wf.edges || []);
-        setCurrentWorkflow(wf);
-        setLastSaved(new Date(wf.lastModified || wf.updatedAt || Date.now()));
+  // Update node status from execution events
+  const updateNodeStatus = useCallback(
+    (nodeId: string, status: string) => {
+      setNodes(nds =>
+        nds.map(n =>
+          n.id === nodeId ? { ...n, data: { ...n.data!, status: status as any } } : n
+        )
+      );
+    },
+    [setNodes]
+  );
+
+  // Hook to listen execution status updates via WebSocket
+  useExecutionStatus(currentExecution, updateNodeStatus);
+
+  // Load workflow effect
+  useEffect(() => {
+    const load = async () => {
+      setIsLoading(true);
+      try {
+        const resp = await workflowAPI.getWorkflows({ limit: 1, status: 'draft' });
+        if (resp?.data?.workflows?.length) {
+          const wf = resp.data.workflows[0];
+          setNodes(wf.nodes || []);
+          setEdges(wf.edges || []);
+          setCurrentWorkflow(wf);
+          setLastSaved(new Date(wf.lastModified || wf.updatedAt || Date.now()));
+        }
+      } catch {
+        // handle error or fallback if needed
+      } finally {
+        setIsLoading(false);
       }
-    } catch {
-      // handle error or default
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  load();
-}, [setNodes, setEdges]);
+    };
+    load();
+  }, [setNodes, setEdges]);
 
+  // Re-validate and update error flags real-time (debounced to optimize performance)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const { errors } = validateWorkflow();
 
-  // Auto-save
-const debouncedSave = useCallback(
-  debounce(async (ns: Node<NodeData>[], es: Edge[]) => {
-    if (!ns.length) return;
-    setIsSaving(true);
-    try {
-      const partial: Partial<WorkflowData> = {
-        name: currentWorkflow?.name || 'Untitled',
-        description: currentWorkflow?.description || '',
-        nodes: ns,
-        edges: es,
-        viewport: { x: 0, y: 0, zoom: 1 },
-        category: 'computer-vision'
-      };
-      const resp = currentWorkflow?._id
-        ? await workflowAPI.updateWorkflow(currentWorkflow._id, partial)
-        : await workflowAPI.createWorkflow(partial as Omit<WorkflowData, '_id'>);
+      setNodes(nds =>
+        nds.map(n => ({
+          ...n,
+          data: {
+            ...n.data!,
+            hasError: errors.some(err => err.nodeId === n.id),
+          },
+        }))
+      );
+    }, 250);
 
-      setCurrentWorkflow(resp?.data ?? null); 
-      setLastSaved(new Date());
-    } catch {
-      toast.error('Auto-save failed', { icon: '💾' });
-    } finally {
-      setIsSaving(false);
-    }
-  }, 1000),
-  [currentWorkflow]
-);
+    return () => clearTimeout(timer);
+  }, [nodes, validateWorkflow, setNodes]);
 
+  // Auto-save with debounce
+  const debouncedSave = useCallback(
+    debounce(async (ns: Node<NodeData>[], es: Edge[]) => {
+      if (!ns.length) return;
+      setIsSaving(true);
+      try {
+        const partial: Partial<WorkflowData> = {
+          name: currentWorkflow?.name || 'Untitled',
+          description: currentWorkflow?.description || '',
+          nodes: ns,
+          edges: es,
+          viewport: { x: 0, y: 0, zoom: 1 },
+          category: 'computer-vision',
+        };
+        const resp = currentWorkflow?._id
+          ? await workflowAPI.updateWorkflow(currentWorkflow._id, partial)
+          : await workflowAPI.createWorkflow(partial as Omit<WorkflowData, '_id'>);
+
+        setCurrentWorkflow(resp?.data ?? null);
+        setLastSaved(new Date());
+      } catch {
+        toast.error('Auto-save failed', { icon: '💾' });
+      } finally {
+        setIsSaving(false);
+      }
+    }, 1000),
+    [currentWorkflow]
+  );
 
   useEffect(() => {
     if (autoSaveEnabled && hasChanges && !isLoading) {
@@ -276,12 +335,12 @@ const debouncedSave = useCallback(
     }
   }, [autoSaveEnabled, hasChanges, isLoading, debouncedSave, nodes, edges]);
 
-  // Loading state
+  // Loading state display
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4" />
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Loading FlowCraft</h2>
         </div>
       </div>
@@ -290,7 +349,7 @@ const debouncedSave = useCallback(
 
   const nodesWithDelete = nodes.map(n => ({
     ...n,
-    data: { ...n.data!, onDelete: handleNodeDelete }
+    data: { ...n.data!, onDelete: handleNodeDelete },
   }));
 
   return (

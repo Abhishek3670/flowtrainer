@@ -14,8 +14,9 @@ import {
 } from 'lucide-react';
 import { NodeProps } from 'reactflow';
 import { NodeData } from '../../services/workflowApi';
+
 interface CustomNodeProps {
-  data: {
+  data: NodeData & {
     label: string;
     nodeName?: string;
     isLive?: boolean;
@@ -30,11 +31,12 @@ interface CustomNodeProps {
     };
     status?: 'empty' | 'ready' | 'processing' | 'error';
     onDelete?: (nodeId: string) => void;
+    hasError?: boolean;
   };
   id: string;
 }
 
-const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id }) => {
+const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id, ...props }) => {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (data.onDelete) {
@@ -72,7 +74,6 @@ const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id }) => {
     }
   };
 
-
   const nodeStatus = getNodeStatus();
 
   // Format file size helper
@@ -85,8 +86,8 @@ const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id }) => {
   };
 
   return (
-    <div className={`relative group min-w-[180px] max-w-[220px]`}>
-      {/* Delete button */}
+    <div className="relative group min-w-[180px] max-w-[220px]">
+      {/* Delete button - existing */}
       <button
         onClick={handleDelete}
         className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center hover:bg-red-600"
@@ -94,11 +95,17 @@ const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id }) => {
       >
         <Trash2 className="w-3 h-3" />
       </button>
+
+      {/* Error/Warning icon - NEW: positioned on the edge like delete button */}
       {data.hasError && (
-        <div className="absolute top-1 right-1">
-          <AlertCircle className="w-5 h-5 text-red-500" />
+        <div
+          className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10 animate-pulse"
+          title="Validation error - click to view details"
+        >
+          <AlertCircle className="w-4 h-4" />
         </div>
       )}
+
       {/* Main node container */}
       <div className={`border-2 rounded-lg p-3 bg-white dark:bg-gray-800 shadow-sm transition-all ${nodeStatus.color}`}>
         {/* Node header */}

@@ -40,6 +40,13 @@ export interface NodeData {
   onDelete?: (nodeId: string) => void;
 }
 
+export interface ExecutionResponse {
+  executionId: string;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+}
+
+
+
 
 class WorkflowAPI {
   private async request<T>(
@@ -56,11 +63,9 @@ class WorkflowAPI {
       });
 
       const data = await response.json();
-      
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
-
       return data;
     } catch (error) {
       console.error('API request failed:', error);
@@ -84,7 +89,6 @@ class WorkflowAPI {
         }
       });
     }
-    
     const queryString = queryParams.toString();
     return this.request<{ workflows: WorkflowData[]; pagination: any }>(
       `/workflows${queryString ? `?${queryString}` : ''}`
@@ -120,6 +124,14 @@ class WorkflowAPI {
       method: 'POST',
     });
   }
+
+  async executeWorkflow(workflowId: string) {
+    return this.request<ExecutionResponse>(
+      `/workflows/${workflowId}/execute`,
+      { method: 'POST' }
+    );
+  }
 }
+
 
 export const workflowAPI = new WorkflowAPI();
