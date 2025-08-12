@@ -6,7 +6,8 @@ const {
   createWorkflow,
   updateWorkflow,
   deleteWorkflow,
-  duplicateWorkflow
+  duplicateWorkflow,
+  executeWorkflow
 } = require('../controllers/workflowController');
 
 // GET /api/workflows - Get all workflows with filtering
@@ -26,5 +27,8 @@ router.delete('/:id', deleteWorkflow);
 
 // POST /api/workflows/:id/duplicate - Duplicate workflow
 router.post('/:id/duplicate', duplicateWorkflow);
+
+// POST /api/workflows/:id/execute - Execute workflow
+router.post('/:id/execute', executeWorkflow);
 
 module.exports = router;

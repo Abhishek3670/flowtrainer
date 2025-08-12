@@ -54,6 +54,28 @@ const getWorkflows = async (req, res) => {
   }
 };
 
+// Add at top with other exports:
+const executeWorkflow = async (req, res) => {
+  try {
+    const workflowId = req.params.id;
+    console.log(`Executing workflow ${workflowId}`);
+
+    // TODO: put your real execution logic here (queue job, start process, etc.)
+
+    res.json({
+      success: true,
+      data: { executionId: `exec-${Date.now()}` }
+    });
+
+  } catch (err) {
+    console.error('Error executing workflow:', err);
+    res.status(500).json({
+      success: false,
+      message: err.message || 'Failed to start execution'
+    });
+  }
+};
+
 // Get single workflow
 const getWorkflow = async (req, res) => {
   try {
@@ -279,11 +301,13 @@ const duplicateWorkflow = async (req, res) => {
   }
 };
 
+
 module.exports = {
   getWorkflows,
   getWorkflow,
   createWorkflow,
   updateWorkflow,
   deleteWorkflow,
-  duplicateWorkflow
+  duplicateWorkflow,
+  executeWorkflow
 };

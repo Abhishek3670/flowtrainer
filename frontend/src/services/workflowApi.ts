@@ -26,6 +26,7 @@ export interface NodeData {
   hasError?: boolean;
   label: string;
   nodeName?: string;
+  nodeType?: string;
   isLive?: boolean;
   rtspUrl?: string;
   selectedFile?: {
@@ -50,10 +51,12 @@ export interface ExecutionResponse {
 
 class WorkflowAPI {
   private async request<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
+      const url = `${API_BASE}${endpoint}`;
+      console.log('🛠️ Fetching URL:', url);
       const response = await fetch(`${API_BASE}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',

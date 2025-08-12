@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import debounce from 'lodash/debounce';
 import toast, { Toaster } from 'react-hot-toast';
-import ValidationPanel from './components/ValidationPanel/ValidationPanel';
+import FloatingTabToggles from './components/FloatingTabToggles/FloatingTabToggles';
+import RightDrawer from './components/RightDrawer/RightDrawer';
 import { useExecutionStatus } from '../hooks/useExecutionStatus';
 import ReactFlow, {
   ReactFlowProvider,
@@ -20,7 +21,6 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 
 import Header from './components/Header/Header';
-import PropertiesPanel from './components/PropertiesPanel/PropertiesPanel';
 import FloatingComponentsPanel from './components/FloatingComponentsPanel/FloatingComponentsPanel';
 import CustomNode from './components/CustomNode/CustomNode';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -33,7 +33,6 @@ const initialEdges: Edge[] = [];
 function FlowCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [showValidation, setShowValidation] = useState(false);
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [propertiesPanelCollapsed, setPropertiesPanelCollapsed] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
@@ -45,6 +44,10 @@ function FlowCanvas() {
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [validationErrors, setValidationErrors] = useState<{ nodeId: string; message: string }[]>([]);
   const [currentExecution, setCurrentExecution] = useState<string | null>(null);
+
+  // Unified drawer state and active tab
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<'properties' | 'validation'>('properties');
 
   // Restore auto-save preference
   useEffect(() => {
@@ -61,16 +64,16 @@ function FlowCanvas() {
     setAutoSaveEnabled(prev => !prev);
   }, []);
 
-  // User edit handlers
+  // Update node data helper
   const updateNodeData = useCallback((nodeId: string, newData: Partial<NodeData>) => {
-    setNodes((nds: Node<NodeData>[]) =>
-      nds.map((n: Node<NodeData>) => (n.id === nodeId ? { ...n, data: { ...n.data!, ...newData } } : n))
+    setNodes(nds =>
+      nds.map(n => (n.id === nodeId ? { ...n, data: { ...n.data!, ...newData } } : n))
     );
     setHasChanges(true);
   }, [setNodes]);
 
   const handleNodesChange: OnNodesChange = useCallback(
-    (changes: any) => {
+    changes => {
       onNodesChange(changes);
       setHasChanges(true);
     },
@@ -78,7 +81,7 @@ function FlowCanvas() {
   );
 
   const handleEdgesChange: OnEdgesChange = useCallback(
-    (changes: any) => {
+    changes => {
       onEdgesChange(changes);
       setHasChanges(true);
     },
@@ -87,7 +90,7 @@ function FlowCanvas() {
 
   const onConnect = useCallback(
     (params: Edge | Connection) => {
-      setEdges((eds: any) => addEdge(params, eds));
+      setEdges(eds => addEdge(params, eds));
       setHasChanges(true);
     },
     [setEdges]
@@ -95,8 +98,8 @@ function FlowCanvas() {
 
   const handleNodeDelete = useCallback(
     (nodeId: string) => {
-      setNodes((nds: Node<NodeData>[]) => nds.filter((n: Node<NodeData>) => n.id !== nodeId));
-      setEdges((eds: Edge[]) => eds.filter((e: Edge) => e.source !== nodeId && e.target !== nodeId));
+      setNodes(nds => nds.filter(n => n.id !== nodeId));
+      setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
       setHasChanges(true);
       if (selectedNode?.id === nodeId) setSelectedNode(null);
     },
@@ -115,13 +118,14 @@ function FlowCanvas() {
         type: 'customNode',
         position,
         data: {
+          nodeType: type,
           label: type,
           status: 'empty',
           onDelete: handleNodeDelete,
           hasError: false,
         },
       };
-      setNodes((nds: Node<NodeData>[]) => nds.concat(newNode));
+      setNodes(nds => nds.concat(newNode));
       setHasChanges(true);
     },
     [setNodes, handleNodeDelete]
@@ -146,6 +150,7 @@ function FlowCanvas() {
       toast.success(`Pipeline queued (ID: ${exec.data?.executionId || 'unknown'})`, { icon: '🚀' });
       setCurrentExecution(exec.data?.executionId || null);
     } catch (err) {
+      console.error("Pipeline execution failed:", err);
       toast.error('Failed to start execution', { icon: '❌' });
     } finally {
       setIsSaving(false);
@@ -154,33 +159,28 @@ function FlowCanvas() {
 
   // Validation logic
   const validateWorkflow = useCallback(() => {
-    console.log('Validating nodes:', nodes);
+    if (nodes.length === 0) {
+      return {
+        isValid: false,
+        errors: [{
+          nodeId: "workflow",
+          message: "Workflow is empty. Add nodes before running the pipeline."
+        }],
+      };
+    }
 
-    const invalidNodes = nodes.filter((n: Node<NodeData>) => {
-      if (!n.data) return false; // skip if no data
+    const invalidNodes = nodes.filter(n => {
+      if (!n.data) return false;
       const d = n.data;
-
-      const isVideoNode =
-        n.type === 'customNode' &&
-        (n.id.startsWith('video-stream') ||
-          (typeof d.label === 'string' && d.label.includes('Video Stream')));
-
-      const hasFile =
-        typeof d.selectedFile === 'string'
-          ? (d.selectedFile as string).trim().length > 0
-          : Boolean(d.selectedFile && (d.selectedFile.filename || d.selectedFile.originalName));
-
-      const hasRtspUrl =
-        typeof d.rtspUrl === 'string' ? d.rtspUrl.trim().length > 0 : false;
-
-      const hasSource = hasFile || hasRtspUrl;
-
-      return isVideoNode && !hasSource;
+      const isVideoNode = d.nodeType === 'video-stream';
+      const hasFile = typeof d.selectedFile === 'string'
+        ? (d.selectedFile as string).trim().length > 0
+        : Boolean(d.selectedFile && (d.selectedFile.filename || d.selectedFile.originalName));
+      const hasRtspUrl = typeof d.rtspUrl === 'string' ? d.rtspUrl.trim().length > 0 : false;
+      return isVideoNode && !(hasFile || hasRtspUrl);
     });
 
-    console.log('Invalid nodes found:', invalidNodes.map((n: Node<NodeData>) => n.id));
-
-    const errors = invalidNodes.map((n: Node<NodeData>) => ({
+    const errors = invalidNodes.map(n => ({
       nodeId: n.id,
       message: 'Video Stream node requires a file or RTSP URL',
     }));
@@ -192,12 +192,13 @@ function FlowCanvas() {
   const handleRunPipeline = useCallback(() => {
     const { isValid, errors } = validateWorkflow();
     setValidationErrors(errors);
-    setShowValidation(true);
+    setDrawerTab('validation');
+    setIsDrawerOpen(true);
 
-    setNodes((nds: Node<NodeData>[]) =>
-      nds.map((n: Node<NodeData>) => ({
+    setNodes(nds =>
+      nds.map(n => ({
         ...n,
-        data: { ...(n.data ?? {}), hasError: errors.some((err: any) => err.nodeId === n.id) },
+        data: { ...(n.data ?? {}), hasError: errors.some(err => err.nodeId === n.id) },
       }))
     );
 
@@ -206,10 +207,10 @@ function FlowCanvas() {
       return;
     }
 
-    // clear errors and icons
-    setShowValidation(false);
-    setNodes((nds: Node<NodeData>[]) =>
-      nds.map((n: Node<NodeData>) => ({
+    // Clear errors and icons
+    setIsDrawerOpen(false);
+    setNodes(nds =>
+      nds.map(n => ({
         ...n,
         data: { ...(n.data ?? {}), hasError: false },
       }))
@@ -218,14 +219,14 @@ function FlowCanvas() {
     executePipeline();
   }, [validateWorkflow, setNodes, executePipeline]);
 
-  // Focus node
+  // Focus node utility
   const focusNode = useCallback(
     (nodeId: string) => {
-      const node = nodes.find((n: Node<NodeData>) => n.id === nodeId);
+      const node = nodes.find(n => n.id === nodeId);
       if (node && reactFlowInstance) {
         reactFlowInstance.setCenter(node.position.x, node.position.y, { zoom: 1.5 });
       }
-      setShowValidation(false);
+      setIsDrawerOpen(false);
     },
     [nodes, reactFlowInstance]
   );
@@ -233,8 +234,8 @@ function FlowCanvas() {
   // Clear highlights on node change
   useEffect(() => {
     if (validationErrors.length > 0) {
-      setNodes((nds: Node<NodeData>[]) =>
-        nds.map((n: Node<NodeData>) => ({
+      setNodes(nds =>
+        nds.map(n => ({
           ...n,
           data: { ...n.data!, hasError: false },
         }))
@@ -246,8 +247,8 @@ function FlowCanvas() {
   // Update node status from execution events
   const updateNodeStatus = useCallback(
     (nodeId: string, status: string) => {
-      setNodes((nds: Node<NodeData>[]) =>
-        nds.map((n: Node<NodeData>) =>
+      setNodes(nds =>
+        nds.map(n =>
           n.id === nodeId ? { ...n, data: { ...n.data!, status: status as any } } : n
         )
       );
@@ -271,8 +272,8 @@ function FlowCanvas() {
           setCurrentWorkflow(wf);
           setLastSaved(new Date(wf.lastModified || wf.updatedAt || Date.now()));
         }
-      } catch {
-        // handle error or fallback if needed
+      } catch (err) {
+        console.error("Failed to fetch workflows:", err);
       } finally {
         setIsLoading(false);
       }
@@ -280,22 +281,18 @@ function FlowCanvas() {
     load();
   }, [setNodes, setEdges]);
 
-  // Re-validate and update error flags real-time (debounced to optimize performance)
+  // Debounced validation error highlighting
   useEffect(() => {
     const timer = setTimeout(() => {
       const { errors } = validateWorkflow();
 
-      setNodes((nds: Node<NodeData>[]) =>
-        nds.map((n: Node<NodeData>) => ({
+      setNodes(nds =>
+        nds.map(n => ({
           ...n,
-          data: {
-            ...n.data!,
-            hasError: errors.some((err: any) => err.nodeId === n.id),
-          },
+          data: { ...n.data!, hasError: errors.some(err => err.nodeId === n.id) },
         }))
       );
     }, 250);
-
     return () => clearTimeout(timer);
   }, [nodes, validateWorkflow, setNodes]);
 
@@ -335,7 +332,6 @@ function FlowCanvas() {
     }
   }, [autoSaveEnabled, hasChanges, isLoading, debouncedSave, nodes, edges]);
 
-  // Loading state display
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
@@ -347,10 +343,7 @@ function FlowCanvas() {
     );
   }
 
-  const nodesWithDelete = nodes.map((n: Node<NodeData>) => ({
-    ...n,
-    data: { ...n.data!, onDelete: handleNodeDelete },
-  }));
+  const nodesWithDelete = nodes.map(n => ({ ...n, data: { ...n.data!, onDelete: handleNodeDelete } }));
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
@@ -364,16 +357,33 @@ function FlowCanvas() {
         autoSaveEnabled={autoSaveEnabled}
         onToggleAutoSave={handleAutoSaveToggle}
         onRun={handleRunPipeline}
+        disableRun={nodes.length === 0}
+      />
+
+      <FloatingTabToggles
+        activeTab={drawerTab}
+        onSelect={(tab) => {
+          setDrawerTab(tab);
+          setIsDrawerOpen(true);
+        }}
+      />
+
+      <RightDrawer
+        isOpen={isDrawerOpen}
+        activeTab={drawerTab}
+        onTabChange={setDrawerTab}
+        onClose={() => setIsDrawerOpen(false)}
+        selectedNode={selectedNode}
+        collapsed={propertiesPanelCollapsed}
+        onToggleCollapse={() => setPropertiesPanelCollapsed(!propertiesPanelCollapsed)}
+        onNodeUpdate={updateNodeData}
+        validationErrors={validationErrors}
+        nodes={nodes}
+        edges={edges}
+        onFocusNode={focusNode}
       />
 
       <div className="flex flex-1 relative overflow-hidden flow-canvas">
-        {showValidation && (
-          <ValidationPanel
-            errors={validationErrors}
-            onClose={() => setShowValidation(false)}
-            onFocusNode={focusNode}
-          />
-        )}
         <FloatingComponentsPanel onNodeDrag={handleNodeDrag} />
         <div className="flex-1 relative">
           <ReactFlow
@@ -384,7 +394,11 @@ function FlowCanvas() {
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
             onConnect={onConnect}
-            onNodeClick={(_event: any, node: Node<NodeData>) => setSelectedNode(node)}
+            onNodeClick={(_event, node) => {
+              setSelectedNode(node);
+              setDrawerTab('properties');
+              setIsDrawerOpen(true);
+            }}
             onDrop={onDrop}
             onDragOver={onDragOver}
             fitView
@@ -398,12 +412,6 @@ function FlowCanvas() {
             />
           </ReactFlow>
         </div>
-        <PropertiesPanel
-          selectedNode={selectedNode}
-          collapsed={propertiesPanelCollapsed}
-          onToggle={() => setPropertiesPanelCollapsed(!propertiesPanelCollapsed)}
-          onNodeUpdate={updateNodeData}
-        />
       </div>
     </div>
   );
