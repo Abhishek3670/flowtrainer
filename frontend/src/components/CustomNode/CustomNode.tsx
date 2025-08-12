@@ -1,5 +1,5 @@
 import React from 'react';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, NodeProps } from 'reactflow';
 import {
   Trash2,
   Play,
@@ -12,31 +12,9 @@ import {
   Loader2,
   AlertCircle
 } from 'lucide-react';
-import { NodeProps } from 'reactflow';
-import { NodeData } from '../../services/workflowApi';
+import { NodeData } from '../../types';
 
-interface CustomNodeProps {
-  data: NodeData & {
-    label: string;
-    nodeName?: string;
-    isLive?: boolean;
-    rtspUrl?: string;
-    selectedFile?: {
-      fileId: string;
-      filename: string;
-      originalName: string;
-      size: number;
-      mimetype: string;
-      uploadedAt: string;
-    };
-    status?: 'empty' | 'ready' | 'processing' | 'error';
-    onDelete?: (nodeId: string) => void;
-    hasError?: boolean;
-  };
-  id: string;
-}
-
-const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id, ...props }) => {
+const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id }) => {
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (data.onDelete) {
@@ -65,123 +43,128 @@ const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id, ...props }) => {
           color: 'border-red-500 bg-red-50',
           statusText: 'Error'
         };
-      default: // 'empty'
+      case 'configuring':
         return {
-          icon: <AlertTriangle className="w-3 h-3 text-orange-500" />,
-          color: 'border-orange-500 bg-orange-50',
+          icon: <Clock className="w-3 h-3 text-yellow-500" />,
+          color: 'border-yellow-500 bg-yellow-50',
+          statusText: 'Configuring'
+        };
+      default:
+        return {
+          icon: <AlertTriangle className="w-3 h-3 text-gray-500" />,
+          color: 'border-gray-300 bg-gray-50',
           statusText: 'Empty'
         };
     }
   };
 
-  const nodeStatus = getNodeStatus();
-
-  // Format file size helper
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  // Get main icon based on node type
+  const getMainIcon = () => {
+    switch (data.nodeType) {
+      case 'video-stream':
+        return data.isLive ? <Wifi className="w-4 h-4" /> : <FileVideo className="w-4 h-4" />;
+      case 'data-processor':
+        return <Play className="w-4 h-4" />;
+      default:
+        return <Video className="w-4 h-4" />;
+    }
   };
 
+  const nodeStatus = getNodeStatus();
+
   return (
-    <div className="relative group min-w-[180px] max-w-[220px]">
-      {/* Delete button - existing */}
+    <div className={`
+      relative min-w-[160px] p-3 rounded-lg border-2 shadow-sm
+      bg-white dark:bg-gray-800
+      ${nodeStatus.color}
+      ${data.hasError ? 'ring-2 ring-red-400 ring-opacity-50' : ''}
+      transition-all duration-200 hover:shadow-md
+    `}>
+      {/* Delete Button */}
       <button
         onClick={handleDelete}
-        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center hover:bg-red-600"
+        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
         title="Delete node"
       >
         <Trash2 className="w-3 h-3" />
       </button>
 
-      {/* Error/Warning icon - NEW: positioned on the edge like delete button */}
+      {/* Error indicator */}
       {data.hasError && (
-        <div
-          className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10 animate-pulse"
-          title="Validation error - click to view details"
-        >
-          <AlertCircle className="w-4 h-4" />
-        </div>
+        <div className="absolute -top-1 -left-1 w-3 h-3 bg-red-500 rounded-full animate-pulse" />
       )}
 
-      {/* Main node container */}
-      <div className={`border-2 rounded-lg p-3 bg-white dark:bg-gray-800 shadow-sm transition-all ${nodeStatus.color}`}>
-        {/* Node header */}
-        <div className="flex items-center space-x-2 mb-2">
-          <div className="flex items-center space-x-1">
-            {nodeStatus.icon}
-            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
-              {nodeStatus.statusText}
-            </span>
+      {/* Node Header */}
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center space-x-2">
+          <div className="text-blue-600 dark:text-blue-400">
+            {getMainIcon()}
           </div>
+          <span className="font-medium text-sm text-gray-900 dark:text-white truncate">
+            {data.label || 'Untitled'}
+          </span>
         </div>
-
-        {/* Node title */}
-        <div className="mb-2">
-          <h3 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
-            {data.label}
-          </h3>
-          {data.nodeName && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-              {data.nodeName}
-            </p>
-          )}
+        <div className="flex items-center space-x-1">
+          {nodeStatus.icon}
         </div>
-
-        {/* File/Stream info */}
-        <div className="space-y-1">
-          {data.isLive && data.rtspUrl ? (
-            <div className="text-xs text-gray-600 dark:text-gray-400">
-              <div className="flex items-center space-x-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span>Live RTSP Stream</span>
-              </div>
-              <div className="truncate mt-1 font-mono text-xs">
-                {data.rtspUrl}
-              </div>
-            </div>
-          ) : data.selectedFile ? (
-            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-              <div className="flex items-center space-x-1">
-                <CheckCircle className="w-3 h-3 text-green-500" />
-                <span className="truncate font-medium">
-                  {data.selectedFile.originalName}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>{formatFileSize(data.selectedFile.size)}</span>
-                <span className="text-green-600">Ready</span>
-              </div>
-            </div>
-          ) : (
-            <div className="text-xs text-orange-600 dark:text-orange-400 flex items-center space-x-1">
-              <AlertTriangle className="w-3 h-3" />
-              <span>Configure input source</span>
-            </div>
-          )}
-        </div>
-
-        {/* Processing status indicator */}
-        {data.status === 'uploading' && (
-          <div className="mt-2 flex items-center space-x-1 text-xs text-blue-600">
-            <Clock className="w-3 h-3 animate-spin" />
-            <span>Processing...</span>
-          </div>
-        )}
       </div>
 
-      {/* Connection handles */}
+      {/* Node Content */}
+      <div className="space-y-2">
+        {/* Node Name */}
+        {data.nodeName && (
+          <div className="text-xs text-gray-600 dark:text-gray-400">
+            Name: {data.nodeName}
+          </div>
+        )}
+
+        {/* File Information */}
+        {data.selectedFile && (
+          <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+            <div className="flex items-center space-x-1">
+              <FileVideo className="w-3 h-3" />
+              <span className="truncate">{data.selectedFile.originalName}</span>
+            </div>
+            <div className="text-gray-500">
+              {(data.selectedFile.size / (1024 * 1024)).toFixed(1)} MB
+            </div>
+          </div>
+        )}
+
+        {/* RTSP Information */}
+        {data.isLive && data.rtspUrl && (
+          <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+            <div className="flex items-center space-x-1">
+              <Wifi className="w-3 h-3" />
+              <span>Live Stream</span>
+            </div>
+            <div className="text-gray-500 truncate">
+              {data.rtspUrl}
+            </div>
+          </div>
+        )}
+
+        {/* Status */}
+        <div className="flex items-center justify-between pt-1 border-t border-gray-200 dark:border-gray-700">
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            {nodeStatus.statusText}
+          </span>
+          {data.status === 'uploading' && (
+            <div className="text-xs text-blue-600">Processing...</div>
+          )}
+        </div>
+      </div>
+
+      {/* Connection Handles */}
       <Handle
         type="target"
         position={Position.Left}
-        className="w-3 h-3 !bg-gray-400 border-2 border-white"
+        className="w-2 h-2 bg-gray-400 border-2 border-white"
       />
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3 h-3 !bg-gray-400 border-2 border-white"
+        className="w-2 h-2 bg-blue-500 border-2 border-white"
       />
     </div>
   );

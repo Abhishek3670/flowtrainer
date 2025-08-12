@@ -1,18 +1,13 @@
-import React from 'react';
-import ReactFlow, { MiniMap, Controls, Background, Node, Edge, useReactFlow } from 'reactflow';
+import { FC } from 'react';
+import ReactFlow, { MiniMap, Background, Node, Edge } from 'reactflow';
 import { AlertCircle, AlertTriangle, CheckCircle } from 'lucide-react';
 import 'reactflow/dist/style.css';
-
-interface ValidationError {
-  nodeId: string;      // "workflow" for workflow-level errors, or node ID
-  message: string;
-  severity?: 'error' | 'warning' | 'info';
-}
+import { NodeData, ValidationError } from '../../types';
 
 interface ValidationPanelProps {
   isOpen: boolean;
   errors: ValidationError[];
-  nodes: Node[];
+  nodes: Node<NodeData>[];
   edges: Edge[];
   onClose: () => void;
   onFocusNode: (nodeId: string) => void;
@@ -24,14 +19,14 @@ const severityIcon = {
   info: <CheckCircle className="w-5 h-5 text-green-600" />,
 };
 
-export default function ValidationPanel({
+const ValidationPanel: FC<ValidationPanelProps> = ({
   isOpen,
   onClose,
   errors,
   nodes,
   edges,
   onFocusNode,
-}: ValidationPanelProps) {
+}) => {
   const hasErrors = errors.length > 0;
 
   return (
@@ -58,10 +53,18 @@ export default function ValidationPanel({
           errors.map((e, i) => (
             <div
               key={i}
-              className="p-2 mb-2 rounded bg-red-50 dark:bg-red-900 cursor-pointer"
+              className="p-2 mb-2 rounded bg-red-50 dark:bg-red-900 cursor-pointer flex items-start space-x-2"
               onClick={() => e.nodeId !== 'workflow' && onFocusNode(e.nodeId)}
             >
-              {e.message}
+              <div className="flex-shrink-0 mt-0.5">
+                {severityIcon[e.severity || 'error']}
+              </div>
+              <div className="flex-1">
+                <p className="text-sm text-red-800 dark:text-red-200">{e.message}</p>
+                {e.nodeId !== 'workflow' && (
+                  <p className="text-xs text-red-600 dark:text-red-400 mt-1">Node: {e.nodeId}</p>
+                )}
+              </div>
             </div>
           ))
         ) : (
@@ -88,4 +91,6 @@ export default function ValidationPanel({
       </div>
     </div>
   );
-}
+};
+
+export default ValidationPanel;

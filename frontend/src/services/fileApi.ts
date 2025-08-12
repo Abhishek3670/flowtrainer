@@ -1,35 +1,6 @@
+import { FileData, FileApiResponse, UploadProgress } from '../types';
+
 const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
-
-export interface FileData {
-  _id: string;
-  fileId?: string;
-  filename: string;
-  originalName: string;
-  mimetype: string;
-  size: number;
-  duration?: number;
-  resolution?: {
-    width: number;
-    height: number;
-  };
-  status: 'uploading' | 'processing' | 'ready' | 'error';
-  uploadedAt: string;
-  path?: string;
-  thumbnailPath?: string;
-}
-
-export interface FileApiResponse<T> {
-  success: boolean;
-  message?: string;
-  data?: T;
-  error?: string;
-}
-
-export interface UploadProgress {
-  loaded: number;
-  total: number;
-  percentage: number;
-}
 
 class FileAPI {
   // Upload file with progress tracking

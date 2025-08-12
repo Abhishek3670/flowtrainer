@@ -1,87 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronRight, X, Upload, Video, ExternalLink, AlertCircle } from 'lucide-react';
 import { Node } from 'reactflow';
-
-// --- MOCK API & TYPE DEFINITIONS ---
-// This section replaces external imports for a self-contained example.
-
-interface FileData {
-  fileId: string;
-  filename: string;
-  originalName: string;
-  size: number;
-  mimetype: string;
-  status: string;
-  uploadedAt: string;
-}
-
-interface NodeData {
-  label: string;
-  status?: 'configuring' | 'uploading' | 'ready' | 'error';
-  selectedFile?: FileData;
-  onDelete: (id: string) => void;
-}
-
-interface UploadProgress {
-  loaded: number;
-  total: number;
-  percentage: number;
-}
-
-// Mock file API for demonstration
-const fileAPI = {
-  validateVideoFile: (file: File): { valid: boolean; error?: string } => {
-    if (file.size > 500 * 1024 * 1024) { // 500MB limit
-      return { valid: false, error: 'File exceeds 500MB limit.' };
-    }
-    return { valid: true };
-  },
-  uploadFile: async (file: File, onProgress: (progress: UploadProgress) => void): Promise<{ data: FileData }> => {
-    // Simulate upload progress
-    for (let p = 0; p <= 100; p += 10) {
-      await new Promise(res => setTimeout(res, 50));
-      onProgress({ loaded: (file.size * p) / 100, total: file.size, percentage: p });
-    }
-    const fileId = `file-${Date.now()}`;
-    return {
-      data: {
-        fileId,
-        filename: `${fileId}.${file.name.split('.').pop()}`,
-        originalName: file.name,
-        size: file.size,
-        mimetype: file.type,
-        status: 'uploaded',
-        uploadedAt: new Date().toISOString(),
-      },
-    };
-  },
-  getVideoStreamUrl: (fileId: string) => `http://localhost:4000/api/files/stream/${fileId}`,
-  formatFileSize: (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  },
-};
-
-
-// --- COMPONENT IMPLEMENTATION ---
+import { NodeData, FileData, UploadProgress } from '../../types';
+import { fileAPI } from '../../services/fileApi';
 
 interface PropertiesPanelProps {
   selectedNode: Node<NodeData> | null;
-  collapsed: boolean;
+  collapsed?: boolean;
   isOpen?: boolean;
   onClose?: () => void;
-  onToggle: () => void;
+  onToggle?: () => void;
   onNodeUpdate: (nodeId: string, newData: Partial<NodeData>) => void;
 }
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   selectedNode,
-  collapsed,
+  collapsed = false,
   onToggle,
-  onNodeUpdate
+  onNodeUpdate,
+  onClose
 }) => {
   const [nodeName, setNodeName] = useState('');
   const [isLive, setIsLive] = useState(false);
@@ -132,14 +69,14 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   }, [videoFile]);
 
   useEffect(() => {
-  const handle = (e: KeyboardEvent) => {
-    if (e.key === "Escape") setShowVideoModal(false);
-  };
-  if (showVideoModal) {
-    window.addEventListener("keydown", handle);
-    return () => window.removeEventListener("keydown", handle);
-  }
-}, [showVideoModal]);
+    const handle = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowVideoModal(false);
+    };
+    if (showVideoModal) {
+      window.addEventListener("keydown", handle);
+      return () => window.removeEventListener("keydown", handle);
+    }
+  }, [showVideoModal]);
 
   // Handler for file selection and upload
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -198,7 +135,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       <div className="p-6 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Properties</h2>
-          <button onClick={onToggle} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
+          <button 
+            onClick={onToggle || onClose} 
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -281,46 +221,15 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       <button onClick={() => setUploadError(null)} className="ml-auto text-red-500 hover:text-red-700"><X className="h-4 w-4" /></button>
                     </div>
                   )}
-                  {showVideoModal && selectedFile && (
-                    <div
-                      className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
-                      onClick={() => setShowVideoModal(false)}
-                    >
-                      <div
-                        className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-xl relative max-w-3xl w-full"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <button
-                          className="absolute top-4 right-4 text-gray-600 dark:text-gray-300 hover:text-red-400"
-                          onClick={() => setShowVideoModal(false)}
-                        >
-                          <X className="w-7 h-7" />
-                        </button>
-                        <video
-                          className="w-full rounded-lg shadow"
-                          controls
-                          autoPlay
-                          style={{ maxHeight: '70vh', background: '#000' }}
-                          src={fileAPI.getVideoStreamUrl(selectedFile.fileId)}
-                        >
-                          Your browser does not support video playback.
-                        </video>
-                        <div className="mt-3 flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
-                            {selectedFile.originalName}
-                          </span>
-                          <span className="text-xs text-gray-500">{fileAPI.formatFileSize(selectedFile.size)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
-                  {/* Unified Video Preview */}
+                  {/* Video Preview */}
                   {(previewUrl || selectedFile) && !uploading && (
                     <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-sm font-medium text-gray-900 dark:text-white">Preview</span>
-                        <span className={`text-xs px-2 py-1 rounded ${selectedFile ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'}`}>{selectedFile ? 'Uploaded' : 'Local Preview'}</span>
+                        <span className={`text-xs px-2 py-1 rounded ${selectedFile ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200'}`}>
+                          {selectedFile ? 'Uploaded' : 'Local Preview'}
+                        </span>
                       </div>
                       <video
                         className="w-full rounded-lg shadow-sm"
@@ -332,13 +241,31 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                         Your browser does not support video preview.
                       </video>
                       <div className="mt-2 flex items-center justify-between">
-                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate pr-2">{selectedFile ? selectedFile.originalName : videoFile?.name}</span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">{selectedFile ? fileAPI.formatFileSize(selectedFile.size) : videoFile ? fileAPI.formatFileSize(videoFile.size) : ''}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 truncate pr-2">
+                          {selectedFile ? selectedFile.originalName : videoFile?.name}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
+                          {selectedFile ? fileAPI.formatFileSize(selectedFile.size) : videoFile ? fileAPI.formatFileSize(videoFile.size) : ''}
+                        </span>
                       </div>
                       {selectedFile && (
                         <div className="mt-3 flex space-x-2">
-                          <button onClick={() => setShowVideoModal(true)} className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800">Open Full Video</button>
-                          <button onClick={() => { setSelectedFile(null); setVideoFile(null); if (selectedNode) onNodeUpdate(selectedNode.id, { selectedFile: undefined }); }} className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600">Clear</button>
+                          <button 
+                            onClick={() => setShowVideoModal(true)} 
+                            className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded hover:bg-blue-200 dark:hover:bg-blue-800"
+                          >
+                            Open Full Video
+                          </button>
+                          <button 
+                            onClick={() => { 
+                              setSelectedFile(null); 
+                              setVideoFile(null); 
+                              if (selectedNode) onNodeUpdate(selectedNode.id, { selectedFile: undefined }); 
+                            }} 
+                            className="text-xs bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 px-2 py-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
+                          >
+                            Clear
+                          </button>
                         </div>
                       )}
                     </div>
@@ -351,7 +278,13 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 <div className="space-y-4">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">RTSP Stream URL</label>
                   <div className="relative">
-                    <input type="url" value={rtspUrl} onChange={(e) => setRtspUrl(e.target.value)} className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10" placeholder="rtsp://example.com:554/stream" />
+                    <input 
+                      type="url" 
+                      value={rtspUrl} 
+                      onChange={(e) => setRtspUrl(e.target.value)} 
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 pr-10" 
+                      placeholder="rtsp://example.com:554/stream" 
+                    />
                     <ExternalLink className="absolute right-3 top-3.5 w-4 h-4 text-gray-400" />
                   </div>
                   {rtspUrl && (
@@ -373,7 +306,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Current Status:</span>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"><div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></div>Ready</span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></div>Ready
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-gray-600 dark:text-gray-400">Source Type:</span>
@@ -396,6 +331,41 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           </div>
         )}
       </div>
+
+      {/* Video Modal */}
+      {showVideoModal && selectedFile && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+          onClick={() => setShowVideoModal(false)}
+        >
+          <div
+            className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-xl relative max-w-3xl w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="absolute top-4 right-4 text-gray-600 dark:text-gray-300 hover:text-red-400"
+              onClick={() => setShowVideoModal(false)}
+            >
+              <X className="w-7 h-7" />
+            </button>
+            <video
+              className="w-full rounded-lg shadow"
+              controls
+              autoPlay
+              style={{ maxHeight: '70vh', background: '#000' }}
+              src={fileAPI.getVideoStreamUrl(selectedFile.fileId)}
+            >
+              Your browser does not support video playback.
+            </video>
+            <div className="mt-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                {selectedFile.originalName}
+              </span>
+              <span className="text-xs text-gray-500">{fileAPI.formatFileSize(selectedFile.size)}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,8 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import debounce from 'lodash/debounce';
 import toast, { Toaster } from 'react-hot-toast';
-import FloatingTabToggles from './components/FloatingTabToggles/FloatingTabToggles';
-import RightDrawer from './components/RightDrawer/RightDrawer';
 import { useExecutionStatus } from '../hooks/useExecutionStatus';
 import ReactFlow, {
   ReactFlowProvider,
@@ -24,8 +22,9 @@ import Header from './components/Header/Header';
 import FloatingComponentsPanel from './components/FloatingComponentsPanel/FloatingComponentsPanel';
 import CustomNode from './components/CustomNode/CustomNode';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { workflowAPI, WorkflowData, NodeData } from './services/workflowApi';
+import { workflowAPI } from './services/workflowApi';
 import StackEdgeDrawer from './components/StackEdgeDrawer/StackEdgeDrawer';
+import { NodeData, WorkflowData, ValidationError } from './types';
 
 const nodeTypes = { customNode: CustomNode };
 const initialNodes: Node<NodeData>[] = [];
@@ -35,7 +34,6 @@ function FlowCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
-  const [propertiesPanelCollapsed, setPropertiesPanelCollapsed] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -43,12 +41,8 @@ function FlowCanvas() {
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
-  const [validationErrors, setValidationErrors] = useState<{ nodeId: string; message: string }[]>([]);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [currentExecution, setCurrentExecution] = useState<string | null>(null);
-  
-  // Unified drawer state and active tab
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [drawerTab, setDrawerTab] = useState<'properties' | 'validation'>('properties');
 
   // Restore auto-save preference
   useEffect(() => {
@@ -166,7 +160,7 @@ function FlowCanvas() {
         errors: [{
           nodeId: "workflow",
           message: "Workflow is empty. Add nodes before running the pipeline."
-        }],
+        }] as ValidationError[],
       };
     }
 
@@ -181,7 +175,7 @@ function FlowCanvas() {
       return isVideoNode && !(hasFile || hasRtspUrl);
     });
 
-    const errors = invalidNodes.map(n => ({
+    const errors: ValidationError[] = invalidNodes.map(n => ({
       nodeId: n.id,
       message: 'Video Stream node requires a file or RTSP URL',
     }));
@@ -193,8 +187,6 @@ function FlowCanvas() {
   const handleRunPipeline = useCallback(() => {
     const { isValid, errors } = validateWorkflow();
     setValidationErrors(errors);
-    setDrawerTab('validation');
-    setIsDrawerOpen(true);
 
     setNodes(nds =>
       nds.map(n => ({
@@ -209,7 +201,6 @@ function FlowCanvas() {
     }
 
     // Clear errors and icons
-    setIsDrawerOpen(false);
     setNodes(nds =>
       nds.map(n => ({
         ...n,
@@ -227,7 +218,6 @@ function FlowCanvas() {
       if (node && reactFlowInstance) {
         reactFlowInstance.setCenter(node.position.x, node.position.y, { zoom: 1.5 });
       }
-      setIsDrawerOpen(false);
     },
     [nodes, reactFlowInstance]
   );
@@ -363,8 +353,8 @@ function FlowCanvas() {
 
       <StackEdgeDrawer
         selectedNode={selectedNode}
-        collapsed={propertiesPanelCollapsed}
-        onToggleCollapse={() => setPropertiesPanelCollapsed(!propertiesPanelCollapsed)}
+        /*collapsed={propertiesPanelCollapsed}*/
+        /*onToggleCollapse={() => setPropertiesPanelCollapsed(!propertiesPanelCollapsed)}*/
         onNodeUpdate={updateNodeData}
         validationErrors={validationErrors}
         nodes={nodes}
@@ -385,7 +375,6 @@ function FlowCanvas() {
             onConnect={onConnect}
             onNodeClick={(_event, node) => {
               setSelectedNode(node);
-              // The StackEdgeDrawer will handle opening internally
             }}
             onDrop={onDrop}
             onDragOver={onDragOver}

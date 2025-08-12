@@ -1,29 +1,13 @@
-import React, { useState } from "react";
+import { FC, useState } from "react";
 import { X, FileCog, ClipboardCheck } from "lucide-react";
 import PropertiesPanel from "../PropertiesPanel/PropertiesPanel";
 import ValidationPanel from "../ValidationPanel/ValidationPanel";
 import type { Node, Edge } from "reactflow";
-
-// --- Type Definitions ---
-interface NodeData {
-  [key: string]: any;
-}
-
-interface EdgeData {
-  id: string;
-  source: string;
-  target: string;
-  [key: string]: any;
-}
-
-interface ValidationError {
-  message: string;
-  nodeId?: string;
-}
+import { NodeData, ValidationError } from '../../types';
 
 interface StackEdgeDrawerProps {
   selectedNode: Node<NodeData> | null;
-  onNodeUpdate: (nodeId: string, newData: any) => void;
+  onNodeUpdate: (nodeId: string, newData: Partial<NodeData>) => void;
   validationErrors: ValidationError[];
   nodes: Node<NodeData>[];
   edges: Edge[];
@@ -32,15 +16,14 @@ interface StackEdgeDrawerProps {
 
 type DrawerTab = "properties" | "validation" | null;
 
-// --- Component ---
-export default function StackEdgeDrawer({
+const StackEdgeDrawer: FC<StackEdgeDrawerProps> = ({
   selectedNode,
   onNodeUpdate,
   validationErrors,
   nodes,
   edges,
   onFocusNode,
-}: StackEdgeDrawerProps) {
+}) => {
   const [activeTab, setActiveTab] = useState<DrawerTab>(null);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
 
@@ -177,6 +160,7 @@ export default function StackEdgeDrawer({
                   <PropertiesPanel
                     selectedNode={selectedNode}
                     onNodeUpdate={onNodeUpdate}
+                    collapsed={false}
                     isOpen={true}
                     onClose={closeDrawer}
                   />
@@ -218,4 +202,6 @@ export default function StackEdgeDrawer({
       )}
     </>
   );
-}
+};
+
+export default StackEdgeDrawer;

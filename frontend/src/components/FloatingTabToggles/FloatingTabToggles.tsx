@@ -1,4 +1,4 @@
-import React from 'react';
+// import { FC } from 'react';
 import { FileCog, ClipboardCheck } from 'lucide-react';
 
 interface FloatingTabTogglesProps {
