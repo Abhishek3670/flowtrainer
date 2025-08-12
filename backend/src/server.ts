@@ -17,13 +17,17 @@ const debugLog = (component: string, action: string, data?: any) => {
 // Import routes (Note: using require for now since routes are in JS)
 const workflowRoutes = require('./routes/workflowRoutes');
 const fileRoutes = require('./routes/fileRoutes');
+
 const app = express();
 const server = createServer(app);
-const io = new SocketIOServer(server, { 
-  cors: { 
-    origin: process.env.NODE_ENV === 'production' ? false : ["http://localhost:3000"],
-    methods: ["GET", "POST", "PUT", "DELETE"]
-  } 
+const io = new SocketIOServer(server, {
+  cors: {
+    origin:
+      process.env.NODE_ENV === 'production'
+        ? false
+        : ['http://localhost:3000'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  },
 });
 
 debugLog('Server', 'Initializing server');
@@ -39,9 +43,9 @@ app.use((req, res, next) => {
     method: req.method,
     url: req.url,
     ip: req.ip,
-    userAgent: req.get('User-Agent')
+    userAgent: req.get('User-Agent'),
   });
-  
+
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
@@ -49,10 +53,10 @@ app.use((req, res, next) => {
       method: req.method,
       url: req.url,
       statusCode: res.statusCode,
-      duration: `${duration}ms`
+      duration: `${duration}ms`,
     });
   });
-  
+
   next();
 });
 
@@ -68,137 +72,154 @@ debugLog('Server', 'File routes mounted');
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   debugLog('Server', 'Health check requested');
-  res.json({ 
-    success: true, 
+  res.json({
+    success: true,
     message: 'FlowCraft API is running',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
   });
 });
 
 // Socket.io for real-time collaboration
 io.on('connection', (socket) => {
-  debugLog('SocketIO', 'User connected', { 
+  debugLog('SocketIO', 'User connected', {
     socketId: socket.id,
-    totalConnections: io.engine.clientsCount 
+    totalConnections: io.engine.clientsCount,
   });
-  
+
   socket.on('join-workflow', (workflowId: string) => {
-    debugLog('SocketIO', 'User joining workflow', { 
-      socketId: socket.id, 
-      workflowId 
+    debugLog('SocketIO', 'User joining workflow', {
+      socketId: socket.id,
+      workflowId,
     });
     socket.join(`workflow-${workflowId}`);
     socket.to(`workflow-${workflowId}`).emit('user-joined', socket.id);
   });
-  
+
   socket.on('workflow-update', (data: any) => {
-    debugLog('SocketIO', 'Workflow update received', { 
+    debugLog('SocketIO', 'Workflow update received', {
       socketId: socket.id,
       workflowId: data.workflowId,
-      updateType: data.type 
+      updateType: data.type,
     });
     socket.to(`workflow-${data.workflowId}`).emit('workflow-update', {
       ...data,
-      userId: socket.id
+      userId: socket.id,
     });
   });
-  
+
   socket.on('canvas-update', (data: any) => {
-    debugLog('SocketIO', 'Canvas update received', { 
+    debugLog('SocketIO', 'Canvas update received', {
       socketId: socket.id,
-      updateType: data.type 
+      updateType: data.type,
     });
     socket.broadcast.emit('canvas-update', data);
   });
-  
+
   socket.on('disconnect', (reason) => {
-    debugLog('SocketIO', 'User disconnected', { 
-      socketId: socket.id, 
+    debugLog('SocketIO', 'User disconnected', {
+      socketId: socket.id,
       reason,
-      totalConnections: io.engine.clientsCount - 1
+      totalConnections: io.engine.clientsCount - 1,
     });
   });
 });
 
 // Database connection
-const MONGO_URI: string = process.env.MONGO_URI || 'mongodb://localhost:27017/flowcraft';
+const MONGO_URI: string =
+  process.env.MONGO_URI || 'mongodb://localhost:27017/flowcraft';
 const PORT: number = parseInt(process.env.PORT || '4000', 10);
 
 debugLog('Server', 'Attempting to connect to MongoDB', { uri: MONGO_URI });
 
-mongoose.connect(MONGO_URI)
+mongoose
+  .connect(MONGO_URI)
   .then(() => {
     debugLog('Server', '✅ Connected to MongoDB successfully');
     server.listen(PORT, () => {
-      debugLog('Server', '🚀 FlowCraft backend listening', { 
+      debugLog('Server', '🚀 FlowCraft backend listening', {
         port: PORT,
         healthCheck: `http://localhost:${PORT}/api/health`,
-        workflowAPI: `http://localhost:${PORT}/api/workflows`
+        workflowAPI: `http://localhost:${PORT}/api/workflows`,
       });
       console.log(`🚀 FlowCraft backend listening on port ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
-      console.log(`📁 Workflow API: http://localhost:${PORT}/api/workflows`);
+      console.log(
+        `📊 Health check: http://localhost:${PORT}/api/health`
+      );
+      console.log(
+        `📁 Workflow API: http://localhost:${PORT}/api/workflows`
+      );
     });
   })
   .catch((err: Error) => {
-    debugLog('Server', '❌ MongoDB connection error', { error: err.message });
+    debugLog('Server', '❌ MongoDB connection error', {
+      error: err.message,
+    });
     console.error('❌ MongoDB connection error:', err.message);
     process.exit(1);
   });
 
 // Error handling middleware
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  debugLog('Server', 'Error occurred', { 
-    error: err.message,
-    stack: err.stack,
-    url: req.url,
-    method: req.method
-  });
-  
-  console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined
-  });
-});
+app.use(
+  (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    debugLog('Server', 'Error occurred', {
+      error: err.message,
+      stack: err.stack,
+      url: req.url,
+      method: req.method,
+    });
+
+    console.error(err.stack);
+    res.status(500).json({
+      success: false,
+      message: 'Something went wrong!',
+      error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    });
+  }
+);
 
 // 404 handler
 app.use('*', (req, res) => {
-  debugLog('Server', '404 Not Found', { 
+  debugLog('Server', '404 Not Found', {
     url: req.originalUrl,
-    method: req.method 
+    method: req.method,
   });
-  
+
   res.status(404).json({
     success: false,
     message: 'Route not found',
-    path: req.originalUrl
+    path: req.originalUrl,
   });
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
-  debugLog('Server', 'SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    debugLog('Server', 'HTTP server closed');
-    mongoose.connection.close(() => {
-      debugLog('Server', 'MongoDB connection closed');
-      // eslint-disable-next-line no-process-exit
-      process.exit(0);
+const gracefulShutdown = async () => {
+  debugLog('Server', 'Graceful shutdown initiated');
+
+  try {
+    // Close HTTP server
+    await new Promise<void>((resolve, reject) => {
+      server.close(err => (err ? reject(err) : resolve()));
     });
-  });
+    debugLog('Server', 'HTTP server closed');
+
+    // Close MongoDB connection
+    await mongoose.connection.close();
+    debugLog('Server', 'MongoDB connection closed');
+
+    process.exit(0);
+  } catch (error) {
+    debugLog('Server', 'Error during shutdown', { error });
+    process.exit(1);
+  }
+};
+
+process.on('SIGTERM', () => {
+  debugLog('Server', 'SIGTERM received');
+  gracefulShutdown();
 });
 
 process.on('SIGINT', () => {
-  debugLog('Server', 'SIGINT received, shutting down gracefully');
-  server.close(() => {
-    debugLog('Server', 'HTTP server closed');
-    mongoose.connection.close(() => {
-      debugLog('Server', 'MongoDB connection closed');
-      // eslint-disable-next-line no-process-exit
-      process.exit(0);
-    });
-  });
+  debugLog('Server', 'SIGINT received');
+  gracefulShutdown();
 });
