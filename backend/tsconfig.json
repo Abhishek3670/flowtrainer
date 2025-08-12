@@ -26,6 +26,9 @@
     "src/**/*"
   ],
   "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "src/controllers/__test__",
     "node_modules",
     "dist"
   ]

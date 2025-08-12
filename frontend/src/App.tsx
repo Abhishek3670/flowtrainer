@@ -6,9 +6,6 @@ import { useExecutionStatus } from '../hooks/useExecutionStatus';
 import ReactFlow, {
   ReactFlowProvider,
   addEdge,
-  MiniMap,
-  Controls,
-  Background,
   Connection,
   Edge,
   Node,
@@ -16,6 +13,9 @@ import ReactFlow, {
   useEdgesState,
   OnNodesChange,
   OnEdgesChange,
+  MiniMap,
+  Controls,
+  Background,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -63,14 +63,14 @@ function FlowCanvas() {
 
   // User edit handlers
   const updateNodeData = useCallback((nodeId: string, newData: Partial<NodeData>) => {
-    setNodes(nds =>
-      nds.map(n => (n.id === nodeId ? { ...n, data: { ...n.data!, ...newData } } : n))
+    setNodes((nds: Node<NodeData>[]) =>
+      nds.map((n: Node<NodeData>) => (n.id === nodeId ? { ...n, data: { ...n.data!, ...newData } } : n))
     );
     setHasChanges(true);
   }, [setNodes]);
 
   const handleNodesChange: OnNodesChange = useCallback(
-    changes => {
+    (changes: any) => {
       onNodesChange(changes);
       setHasChanges(true);
     },
@@ -78,7 +78,7 @@ function FlowCanvas() {
   );
 
   const handleEdgesChange: OnEdgesChange = useCallback(
-    changes => {
+    (changes: any) => {
       onEdgesChange(changes);
       setHasChanges(true);
     },
@@ -87,7 +87,7 @@ function FlowCanvas() {
 
   const onConnect = useCallback(
     (params: Edge | Connection) => {
-      setEdges(eds => addEdge(params, eds));
+      setEdges((eds: any) => addEdge(params, eds));
       setHasChanges(true);
     },
     [setEdges]
@@ -95,8 +95,8 @@ function FlowCanvas() {
 
   const handleNodeDelete = useCallback(
     (nodeId: string) => {
-      setNodes(nds => nds.filter(n => n.id !== nodeId));
-      setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
+      setNodes((nds: Node<NodeData>[]) => nds.filter((n: Node<NodeData>) => n.id !== nodeId));
+      setEdges((eds: Edge[]) => eds.filter((e: Edge) => e.source !== nodeId && e.target !== nodeId));
       setHasChanges(true);
       if (selectedNode?.id === nodeId) setSelectedNode(null);
     },
@@ -121,7 +121,7 @@ function FlowCanvas() {
           hasError: false,
         },
       };
-      setNodes(nds => nds.concat(newNode));
+      setNodes((nds: Node<NodeData>[]) => nds.concat(newNode));
       setHasChanges(true);
     },
     [setNodes, handleNodeDelete]
@@ -156,7 +156,7 @@ function FlowCanvas() {
   const validateWorkflow = useCallback(() => {
     console.log('Validating nodes:', nodes);
 
-    const invalidNodes = nodes.filter(n => {
+    const invalidNodes = nodes.filter((n: Node<NodeData>) => {
       if (!n.data) return false; // skip if no data
       const d = n.data;
 
@@ -178,9 +178,9 @@ function FlowCanvas() {
       return isVideoNode && !hasSource;
     });
 
-    console.log('Invalid nodes found:', invalidNodes.map(n => n.id));
+    console.log('Invalid nodes found:', invalidNodes.map((n: Node<NodeData>) => n.id));
 
-    const errors = invalidNodes.map(n => ({
+    const errors = invalidNodes.map((n: Node<NodeData>) => ({
       nodeId: n.id,
       message: 'Video Stream node requires a file or RTSP URL',
     }));
@@ -194,10 +194,10 @@ function FlowCanvas() {
     setValidationErrors(errors);
     setShowValidation(true);
 
-    setNodes(nds =>
-      nds.map(n => ({
+    setNodes((nds: Node<NodeData>[]) =>
+      nds.map((n: Node<NodeData>) => ({
         ...n,
-        data: { ...(n.data ?? {}), hasError: errors.some(err => err.nodeId === n.id) },
+        data: { ...(n.data ?? {}), hasError: errors.some((err: any) => err.nodeId === n.id) },
       }))
     );
 
@@ -208,8 +208,8 @@ function FlowCanvas() {
 
     // clear errors and icons
     setShowValidation(false);
-    setNodes(nds =>
-      nds.map(n => ({
+    setNodes((nds: Node<NodeData>[]) =>
+      nds.map((n: Node<NodeData>) => ({
         ...n,
         data: { ...(n.data ?? {}), hasError: false },
       }))
@@ -221,7 +221,7 @@ function FlowCanvas() {
   // Focus node
   const focusNode = useCallback(
     (nodeId: string) => {
-      const node = nodes.find(n => n.id === nodeId);
+      const node = nodes.find((n: Node<NodeData>) => n.id === nodeId);
       if (node && reactFlowInstance) {
         reactFlowInstance.setCenter(node.position.x, node.position.y, { zoom: 1.5 });
       }
@@ -233,8 +233,8 @@ function FlowCanvas() {
   // Clear highlights on node change
   useEffect(() => {
     if (validationErrors.length > 0) {
-      setNodes(nds =>
-        nds.map(n => ({
+      setNodes((nds: Node<NodeData>[]) =>
+        nds.map((n: Node<NodeData>) => ({
           ...n,
           data: { ...n.data!, hasError: false },
         }))
@@ -246,8 +246,8 @@ function FlowCanvas() {
   // Update node status from execution events
   const updateNodeStatus = useCallback(
     (nodeId: string, status: string) => {
-      setNodes(nds =>
-        nds.map(n =>
+      setNodes((nds: Node<NodeData>[]) =>
+        nds.map((n: Node<NodeData>) =>
           n.id === nodeId ? { ...n, data: { ...n.data!, status: status as any } } : n
         )
       );
@@ -285,12 +285,12 @@ function FlowCanvas() {
     const timer = setTimeout(() => {
       const { errors } = validateWorkflow();
 
-      setNodes(nds =>
-        nds.map(n => ({
+      setNodes((nds: Node<NodeData>[]) =>
+        nds.map((n: Node<NodeData>) => ({
           ...n,
           data: {
             ...n.data!,
-            hasError: errors.some(err => err.nodeId === n.id),
+            hasError: errors.some((err: any) => err.nodeId === n.id),
           },
         }))
       );
@@ -347,7 +347,7 @@ function FlowCanvas() {
     );
   }
 
-  const nodesWithDelete = nodes.map(n => ({
+  const nodesWithDelete = nodes.map((n: Node<NodeData>) => ({
     ...n,
     data: { ...n.data!, onDelete: handleNodeDelete },
   }));
@@ -384,7 +384,7 @@ function FlowCanvas() {
             onNodesChange={handleNodesChange}
             onEdgesChange={handleEdgesChange}
             onConnect={onConnect}
-            onNodeClick={(_event, node) => setSelectedNode(node)}
+            onNodeClick={(_event: any, node: Node<NodeData>) => setSelectedNode(node)}
             onDrop={onDrop}
             onDragOver={onDragOver}
             fitView

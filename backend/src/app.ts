@@ -1,7 +1,7 @@
 import express, { Application } from "express";
 import cors from "cors";
 import morgan from "morgan";
-import workflowRoutes from "./routes/workflow.routes";
+const workflowRoutes = require("./routes/workflowRoutes");
 
 const app: Application = express();
 
