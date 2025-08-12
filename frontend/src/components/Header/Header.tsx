@@ -12,11 +12,10 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 
-// Update interface for props
 interface HeaderProps {
   isSaving: boolean;
   lastSaved: Date | null;
-  onSave: () => void;             // must match the type you send
+  onSave: () => void;
   workflowName?: string;
   autoSaveEnabled: boolean;
   onToggleAutoSave: () => void;
@@ -25,14 +24,14 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({
-  isSaving = false,
-  lastSaved = null,
+  isSaving,
+  lastSaved,
   onSave,
-  onRun,
   workflowName = 'Object Detection Pipeline',
   autoSaveEnabled,
   onToggleAutoSave,
-  disableRun = false, // <-- default to false if not provided
+  onRun,
+  disableRun = false,
 }) => {
   const { theme, toggleTheme } = useTheme();
 
@@ -138,6 +137,7 @@ const Header: React.FC<HeaderProps> = ({
             <Sun className="w-4 h-4" />
           )}
         </button>
+
         <div className="flex -space-x-2">
           <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">DS</div>
           <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">ML</div>

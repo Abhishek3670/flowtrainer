@@ -11,7 +11,7 @@ export default function FloatingTabToggles({
   onSelect,
 }: FloatingTabTogglesProps) {
   return (
-    <div className="absolute top-16 right-0 flex h-10">
+    <div className="absolute top-16 right-0 flex h-10 z-50">
       {/* Properties Leaf */}
       <button
         onClick={() => onSelect('properties')}

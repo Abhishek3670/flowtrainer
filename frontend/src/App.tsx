@@ -25,6 +25,7 @@ import FloatingComponentsPanel from './components/FloatingComponentsPanel/Floati
 import CustomNode from './components/CustomNode/CustomNode';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { workflowAPI, WorkflowData, NodeData } from './services/workflowApi';
+import StackEdgeDrawer from './components/StackEdgeDrawer/StackEdgeDrawer';
 
 const nodeTypes = { customNode: CustomNode };
 const initialNodes: Node<NodeData>[] = [];
@@ -33,7 +34,7 @@ const initialEdges: Edge[] = [];
 function FlowCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
   const [propertiesPanelCollapsed, setPropertiesPanelCollapsed] = useState(false);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowData | null>(null);
@@ -44,7 +45,7 @@ function FlowCanvas() {
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [validationErrors, setValidationErrors] = useState<{ nodeId: string; message: string }[]>([]);
   const [currentExecution, setCurrentExecution] = useState<string | null>(null);
-
+  
   // Unified drawer state and active tab
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [drawerTab, setDrawerTab] = useState<'properties' | 'validation'>('properties');
@@ -346,7 +347,7 @@ function FlowCanvas() {
   const nodesWithDelete = nodes.map(n => ({ ...n, data: { ...n.data!, onDelete: handleNodeDelete } }));
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 relative">
       <Toaster position="top-right" />
 
       <Header
@@ -360,19 +361,7 @@ function FlowCanvas() {
         disableRun={nodes.length === 0}
       />
 
-      <FloatingTabToggles
-        activeTab={drawerTab}
-        onSelect={(tab) => {
-          setDrawerTab(tab);
-          setIsDrawerOpen(true);
-        }}
-      />
-
-      <RightDrawer
-        isOpen={isDrawerOpen}
-        activeTab={drawerTab}
-        onTabChange={setDrawerTab}
-        onClose={() => setIsDrawerOpen(false)}
+      <StackEdgeDrawer
         selectedNode={selectedNode}
         collapsed={propertiesPanelCollapsed}
         onToggleCollapse={() => setPropertiesPanelCollapsed(!propertiesPanelCollapsed)}
@@ -396,8 +385,7 @@ function FlowCanvas() {
             onConnect={onConnect}
             onNodeClick={(_event, node) => {
               setSelectedNode(node);
-              setDrawerTab('properties');
-              setIsDrawerOpen(true);
+              // The StackEdgeDrawer will handle opening internally
             }}
             onDrop={onDrop}
             onDragOver={onDragOver}
