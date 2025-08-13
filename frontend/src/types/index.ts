@@ -2,8 +2,8 @@ import { Node as ReactFlowNode, Edge as ReactFlowEdge } from 'reactflow';
 
 // File-related types
 export interface FileData {
-  _id?: string;
-  fileId: string;
+  _id: string;
+  fileId: string;  // This will be same as _id from backend
   filename: string;
   originalName: string;
   mimetype: string;

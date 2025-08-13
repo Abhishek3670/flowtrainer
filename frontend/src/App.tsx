@@ -15,6 +15,7 @@ import ReactFlow, {
   MiniMap,
   Controls,
   Background,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
@@ -34,7 +35,6 @@ function FlowCanvas() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
-  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +43,8 @@ function FlowCanvas() {
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
   const [currentExecution, setCurrentExecution] = useState<string | null>(null);
+
+  const reactFlowInstance = useReactFlow();
 
   // Restore auto-save preference
   useEffect(() => {
@@ -104,26 +106,54 @@ function FlowCanvas() {
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-      const bounds = event.currentTarget.getBoundingClientRect();
+      
       const type = event.dataTransfer.getData('application/reactflow');
-      if (!type) return;
-      const position = { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
+      if (!type) {
+        console.warn('No node type found in drag data');
+        return;
+      }
+
+      // Use ReactFlow's screenToFlowPosition for proper coordinate transformation
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+
+      console.log('Dropping node:', { type, position });
+
       const newNode: Node<NodeData> = {
         id: `${type}-${Date.now()}`,
         type: 'customNode',
         position,
         data: {
           nodeType: type,
-          label: type,
+          label: type.replace('-', ' '),
           status: 'empty',
           onDelete: handleNodeDelete,
           hasError: false,
         },
       };
-      setNodes(nds => nds.concat(newNode));
+
+      console.log('Created new node:', newNode);
+      setNodes(nds => {
+        const updated = nds.concat(newNode);
+        console.log('Updated nodes array:', updated);
+        return updated;
+      });
       setHasChanges(true);
+
+      // Auto-select the newly created node to open properties panel
+      setSelectedNode(newNode);
+
+      // Small delay to ensure the node is added before trying to fit view
+      setTimeout(() => {
+        if (nodes.length === 0) {
+          // If this is the first node, fit the view
+          reactFlowInstance.fitView({ padding: 0.1 });
+        }
+      }, 10);
     },
-    [setNodes, handleNodeDelete]
+    [reactFlowInstance, setNodes, handleNodeDelete, nodes.length]
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -217,6 +247,7 @@ function FlowCanvas() {
       const node = nodes.find(n => n.id === nodeId);
       if (node && reactFlowInstance) {
         reactFlowInstance.setCenter(node.position.x, node.position.y, { zoom: 1.5 });
+        setSelectedNode(node); // Also select the node to open properties
       }
     },
     [nodes, reactFlowInstance]
@@ -258,10 +289,13 @@ function FlowCanvas() {
         const resp = await workflowAPI.getWorkflows({ limit: 1, status: 'draft' });
         if (resp?.data?.workflows?.length) {
           const wf = resp.data.workflows[0];
+          console.log('Loading existing workflow:', wf);
           setNodes(wf.nodes || []);
           setEdges(wf.edges || []);
           setCurrentWorkflow(wf);
           setLastSaved(new Date(wf.lastModified || wf.updatedAt || Date.now()));
+        } else {
+          console.log('No existing workflow found, starting fresh');
         }
       } catch (err) {
         console.error("Failed to fetch workflows:", err);
@@ -323,6 +357,11 @@ function FlowCanvas() {
     }
   }, [autoSaveEnabled, hasChanges, isLoading, debouncedSave, nodes, edges]);
 
+  // Handle clicking outside to deselect node
+  const handlePaneClick = useCallback(() => {
+    setSelectedNode(null);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
@@ -335,6 +374,8 @@ function FlowCanvas() {
   }
 
   const nodesWithDelete = nodes.map(n => ({ ...n, data: { ...n.data!, onDelete: handleNodeDelete } }));
+
+  console.log('Rendering nodes:', nodesWithDelete);
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 relative">
@@ -353,8 +394,6 @@ function FlowCanvas() {
 
       <StackEdgeDrawer
         selectedNode={selectedNode}
-        /*collapsed={propertiesPanelCollapsed}*/
-        /*onToggleCollapse={() => setPropertiesPanelCollapsed(!propertiesPanelCollapsed)}*/
         onNodeUpdate={updateNodeData}
         validationErrors={validationErrors}
         nodes={nodes}
@@ -366,7 +405,6 @@ function FlowCanvas() {
         <FloatingComponentsPanel onNodeDrag={handleNodeDrag} />
         <div className="flex-1 relative">
           <ReactFlow
-            onInit={setReactFlowInstance}
             nodes={nodesWithDelete}
             edges={edges}
             nodeTypes={nodeTypes}
@@ -375,11 +413,16 @@ function FlowCanvas() {
             onConnect={onConnect}
             onNodeClick={(_event, node) => {
               setSelectedNode(node);
+              console.log('Node clicked, opening properties:', node);
             }}
+            onPaneClick={handlePaneClick}
             onDrop={onDrop}
             onDragOver={onDragOver}
             fitView
             className="bg-white dark:bg-gray-800"
+            minZoom={0.1}
+            maxZoom={2}
+            defaultViewport={{ x: 0, y: 0, zoom: 1 }}
           >
             <Background color="#e5e7eb" className="dark:opacity-20" />
             <Controls className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700" />

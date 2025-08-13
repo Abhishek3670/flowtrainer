@@ -72,3 +72,28 @@ body {
   }
 }
 
+
+/* Custom glow effects for nodes */
+.node-glow-blue:hover {
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.node-glow-green:hover {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.5), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.node-glow-red:hover {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.5), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.node-glow-yellow:hover {
+  box-shadow: 0 0 20px rgba(234, 179, 8, 0.5), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.node-glow-gray:hover {
+  box-shadow: 0 0 20px rgba(107, 114, 128, 0.4), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.node-glow-red-error:hover {
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.6), 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}

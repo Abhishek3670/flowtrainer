@@ -2,6 +2,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
+const mongoose = require('mongoose');
 const File = require('../models/File');
 
 // Configure multer for file uploads
@@ -36,39 +37,37 @@ const fileFilter = (req, file, cb) => {
         'video/quicktime',
         'video/x-msvideo',
         'video/x-quicktime',
-        'video/mp4v-es'
+        'video/mp4v-es',
+        'application/octet-stream',
+        'video/x-m4v'
     ];
 
-    // Also allow based on file extension as fallback
-    const allowedExtensions = ['.mp4', '.avi', '.mov', '.MOV'];
+    const allowedExtensions = ['.mp4', '.mov', '.avi', '.m4v'];
     const fileExtension = path.extname(file.originalname).toLowerCase();
+    
+    const mimeTypeAllowed = allowedMimeTypes.includes(file.mimetype);
+    const extensionAllowed = allowedExtensions.includes(fileExtension);
+    
+    console.log('MIME type allowed:', mimeTypeAllowed);
+    console.log('Extension allowed:', extensionAllowed);
 
-    const isMimeTypeAllowed = allowedMimeTypes.includes(file.mimetype);
-    const isExtensionAllowed = allowedExtensions.includes(fileExtension);
-
-    console.log('MIME type allowed:', isMimeTypeAllowed);
-    console.log('Extension allowed:', isExtensionAllowed);
-
-    if (isMimeTypeAllowed || isExtensionAllowed) {
+    if (mimeTypeAllowed || extensionAllowed) {
         console.log('✅ File accepted');
         cb(null, true);
     } else {
         console.log('❌ File rejected');
-        console.log('Allowed MIME types:', allowedMimeTypes);
-        console.log('Allowed extensions:', allowedExtensions);
-        cb(new Error(`Invalid file type. Detected: ${file.mimetype}. Allowed types: ${allowedMimeTypes.join(', ')}`), false);
+        cb(new Error('Only video files (MP4, MOV, AVI) are allowed'));
     }
 };
 
 const upload = multer({
-    storage,
-    fileFilter,
+    storage: storage,
+    fileFilter: fileFilter,
     limits: {
-        fileSize: 500 * 1024 * 1024, // 500MB limit
+        fileSize: 500 * 1024 * 1024 // 500MB limit
     }
 }).single('video');
 
-// Upload video file
 const uploadVideo = async (req, res) => {
     try {
         upload(req, res, async (err) => {
@@ -97,8 +96,14 @@ const uploadVideo = async (req, res) => {
                 });
             }
 
+            console.log('File uploaded successfully:', req.file);
+
+            // Generate a unique fileId
+            const fileId = uuidv4();
+
             // Save file metadata to database
             const fileRecord = new File({
+                fileId: fileId,  // Set the required fileId
                 filename: req.file.filename,
                 originalName: req.file.originalname,
                 mimetype: req.file.mimetype,
@@ -107,19 +112,23 @@ const uploadVideo = async (req, res) => {
                 status: 'processing' // Will be updated after video processing
             });
 
+            console.log('Saving file record:', fileRecord);
             const savedFile = await fileRecord.save();
+            console.log('File record saved:', savedFile);
 
             // TODO: Process video for metadata (duration, resolution, etc.)
             // For now, mark as ready
             savedFile.status = 'ready';
             await savedFile.save();
 
+            console.log('File marked as ready, sending response');
+
             res.status(201).json({
                 success: true,
                 message: 'Video uploaded successfully',
                 data: {
                     _id: savedFile._id,
-                    fileId: savedFile._id,
+                    fileId: savedFile.fileId,
                     filename: savedFile.filename,
                     originalName: savedFile.originalName,
                     size: savedFile.size,
@@ -130,16 +139,16 @@ const uploadVideo = async (req, res) => {
             });
         });
     } catch (error) {
-        console.error('Error uploading video:', error);
+        console.error('Error uploading file:', error);
         res.status(500).json({
             success: false,
-            message: 'Failed to upload video',
+            message: 'Failed to upload file',
             error: error.message
         });
     }
 };
 
-// Get all uploaded files
+// Get all files
 const getFiles = async (req, res) => {
     try {
         const {
@@ -154,7 +163,7 @@ const getFiles = async (req, res) => {
         if (mimetype) query.mimetype = mimetype;
 
         const files = await File.find(query)
-            .select('_id filename originalName size mimetype status duration resolution createdAt')
+            .select('_id fileId filename originalName size mimetype status uploadedAt')
             .sort({ createdAt: -1 })
             .limit(limit * 1)
             .skip((page - 1) * limit);
@@ -186,7 +195,18 @@ const getFiles = async (req, res) => {
 // Get single file
 const getFile = async (req, res) => {
     try {
-        const file = await File.findById(req.params.id);
+        let query;
+        const id = req.params.id;
+
+        // Check if the ID is a valid ObjectId
+        if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
+            query = { _id: id };
+        } else {
+            // Otherwise search by fileId
+            query = { fileId: id };
+        }
+
+        const file = await File.findOne(query);
 
         if (!file) {
             return res.status(404).json({
@@ -213,7 +233,7 @@ const getFile = async (req, res) => {
 const deleteFile = async (req, res) => {
     try {
         const file = await File.findById(req.params.id);
-
+        
         if (!file) {
             return res.status(404).json({
                 success: false,
@@ -221,14 +241,12 @@ const deleteFile = async (req, res) => {
             });
         }
 
-        // Delete file from filesystem
+        // Delete physical file
         try {
             await fs.unlink(file.path);
-            if (file.thumbnailPath) {
-                await fs.unlink(file.thumbnailPath);
-            }
-        } catch (fsError) {
-            console.warn('File not found on filesystem:', fsError.message);
+            console.log('Physical file deleted:', file.path);
+        } catch (err) {
+            console.warn('Could not delete physical file:', err.message);
         }
 
         // Delete from database
@@ -248,71 +266,104 @@ const deleteFile = async (req, res) => {
     }
 };
 
-// Serve video file
+// Serve video file for streaming
 const serveVideo = async (req, res) => {
     try {
-        console.log('=== SERVE VIDEO DEBUG ===');
-        console.log('Request params:', req.params);
-        console.log('File ID received:', req.params.id);
-        console.log('File ID type:', typeof req.params.id);
-
         const id = req.params.id;
-        console.log("Serving video for fileId:", id);
+        let query;
 
-        if (!id || id === 'undefined') {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid file ID provided'
-            });
+        console.log('=== VIDEO STREAMING DEBUG ===');
+        console.log('Requested ID:', id);
+
+        // Check if the ID is a valid ObjectId
+        if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
+            console.log('Searching by ObjectId (_id)');
+            query = { _id: id };
+        } else {
+            console.log('Searching by fileId');
+            query = { fileId: id };
         }
 
-        const file = await File.findOne({ fileId: id });
+        const file = await File.findOne(query);
 
         if (!file) {
+            console.log('File not found in database');
             return res.status(404).json({
                 success: false,
                 message: 'File not found'
             });
         }
 
-        // Check if file exists on filesystem
-        if (!file) {
-            return res.status(404).json({ error: "File not found" });
-        }
-        const fs = require('fs');
-        const path = require('path');
+        console.log('File found:', { 
+            fileId: file.fileId, 
+            filename: file.filename, 
+            path: file.path 
+        });
+
         const videoPath = file.path;
-        // Usual streaming with partial requests support
-        const stat = fs.statSync(videoPath);
+        
+        // Check if file exists on disk
+        try {
+            await fs.access(videoPath);
+            console.log('Video file exists on disk:', videoPath);
+        } catch {
+            console.log('Video file not found on disk:', videoPath);
+            return res.status(404).json({
+                success: false,
+                message: 'Video file not found on disk'
+            });
+        }
+
+        const stat = await fs.stat(videoPath);
         const fileSize = stat.size;
         const range = req.headers.range;
+
+        console.log('File size:', fileSize, 'Range requested:', range);
+
         if (range) {
+            // Handle range requests for video streaming
             const parts = range.replace(/bytes=/, "").split("-");
             const start = parseInt(parts[0], 10);
             const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
             const chunksize = (end - start) + 1;
-            const fileStream = fs.createReadStream(videoPath, { start, end });
+            
+            console.log('Range request:', { start, end, chunksize });
+            
+            const streamOptions = {
+                start: start,
+                end: end
+            };
+            
+            const stream = require('fs').createReadStream(videoPath, streamOptions);
+            
             res.writeHead(206, {
-                "Content-Range": `bytes ${start}-${end}/${fileSize}`,
-                "Accept-Ranges": "bytes",
-                "Content-Length": chunksize,
-                "Content-Type": file.mimetype || "video/mp4" // fallback if unknown
+                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': chunksize,
+                'Content-Type': file.mimetype || 'video/mp4',
             });
-            fileStream.pipe(res);
+            
+            stream.pipe(res);
         } else {
+            // Serve entire file
+            console.log('Serving entire file');
             res.writeHead(200, {
-                "Content-Length": fileSize,
-                "Content-Type": file.mimetype || "video/mp4"
+                'Content-Length': fileSize,
+                'Content-Type': file.mimetype || 'video/mp4',
             });
-            fs.createReadStream(videoPath).pipe(res);
+            
+            const stream = require('fs').createReadStream(videoPath);
+            stream.pipe(res);
         }
-
-    } catch (err) {
-        console.error("Error serving video:", err);
-        res.status(500).json({ error: "Server error while serving video" });
+    } catch (error) {
+        console.error('Error serving video:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to serve video',
+            error: error.message
+        });
     }
 };
-
 
 module.exports = {
     uploadVideo,

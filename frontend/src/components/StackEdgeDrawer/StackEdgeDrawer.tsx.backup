@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { X, FileCog, ClipboardCheck } from "lucide-react";
 import PropertiesPanel from "../PropertiesPanel/PropertiesPanel";
 import ValidationPanel from "../ValidationPanel/ValidationPanel";
@@ -28,9 +28,6 @@ export default function StackEdgeDrawer({
 }: StackEdgeDrawerProps) {
   const [activeTab, setActiveTab] = useState<DrawerTab>(null);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
-  const mouseMoveRef = useRef(false);
 
   // Auto-open properties panel when a node is selected
   useEffect(() => {
@@ -43,53 +40,8 @@ export default function StackEdgeDrawer({
 
   const isOpen = activeTab !== null;
 
-  const handleMouseDown = (e: React.MouseEvent, buttonId: string) => {
-    e.preventDefault();
-    setIsDragging(true);
-    mouseMoveRef.current = false;
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      if (!dragStartRef.current) return;
-      
-      const deltaX = Math.abs(moveEvent.clientX - dragStartRef.current.x);
-      const deltaY = Math.abs(moveEvent.clientY - dragStartRef.current.y);
-      
-      // If mouse moved more than 3px, consider it a drag
-      if (deltaX > 3 || deltaY > 3) {
-        mouseMoveRef.current = true;
-        // Open the panel immediately on first drag movement
-        setActiveTab(buttonId as DrawerTab);
-      }
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-      
-      // If it was a click (no mouse movement), handle click logic
-      if (!mouseMoveRef.current) {
-        handleButtonClick(buttonId as DrawerTab);
-      }
-      
-      dragStartRef.current = null;
-      mouseMoveRef.current = false;
-      
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-
-  const handleButtonClick = (tab: DrawerTab) => {
-    if (activeTab === tab) {
-      // If clicking the active tab, close it
-      setActiveTab(null);
-    } else {
-      // If clicking a different tab, switch to it
-      setActiveTab(tab);
-    }
+  const handleTabClick = (tab: DrawerTab) => {
+    setActiveTab((prev) => (prev === tab ? null : tab));
   };
 
   const closeDrawer = () => setActiveTab(null);
@@ -112,12 +64,7 @@ export default function StackEdgeDrawer({
   return (
     <>
       {/* Stack of Edge Buttons */}
-      <div 
-        className={`
-          fixed top-20 z-40 flex flex-col transition-all duration-200
-          ${isOpen ? 'right-96' : 'right-0'}
-        `}
-      >
+      <div className="fixed top-20 right-0 z-40 flex flex-col">
         {buttons.map((button, index) => {
           const Icon = button.icon;
           const isActive = activeTab === button.id;
@@ -127,7 +74,7 @@ export default function StackEdgeDrawer({
           return (
             <div key={button.id} className="relative">
               <button
-                onMouseDown={(e) => handleMouseDown(e, button.id)}
+                onClick={() => handleTabClick(button.id as DrawerTab)}
                 onMouseEnter={() => setHoveredButton(button.id)}
                 onMouseLeave={() => setHoveredButton(null)}
                 className={`
@@ -135,7 +82,7 @@ export default function StackEdgeDrawer({
                   flex items-center justify-center
                   transition-all duration-200 ease-out
                   shadow-lg hover:shadow-xl
-                  group select-none
+                  group
                   ${
                     isActive
                       ? "bg-blue-600 text-white translate-x-0 shadow-blue-200"
@@ -144,7 +91,6 @@ export default function StackEdgeDrawer({
                       : "bg-white text-gray-600 translate-x-2 shadow-sm hover:-translate-x-1"
                   }
                   ${index > 0 ? "mt-1" : ""}
-                  ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}
                 `}
                 aria-label={button.label}
                 aria-expanded={isActive}
@@ -162,7 +108,7 @@ export default function StackEdgeDrawer({
                 )}
 
                 {/* Tooltip */}
-                {isHovered && !isActive && !isOpen && (
+                {isHovered && !isActive && (
                   <div
                     role="tooltip"
                     className="absolute right-full mr-3 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg whitespace-nowrap opacity-0 animate-in fade-in duration-150"
@@ -184,7 +130,7 @@ export default function StackEdgeDrawer({
           fixed top-16 right-0 h-[calc(100vh-4rem)] w-96
           bg-white dark:bg-gray-800
           border-l border-gray-200 dark:border-gray-700
-          transform transition-all duration-200 ease-out
+          transform transition-all duration-300 ease-out
           z-30
           ${isOpen ? "translate-x-0 opacity-100" : "translate-x-full opacity-0"}
         `}
