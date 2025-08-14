@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Toaster } from 'react-hot-toast';
 import ReactFlow, {
   ReactFlowProvider,
@@ -16,8 +16,6 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 
-import { useHistory } from './hooks';
-
 import Header from './components/Header/Header';
 import FloatingComponentsPanel from './components/FloatingComponentsPanel/FloatingComponentsPanel';
 import CustomNode from './components/CustomNode/CustomNode';
@@ -31,28 +29,30 @@ const nodeTypes = { customNode: CustomNode };
 const initialNodes: Node<NodeData>[] = [];
 const initialEdges: Edge[] = [];
 
+// State snapshot for undo/redo (excludes positions)
+interface StateSnapshot {
+  nodes: Node<NodeData>[];
+  edges: Edge[];
+  timestamp: number;
+}
+
 function FlowCanvas() {
-  // Use history hook for structural changes only (add/remove nodes, not positions)
-  const {
-    state: historyNodes,
-    set: setHistoryNodes,
-    undo: undoNodes,
-    redo: redoNodes,
-    canUndo: canUndoNodes,
-    canRedo: canRedoNodes,
-  } = useHistory<Node<NodeData>[]>(initialNodes);
-
-  const {
-    state: edges,
-    set: setEdges,
-    undo: undoEdges,
-    redo: redoEdges,
-    canUndo: canUndoEdges,
-    canRedo: canRedoEdges,
-  } = useHistory<Edge[]>(initialEdges);
-
-  // Separate state for node positions (not tracked in history)
+  // Direct state management without complex history hooks
+  const [nodes, setNodes] = useState<Node<NodeData>[]>(initialNodes);
+  const [edges, setEdges] = useState<Edge[]>(initialEdges);
+  // Positions are kept separate and NOT included in undo/redo
   const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>({});
+
+  // Simple undo/redo with state snapshots (excluding positions)
+  const [history, setHistory] = useState<{
+    past: StateSnapshot[];
+    future: StateSnapshot[];
+  }>({ past: [], future: [] });
+
+  // Flag to prevent saving to history during undo/redo operations
+  const isUndoRedoInProgress = useRef(false);
+  // Flag to prevent React Flow's onNodesChange from saving duplicate history
+  const skipNextNodeChangeHistory = useRef(false);
 
   const reactFlowInstance = useReactFlow();
 
@@ -64,9 +64,38 @@ function FlowCanvas() {
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [validationErrors] = useState<ValidationError[]>([]);
 
+  const handleAutoSaveToggle = useCallback(() => {
+    setAutoSaveEnabled(prev => !prev);
+  }, []);
+
+  // Helper to create a snapshot of current state (EXCLUDING positions)
+  const createSnapshot = useCallback((): StateSnapshot => {
+    return {
+      nodes: JSON.parse(JSON.stringify(nodes)),
+      edges: JSON.parse(JSON.stringify(edges)),
+      timestamp: Date.now()
+    };
+  }, [nodes, edges]);
+
+  // Helper to save current state to history before making changes
+  const saveToHistory = useCallback(() => {
+    if (isUndoRedoInProgress.current) {
+      console.log('⏸️ Skipping saveToHistory during undo/redo');
+      return;
+    }
+
+    const snapshot = createSnapshot();
+    console.log('💾 Saving snapshot:', { nodes: snapshot.nodes.length, edges: snapshot.edges.length });
+    
+    setHistory(prev => ({
+      past: [...prev.past, snapshot],
+      future: [] // Clear future when new operation is performed
+    }));
+  }, [createSnapshot]);
+
   // Clean up positions for nodes that no longer exist
   useEffect(() => {
-    const currentNodeIds = new Set(historyNodes.map(n => n.id));
+    const currentNodeIds = new Set(nodes.map(n => n.id));
     setNodePositions(prev => {
       const cleaned: Record<string, { x: number; y: number }> = {};
       Object.keys(prev).forEach(nodeId => {
@@ -76,16 +105,7 @@ function FlowCanvas() {
       });
       return cleaned;
     });
-  }, [historyNodes]);
-
-  // Persist auto-save toggle
-  useEffect(() => {
-    localStorage.setItem('autosave_enabled', autoSaveEnabled.toString());
-  }, [autoSaveEnabled]);
-
-  const handleAutoSaveToggle = useCallback(() => {
-    setAutoSaveEnabled(prev => !prev);
-  }, []);
+  }, [nodes]);
 
   // Placeholder save function
   const debouncedSave = {
@@ -99,26 +119,42 @@ function FlowCanvas() {
     console.log('Run pipeline functionality not implemented yet');
   }, []);
 
-  // Update node data helper - this should be tracked in history
+  // Update node data helper
   const updateNodeData = useCallback(
     (nodeId: string, newData: Partial<NodeData>) => {
-      setHistoryNodes(draft => {
-        const node = draft.find(n => n.id === nodeId);
-        if (node) node.data = { ...node.data!, ...newData };
-      });
+      if (isUndoRedoInProgress.current) {
+        console.log('⏸️ Skipping updateNodeData during undo/redo');
+        return;
+      }
+
+      console.log('🔧 Updating node data:', nodeId, newData);
+      setNodes(prev => prev.map(node => 
+        node.id === nodeId 
+          ? { ...node, data: { ...node.data, ...newData } }
+          : node
+      ));
+      // Note: We're not saving to history for minor updates
     },
-    [setHistoryNodes]
+    []
   );
 
   // Handle node changes - separate position changes from structural changes
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      if (isUndoRedoInProgress.current) {
+        console.log('⏸️ Skipping handleNodesChange during undo/redo');
+        return;
+      }
+
+      console.log('🔄 Node changes:', changes);
+      
       // Separate position changes from other changes
       const positionChanges = changes.filter(change => change.type === 'position');
       const otherChanges = changes.filter(change => change.type !== 'position');
       
       // Handle position changes (not tracked in history)
       if (positionChanges.length > 0) {
+        console.log('📍 Position changes (not tracked in undo/redo):', positionChanges);
         setNodePositions(prev => {
           const newPositions = { ...prev };
           positionChanges.forEach(change => {
@@ -132,49 +168,105 @@ function FlowCanvas() {
       
       // Handle structural changes (tracked in history)
       if (otherChanges.length > 0) {
-        setHistoryNodes(draft => applyNodeChanges(otherChanges, draft));
+        console.log('🏗️ Structural changes (tracked in history):', otherChanges);
+        
+        // Check if this is from onDrop and we should skip history saving
+        if (skipNextNodeChangeHistory.current) {
+          console.log('⏭️ Skipping history save for React Flow follow-up after manual node creation');
+          skipNextNodeChangeHistory.current = false;
+        } else {
+          // Check if this is a real structural change that should be tracked
+          const hasAddChanges = otherChanges.some(change => change.type === 'add');
+          const hasRemoveChanges = otherChanges.some(change => change.type === 'remove');
+          
+          if (hasAddChanges || hasRemoveChanges) {
+            console.log('📝 Real structural change, saving to history');
+            saveToHistory();
+          } else {
+            console.log('📝 Non-structural change (select, etc.), not saving to history');
+          }
+        }
+        
+        setNodes(prev => applyNodeChanges(otherChanges, prev));
       }
     },
-    [setHistoryNodes]
+    [saveToHistory]
   );
 
-  // Handle edge changes using React Flow's built-in functions
+  // Handle edge changes
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      setEdges(draft => applyEdgeChanges(changes, draft));
+      if (isUndoRedoInProgress.current) {
+        console.log('⏸️ Skipping handleEdgesChange during undo/redo');
+        return;
+      }
+
+      console.log('🔗 Edge changes:', changes);
+      const hasStructuralChanges = changes.some(change => 
+        change.type === 'add' || change.type === 'remove'
+      );
+      
+      if (hasStructuralChanges) {
+        console.log('🏗️ Edge structural changes, saving to history');
+        saveToHistory();
+      } else {
+        console.log('📝 Edge non-structural changes, not saving to history');
+      }
+      
+      setEdges(prev => applyEdgeChanges(changes, prev));
     },
-    [setEdges]
+    [saveToHistory]
   );
 
   // Creating a new connection (edge)
   const onConnect = useCallback(
     (params: Edge | Connection) => {
+      if (isUndoRedoInProgress.current) {
+        console.log('⏸️ Skipping onConnect during undo/redo');
+        return;
+      }
+
       const newEdge: Edge = {
         ...params,
         id: `edge-${params.source}-${params.target}-${Date.now()}`,
       } as Edge;
       
-      setEdges(draft => {
-        draft.push(newEdge);
-      });
+      console.log('🔗 Creating new edge:', newEdge);
+      
+      saveToHistory(); // Save before adding edge
+      setEdges(prev => [...prev, newEdge]);
     },
-    [setEdges]
+    [saveToHistory]
   );
 
   // Delete node and its edges
   const handleNodeDelete = useCallback(
     (nodeId: string) => {
-      setHistoryNodes(draft => draft.filter(n => n.id !== nodeId));
-      setEdges(draft => draft.filter(e => e.source !== nodeId && e.target !== nodeId));
+      if (isUndoRedoInProgress.current) {
+        console.log('⏸️ Skipping handleNodeDelete during undo/redo');
+        return;
+      }
+
+      console.log('🗑️ Deleting node:', nodeId);
+      
+      saveToHistory(); // Save before deletion
+      setNodes(prev => prev.filter(n => n.id !== nodeId));
+      setEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId));
+      
       if (selectedNode?.id === nodeId) setSelectedNode(null);
     },
-    [setHistoryNodes, setEdges, selectedNode]
+    [selectedNode, saveToHistory]
   );
 
-  // Handle dropping new nodes on canvas - this should be tracked in history
+  // Handle dropping new nodes on canvas
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
+
+      if (isUndoRedoInProgress.current) {
+        console.log('⏸️ Skipping onDrop during undo/redo');
+        return;
+      }
 
       const type = event.dataTransfer.getData('application/reactflow');
       if (!type || !reactFlowInstance) {
@@ -210,12 +302,18 @@ function FlowCanvas() {
         },
       };
 
-      // Add node with history tracking
-      setHistoryNodes(draft => {
-        draft.push(newNode);
-      });
+      console.log('➕ Creating new node:', newNode);
+
+      // Save current state BEFORE adding the new node
+      saveToHistory();
       
-      // Also track its initial position
+      // Set flag to prevent the React Flow onNodesChange from saving duplicate history
+      skipNextNodeChangeHistory.current = true;
+      
+      // Add the node
+      setNodes(prev => [...prev, newNode]);
+      
+      // Track position separately (not in history)
       setNodePositions(prev => ({
         ...prev,
         [nodeId]: position
@@ -225,12 +323,12 @@ function FlowCanvas() {
 
       // Fit view if this is the first node
       setTimeout(() => {
-        if (historyNodes.length === 0) {
+        if (nodes.length === 0) {
           reactFlowInstance.fitView({ padding: 0.1 });
         }
       }, 10);
     },
-    [reactFlowInstance, setHistoryNodes, handleNodeDelete, historyNodes.length]
+    [reactFlowInstance, handleNodeDelete, nodes.length, saveToHistory]
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -249,7 +347,7 @@ function FlowCanvas() {
 
   const focusNode = useCallback(
     (nodeId: string) => {
-      const combinedNodes = historyNodes.map(node => ({
+      const combinedNodes = nodes.map(node => ({
         ...node,
         position: nodePositions[node.id] || node.position || { x: 0, y: 0 }
       }));
@@ -258,44 +356,91 @@ function FlowCanvas() {
         reactFlowInstance.fitView({ nodes: [node], padding: 0.2, duration: 800 });
       }
     },
-    [historyNodes, nodePositions, reactFlowInstance]
+    [nodes, nodePositions, reactFlowInstance]
   );
 
-  // Combined undo/redo handlers
+  // Simple undo/redo handlers
   const handleUndo = useCallback(() => {
-    // Undo both nodes and edges, but prioritize the one with more history
-    let undoPerformed = false;
-    if (canUndoNodes) {
-      undoNodes();
-      undoPerformed = true;
+    console.log('🔄 UNDO requested');
+    console.log('History past entries:', history.past.length);
+    console.log('Current state:', { nodes: nodes.length, edges: edges.length });
+    
+    if (history.past.length === 0) {
+      console.log('❌ Nothing to undo');
+      return;
     }
-    if (canUndoEdges) {
-      undoEdges();
-      undoPerformed = true;
-    }
-    if (!undoPerformed) {
-      console.log('Nothing to undo');
-    }
-  }, [canUndoNodes, canUndoEdges, undoNodes, undoEdges]);
+
+    // Set flag to prevent React Flow from interfering
+    isUndoRedoInProgress.current = true;
+
+    const currentSnapshot = createSnapshot();
+    const previousSnapshot = history.past[history.past.length - 1];
+    
+    console.log('🔙 Restoring snapshot:', { 
+      nodes: previousSnapshot.nodes.length, 
+      edges: previousSnapshot.edges.length 
+    });
+
+    // Restore the previous state (EXCLUDING positions)
+    setNodes(previousSnapshot.nodes);
+    setEdges(previousSnapshot.edges);
+    // NOTE: nodePositions are NOT restored - they keep their current values
+
+    // Update history
+    setHistory(prev => ({
+      past: prev.past.slice(0, -1),
+      future: [currentSnapshot, ...prev.future]
+    }));
+    
+    // Clear flag after React processes the changes
+    setTimeout(() => {
+      isUndoRedoInProgress.current = false;
+      console.log('✅ Undo completed (positions preserved)');
+    }, 100);
+    
+  }, [history.past, nodes.length, edges.length, createSnapshot]);
 
   const handleRedo = useCallback(() => {
-    // Redo both nodes and edges, but prioritize the one with more future
-    let redoPerformed = false;
-    if (canRedoNodes) {
-      redoNodes();
-      redoPerformed = true;
+    console.log('🔄 REDO requested');
+    console.log('History future entries:', history.future.length);
+    
+    if (history.future.length === 0) {
+      console.log('❌ Nothing to redo');
+      return;
     }
-    if (canRedoEdges) {
-      redoEdges();
-      redoPerformed = true;
-    }
-    if (!redoPerformed) {
-      console.log('Nothing to redo');
-    }
-  }, [canRedoNodes, canRedoEdges, redoNodes, redoEdges]);
 
-  // Combine history nodes with current positions
-  const combinedNodes = historyNodes.map(node => ({
+    // Set flag to prevent React Flow from interfering
+    isUndoRedoInProgress.current = true;
+
+    const currentSnapshot = createSnapshot();
+    const nextSnapshot = history.future[0];
+    
+    console.log('🔜 Restoring snapshot:', { 
+      nodes: nextSnapshot.nodes.length, 
+      edges: nextSnapshot.edges.length 
+    });
+
+    // Restore the next state (EXCLUDING positions)
+    setNodes(nextSnapshot.nodes);
+    setEdges(nextSnapshot.edges);
+    // NOTE: nodePositions are NOT restored - they keep their current values
+
+    // Update history
+    setHistory(prev => ({
+      past: [...prev.past, currentSnapshot],
+      future: prev.future.slice(1)
+    }));
+    
+    // Clear flag after React processes the changes
+    setTimeout(() => {
+      isUndoRedoInProgress.current = false;
+      console.log('✅ Redo completed (positions preserved)');
+    }, 100);
+    
+  }, [history.future, createSnapshot]);
+
+  // Combine nodes with current positions
+  const combinedNodes = nodes.map(node => ({
     ...node,
     position: nodePositions[node.id] || node.position || { x: 0, y: 0 },
     data: {
@@ -303,6 +448,15 @@ function FlowCanvas() {
       onDelete: handleNodeDelete,
     },
   }));
+
+  // Debug log current state
+  useEffect(() => {
+    console.log('📊 State update:');
+    console.log('  - Nodes:', nodes.length);
+    console.log('  - Edges:', edges.length);
+    console.log('  - History past:', history.past.length);
+    console.log('  - History future:', history.future.length);
+  }, [nodes.length, edges.length, history.past.length, history.future.length]);
 
   // Provide undo/redo button handlers to Header component
   return (
@@ -317,18 +471,18 @@ function FlowCanvas() {
         autoSaveEnabled={autoSaveEnabled}
         onToggleAutoSave={handleAutoSaveToggle}
         onRun={handleRunPipeline}
-        disableRun={historyNodes.length === 0}
+        disableRun={nodes.length === 0}
         onUndo={handleUndo}
         onRedo={handleRedo}
-        disableUndo={!(canUndoNodes || canUndoEdges)}
-        disableRedo={!(canRedoNodes || canRedoEdges)}
+        disableUndo={history.past.length === 0}
+        disableRedo={history.future.length === 0}
       />
 
       <StackEdgeDrawer
         selectedNode={selectedNode}
         onNodeUpdate={updateNodeData}
         validationErrors={validationErrors}
-        nodes={historyNodes}
+        nodes={nodes}
         edges={edges}
         onFocusNode={focusNode}
       />

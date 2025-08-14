@@ -14,8 +14,7 @@ import {
 } from 'lucide-react';
 import { NodeData } from '../../types';
 
-const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id, selected }) => {
-  console.log('Rendering CustomNode:', { id, data, selected });
+const CustomNode: React.FC<NodeProps<NodeData>> = ({ data, id }) => {
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
