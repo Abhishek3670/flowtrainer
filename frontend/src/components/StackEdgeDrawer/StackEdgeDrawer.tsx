@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { X, FileCog, ClipboardCheck } from "lucide-react";
+import { X, FileCog, ClipboardCheck, Archive } from "lucide-react";
 import PropertiesPanel from "../PropertiesPanel/PropertiesPanel";
 import ValidationPanel from "../ValidationPanel/ValidationPanel";
+import CheckpointDrawer from "../CheckpointDrawer/CheckpointDrawer";
 import type { Node, Edge } from "reactflow";
 import { NodeData, ValidationError } from '../../types';
 
@@ -14,9 +15,12 @@ interface StackEdgeDrawerProps {
   onFocusNode: (id: string) => void;
   collapsed?: boolean;
   onToggleCollapse?: () => void;
+  // Checkpoint props
+  workflowId: string;
+  onRestoreCheckpoint: (checkpointId: string) => void;
 }
 
-type DrawerTab = "properties" | "validation" | null;
+type DrawerTab = "properties" | "validation" | "checkpoints" | null;
 
 export default function StackEdgeDrawer({
   selectedNode,
@@ -25,6 +29,8 @@ export default function StackEdgeDrawer({
   nodes,
   edges,
   onFocusNode,
+  workflowId,
+  onRestoreCheckpoint,
 }: StackEdgeDrawerProps) {
   const [activeTab, setActiveTab] = useState<DrawerTab>(null);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
@@ -36,7 +42,7 @@ export default function StackEdgeDrawer({
   useEffect(() => {
     if (selectedNode) {
       setActiveTab("properties");
-    } else {
+    } else if (activeTab === "properties") {
       setActiveTab(null);
     }
   }, [selectedNode]);
@@ -106,6 +112,12 @@ export default function StackEdgeDrawer({
       icon: ClipboardCheck,
       label: "Validation",
       hasError: validationErrors.length > 0,
+    },
+    {
+      id: "checkpoints",
+      icon: Archive,
+      label: "Checkpoints",
+      hasError: false,
     },
   ];
 
@@ -200,6 +212,9 @@ export default function StackEdgeDrawer({
                 {activeTab === "validation" && (
                   <ClipboardCheck className="w-5 h-5 text-blue-600" />
                 )}
+                {activeTab === "checkpoints" && (
+                  <Archive className="w-5 h-5 text-blue-600" />
+                )}
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   {activeTab}
                 </h2>
@@ -240,6 +255,13 @@ export default function StackEdgeDrawer({
                   onFocusNode={onFocusNode}
                 />
               )}
+
+              {activeTab === "checkpoints" && (
+                <CheckpointDrawer
+                  workflowId={workflowId}
+                  onRestore={onRestoreCheckpoint}
+                />
+              )}
             </div>
 
             {/* Panel Footer */}
@@ -249,6 +271,8 @@ export default function StackEdgeDrawer({
                 `Selected: ${selectedNode.data?.label || selectedNode.id}`}
               {activeTab === "validation" &&
                 `${validationErrors.length} validation ${validationErrors.length === 1 ? 'issue' : 'issues'}`}
+              {activeTab === "checkpoints" &&
+                "Manage workflow checkpoints"}
             </div>
           </>
         )}

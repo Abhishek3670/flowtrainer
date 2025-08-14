@@ -21,11 +21,13 @@ interface HeaderProps {
   onToggleAutoSave: () => void;
   onRun: () => void;
   disableRun?: boolean;
-  // 🆕 Undo/Redo props
+  // Undo/Redo props
   onUndo: () => void;
   onRedo: () => void;
   disableUndo: boolean;
   disableRedo: boolean;
+  // Checkpoint props
+  onOpenCheckpointModal: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -41,10 +43,11 @@ const Header: React.FC<HeaderProps> = ({
   onRedo,
   disableUndo,
   disableRedo,
+  onOpenCheckpointModal,
 }) => {
   const { theme, toggleTheme } = useTheme();
 
-  // 🆕 Keyboard shortcuts for undo/redo
+  // Keyboard shortcuts for undo/redo
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Ctrl+Z or Cmd+Z for undo
@@ -94,10 +97,10 @@ const Header: React.FC<HeaderProps> = ({
             onClick={onRun}
             disabled={disableRun}
             className={`flex items-center px-4 py-2 rounded transition-colors
-            ${disableRun 
-              ? 'bg-gray-400 cursor-not-allowed text-white'
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
-            }`}
+            ${disableRun
+                ? 'bg-gray-400 cursor-not-allowed text-white'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
             title={disableRun ? 'Add at least one node to run pipeline' : 'Run Pipeline'}
           >
             <Play className="w-4 h-4 mr-2" />
@@ -120,15 +123,14 @@ const Header: React.FC<HeaderProps> = ({
 
           <div className="w-px h-6 bg-gray-300 mx-2" />
 
-          {/* 🆕 Updated Undo/Redo buttons with functionality */}
+          {/* Undo/Redo buttons */}
           <button
             onClick={onUndo}
             disabled={disableUndo}
-            className={`btn btn-outline ${
-              disableUndo 
-                ? 'opacity-50 cursor-not-allowed' 
+            className={`btn btn-outline ${disableUndo
+                ? 'opacity-50 cursor-not-allowed'
                 : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
+              }`}
             title={disableUndo ? 'Nothing to undo' : 'Undo (Ctrl+Z)'}
             aria-label="Undo last action"
           >
@@ -138,11 +140,10 @@ const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onRedo}
             disabled={disableRedo}
-            className={`btn btn-outline ${
-              disableRedo 
-                ? 'opacity-50 cursor-not-allowed' 
+            className={`btn btn-outline ${disableRedo
+                ? 'opacity-50 cursor-not-allowed'
                 : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-            }`}
+              }`}
             title={disableRedo ? 'Nothing to redo' : 'Redo (Ctrl+Shift+Z)'}
             aria-label="Redo last undone action"
           >
@@ -165,6 +166,16 @@ const Header: React.FC<HeaderProps> = ({
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           <span className="text-sm text-gray-600 dark:text-gray-300">Ready</span>
         </div>
+        
+        {/* Create Checkpoint button */}
+        <button 
+          onClick={onOpenCheckpointModal} 
+          className="btn btn-primary" 
+          title="Create Checkpoint"
+        >
+          <Save className="w-4 h-4 mr-2" /> 
+          Checkpoint
+        </button>
 
         {/* Auto-save toggle */}
         <div className="flex items-center space-x-2 cursor-pointer select-none text-gray-700 dark:text-gray-300">
@@ -172,14 +183,12 @@ const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onToggleAutoSave}
             aria-pressed={autoSaveEnabled}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 ${
-              autoSaveEnabled ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'
-            }`}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 ${autoSaveEnabled ? 'bg-purple-600' : 'bg-gray-300 dark:bg-gray-600'
+              }`}
           >
             <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                autoSaveEnabled ? 'translate-x-6' : 'translate-x-1'
-              }`}
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${autoSaveEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`}
             />
           </button>
         </div>

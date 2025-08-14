@@ -11,6 +11,8 @@ import path from 'path';
 // Import routes (Note: using require for now since routes are in JS)
 const workflowRoutes = require('./routes/workflowRoutes');
 const fileRoutes = require('./routes/fileRoutes');
+import checkpointRoutes from './routes/checkpoints';
+
 const app = express();
 const server = createServer(app);
 const io = new SocketIOServer(server, { 
@@ -27,6 +29,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/workflows', workflowRoutes);
+app.use('/api/workflows/:id/checkpoints', checkpointRoutes);
 
 // File Routes
 app.use('/api/files', fileRoutes);
@@ -80,6 +83,7 @@ mongoose.connect(MONGO_URI)
       console.log(`🚀 FlowCraft backend listening on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`📁 Workflow API: http://localhost:${PORT}/api/workflows`);
+      console.log(`💾 Checkpoint API: http://localhost:${PORT}/api/workflows/:id/checkpoints`);
     });
   })
   .catch((err: Error) => {
