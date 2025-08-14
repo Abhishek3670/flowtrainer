@@ -7,8 +7,15 @@ export function useExecutionStatus(
 ) {
   useEffect(() => {
     if (!executionId) return;
-    const socket = io(process.env.REACT_APP_SOCKET_URL!, {
-      query: { executionId }
+    
+    const socketUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:4000';
+    const socket = io(socketUrl, {
+      query: { executionId },
+      transports: ['websocket', 'polling'] // Fallback to polling if websocket fails
+    });
+
+    socket.on('connect', () => {
+      console.log('Socket connected for execution:', executionId);
     });
 
     socket.on('node-status', ({ nodeId, status }) => {
@@ -16,7 +23,12 @@ export function useExecutionStatus(
     });
 
     socket.on('execution-complete', () => {
+      console.log('Execution complete');
       socket.disconnect();
+    });
+
+    socket.on('connect_error', (error) => {
+      console.warn('Socket connection error:', error.message);
     });
 
     return () => {

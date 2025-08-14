@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Save,
   Share,
@@ -21,6 +21,11 @@ interface HeaderProps {
   onToggleAutoSave: () => void;
   onRun: () => void;
   disableRun?: boolean;
+  // 🆕 Undo/Redo props
+  onUndo: () => void;
+  onRedo: () => void;
+  disableUndo: boolean;
+  disableRedo: boolean;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -32,8 +37,38 @@ const Header: React.FC<HeaderProps> = ({
   onToggleAutoSave,
   onRun,
   disableRun = false,
+  onUndo,
+  onRedo,
+  disableUndo,
+  disableRedo,
 }) => {
   const { theme, toggleTheme } = useTheme();
+
+  // 🆕 Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl+Z or Cmd+Z for undo
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        if (!disableUndo) {
+          onUndo();
+        }
+      }
+      // Ctrl+Shift+Z, Cmd+Shift+Z, or Ctrl+Y for redo
+      else if (
+        ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key.toLowerCase() === 'z') ||
+        (event.ctrlKey && event.key.toLowerCase() === 'y')
+      ) {
+        event.preventDefault();
+        if (!disableRedo) {
+          onRedo();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onUndo, onRedo, disableUndo, disableRedo]);
 
   return (
     <header className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center px-4">
@@ -85,10 +120,32 @@ const Header: React.FC<HeaderProps> = ({
 
           <div className="w-px h-6 bg-gray-300 mx-2" />
 
-          <button className="btn btn-outline">
+          {/* 🆕 Updated Undo/Redo buttons with functionality */}
+          <button
+            onClick={onUndo}
+            disabled={disableUndo}
+            className={`btn btn-outline ${
+              disableUndo 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+            title={disableUndo ? 'Nothing to undo' : 'Undo (Ctrl+Z)'}
+            aria-label="Undo last action"
+          >
             <Undo className="w-4 h-4" />
           </button>
-          <button className="btn btn-outline">
+
+          <button
+            onClick={onRedo}
+            disabled={disableRedo}
+            className={`btn btn-outline ${
+              disableRedo 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+            }`}
+            title={disableRedo ? 'Nothing to redo' : 'Redo (Ctrl+Shift+Z)'}
+            aria-label="Redo last undone action"
+          >
             <Redo className="w-4 h-4" />
           </button>
         </div>

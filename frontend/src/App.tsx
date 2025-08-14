@@ -1,56 +1,82 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import debounce from 'lodash/debounce';
-import toast, { Toaster } from 'react-hot-toast';
-import { useExecutionStatus } from '../hooks/useExecutionStatus';
+import { Toaster } from 'react-hot-toast';
 import ReactFlow, {
   ReactFlowProvider,
-  addEdge,
   Connection,
   Edge,
   Node,
-  useNodesState,
-  useEdgesState,
-  OnNodesChange,
-  OnEdgesChange,
   MiniMap,
   Controls,
   Background,
   useReactFlow,
+  NodeChange,
+  EdgeChange,
+  applyNodeChanges,
+  applyEdgeChanges,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+
+import { useHistory } from './hooks';
 
 import Header from './components/Header/Header';
 import FloatingComponentsPanel from './components/FloatingComponentsPanel/FloatingComponentsPanel';
 import CustomNode from './components/CustomNode/CustomNode';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { workflowAPI } from './services/workflowApi';
 import StackEdgeDrawer from './components/StackEdgeDrawer/StackEdgeDrawer';
+import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
 import { NodeData, WorkflowData, ValidationError } from './types';
 
 const nodeTypes = { customNode: CustomNode };
+
 const initialNodes: Node<NodeData>[] = [];
 const initialEdges: Edge[] = [];
 
 function FlowCanvas() {
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-  const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
-  const [currentWorkflow, setCurrentWorkflow] = useState<WorkflowData | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [hasChanges, setHasChanges] = useState(false);
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
-  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
-  const [currentExecution, setCurrentExecution] = useState<string | null>(null);
+  // Use history hook for structural changes only (add/remove nodes, not positions)
+  const {
+    state: historyNodes,
+    set: setHistoryNodes,
+    undo: undoNodes,
+    redo: redoNodes,
+    canUndo: canUndoNodes,
+    canRedo: canRedoNodes,
+  } = useHistory<Node<NodeData>[]>(initialNodes);
+
+  const {
+    state: edges,
+    set: setEdges,
+    undo: undoEdges,
+    redo: redoEdges,
+    canUndo: canUndoEdges,
+    canRedo: canRedoEdges,
+  } = useHistory<Edge[]>(initialEdges);
+
+  // Separate state for node positions (not tracked in history)
+  const [nodePositions, setNodePositions] = useState<Record<string, { x: number; y: number }>>({});
 
   const reactFlowInstance = useReactFlow();
 
-  // Restore auto-save preference
+  // State
+  const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
+  const [currentWorkflow] = useState<WorkflowData | null>(null);
+  const [isSaving] = useState(false);
+  const [lastSaved] = useState<Date | null>(null);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
+  const [validationErrors] = useState<ValidationError[]>([]);
+
+  // Clean up positions for nodes that no longer exist
   useEffect(() => {
-    const saved = localStorage.getItem('autosave_enabled');
-    if (saved !== null) setAutoSaveEnabled(saved === 'true');
-  }, []);
+    const currentNodeIds = new Set(historyNodes.map(n => n.id));
+    setNodePositions(prev => {
+      const cleaned: Record<string, { x: number; y: number }> = {};
+      Object.keys(prev).forEach(nodeId => {
+        if (currentNodeIds.has(nodeId)) {
+          cleaned[nodeId] = prev[nodeId];
+        }
+      });
+      return cleaned;
+    });
+  }, [historyNodes]);
 
   // Persist auto-save toggle
   useEffect(() => {
@@ -61,70 +87,120 @@ function FlowCanvas() {
     setAutoSaveEnabled(prev => !prev);
   }, []);
 
-  // Update node data helper
-  const updateNodeData = useCallback((nodeId: string, newData: Partial<NodeData>) => {
-    setNodes(nds =>
-      nds.map(n => (n.id === nodeId ? { ...n, data: { ...n.data!, ...newData } } : n))
-    );
-    setHasChanges(true);
-  }, [setNodes]);
+  // Placeholder save function
+  const debouncedSave = {
+    flush: () => {
+      console.log('Save functionality not implemented yet');
+    }
+  };
 
-  const handleNodesChange: OnNodesChange = useCallback(
-    changes => {
-      onNodesChange(changes);
-      setHasChanges(true);
+  // Placeholder run pipeline function
+  const handleRunPipeline = useCallback(() => {
+    console.log('Run pipeline functionality not implemented yet');
+  }, []);
+
+  // Update node data helper - this should be tracked in history
+  const updateNodeData = useCallback(
+    (nodeId: string, newData: Partial<NodeData>) => {
+      setHistoryNodes(draft => {
+        const node = draft.find(n => n.id === nodeId);
+        if (node) node.data = { ...node.data!, ...newData };
+      });
     },
-    [onNodesChange]
+    [setHistoryNodes]
   );
 
-  const handleEdgesChange: OnEdgesChange = useCallback(
-    changes => {
-      onEdgesChange(changes);
-      setHasChanges(true);
+  // Handle node changes - separate position changes from structural changes
+  const handleNodesChange = useCallback(
+    (changes: NodeChange[]) => {
+      // Separate position changes from other changes
+      const positionChanges = changes.filter(change => change.type === 'position');
+      const otherChanges = changes.filter(change => change.type !== 'position');
+      
+      // Handle position changes (not tracked in history)
+      if (positionChanges.length > 0) {
+        setNodePositions(prev => {
+          const newPositions = { ...prev };
+          positionChanges.forEach(change => {
+            if (change.type === 'position' && change.position) {
+              newPositions[change.id] = change.position;
+            }
+          });
+          return newPositions;
+        });
+      }
+      
+      // Handle structural changes (tracked in history)
+      if (otherChanges.length > 0) {
+        setHistoryNodes(draft => applyNodeChanges(otherChanges, draft));
+      }
     },
-    [onEdgesChange]
+    [setHistoryNodes]
   );
 
-  const onConnect = useCallback(
-    (params: Edge | Connection) => {
-      setEdges(eds => addEdge(params, eds));
-      setHasChanges(true);
+  // Handle edge changes using React Flow's built-in functions
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      setEdges(draft => applyEdgeChanges(changes, draft));
     },
     [setEdges]
   );
 
-  const handleNodeDelete = useCallback(
-    (nodeId: string) => {
-      setNodes(nds => nds.filter(n => n.id !== nodeId));
-      setEdges(eds => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
-      setHasChanges(true);
-      if (selectedNode?.id === nodeId) setSelectedNode(null);
+  // Creating a new connection (edge)
+  const onConnect = useCallback(
+    (params: Edge | Connection) => {
+      const newEdge: Edge = {
+        ...params,
+        id: `edge-${params.source}-${params.target}-${Date.now()}`,
+      } as Edge;
+      
+      setEdges(draft => {
+        draft.push(newEdge);
+      });
     },
-    [setNodes, setEdges, selectedNode]
+    [setEdges]
   );
 
+  // Delete node and its edges
+  const handleNodeDelete = useCallback(
+    (nodeId: string) => {
+      setHistoryNodes(draft => draft.filter(n => n.id !== nodeId));
+      setEdges(draft => draft.filter(e => e.source !== nodeId && e.target !== nodeId));
+      if (selectedNode?.id === nodeId) setSelectedNode(null);
+    },
+    [setHistoryNodes, setEdges, selectedNode]
+  );
+
+  // Handle dropping new nodes on canvas - this should be tracked in history
   const onDrop = useCallback(
     (event: React.DragEvent) => {
       event.preventDefault();
-      
+
       const type = event.dataTransfer.getData('application/reactflow');
-      if (!type) {
-        console.warn('No node type found in drag data');
+      if (!type || !reactFlowInstance) {
+        console.warn('No node type found in drag data or reactFlowInstance not available');
         return;
       }
 
-      // Use ReactFlow's screenToFlowPosition for proper coordinate transformation
       const position = reactFlowInstance.screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
       });
 
-      console.log('Dropping node:', { type, position });
+      // Ensure position is valid
+      if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
+        console.error('Invalid position calculated for new node');
+        return;
+      }
 
+      const nodeId = `${type}-${Date.now()}`;
       const newNode: Node<NodeData> = {
-        id: `${type}-${Date.now()}`,
+        id: nodeId,
         type: 'customNode',
-        position,
+        position: {
+          x: position.x,
+          y: position.y,
+        },
         data: {
           nodeType: type,
           label: type.replace('-', ' '),
@@ -134,26 +210,27 @@ function FlowCanvas() {
         },
       };
 
-      console.log('Created new node:', newNode);
-      setNodes(nds => {
-        const updated = nds.concat(newNode);
-        console.log('Updated nodes array:', updated);
-        return updated;
+      // Add node with history tracking
+      setHistoryNodes(draft => {
+        draft.push(newNode);
       });
-      setHasChanges(true);
-
-      // Auto-select the newly created node to open properties panel
+      
+      // Also track its initial position
+      setNodePositions(prev => ({
+        ...prev,
+        [nodeId]: position
+      }));
+      
       setSelectedNode(newNode);
 
-      // Small delay to ensure the node is added before trying to fit view
+      // Fit view if this is the first node
       setTimeout(() => {
-        if (nodes.length === 0) {
-          // If this is the first node, fit the view
+        if (historyNodes.length === 0) {
           reactFlowInstance.fitView({ padding: 0.1 });
         }
       }, 10);
     },
-    [reactFlowInstance, setNodes, handleNodeDelete, nodes.length]
+    [reactFlowInstance, setHistoryNodes, handleNodeDelete, historyNodes.length]
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -161,222 +238,73 @@ function FlowCanvas() {
     event.dataTransfer.dropEffect = 'move';
   }, []);
 
-  const handleNodeDrag = (event: React.DragEvent, nodeType: string) => {
-    event.dataTransfer.setData('application/reactflow', nodeType);
-    event.dataTransfer.effectAllowed = 'move';
-  };
+  const handleNodeDrag = useCallback(
+    (event: React.DragEvent, nodeType: string) => {
+      console.log('Node drag started:', nodeType);
+      event.dataTransfer.setData('application/reactflow', nodeType);
+      event.dataTransfer.effectAllowed = 'move';
+    },
+    []
+  );
 
-  // Pipeline execution handler
-  const executePipeline = useCallback(async () => {
-    if (!currentWorkflow?._id) return;
-    setIsSaving(true);
-    try {
-      const exec = await workflowAPI.executeWorkflow(currentWorkflow._id);
-      toast.success(`Pipeline queued (ID: ${exec.data?.executionId || 'unknown'})`, { icon: '🚀' });
-      setCurrentExecution(exec.data?.executionId || null);
-    } catch (err) {
-      console.error("Pipeline execution failed:", err);
-      toast.error('Failed to start execution', { icon: '❌' });
-    } finally {
-      setIsSaving(false);
-    }
-  }, [currentWorkflow]);
-
-  // Validation logic
-  const validateWorkflow = useCallback(() => {
-    if (nodes.length === 0) {
-      return {
-        isValid: false,
-        errors: [{
-          nodeId: "workflow",
-          message: "Workflow is empty. Add nodes before running the pipeline."
-        }] as ValidationError[],
-      };
-    }
-
-    const invalidNodes = nodes.filter(n => {
-      if (!n.data) return false;
-      const d = n.data;
-      const isVideoNode = d.nodeType === 'video-stream';
-      const hasFile = typeof d.selectedFile === 'string'
-        ? (d.selectedFile as string).trim().length > 0
-        : Boolean(d.selectedFile && (d.selectedFile.filename || d.selectedFile.originalName));
-      const hasRtspUrl = typeof d.rtspUrl === 'string' ? d.rtspUrl.trim().length > 0 : false;
-      return isVideoNode && !(hasFile || hasRtspUrl);
-    });
-
-    const errors: ValidationError[] = invalidNodes.map(n => ({
-      nodeId: n.id,
-      message: 'Video Stream node requires a file or RTSP URL',
-    }));
-
-    return { isValid: errors.length === 0, errors };
-  }, [nodes]);
-
-  // Run with validation
-  const handleRunPipeline = useCallback(() => {
-    const { isValid, errors } = validateWorkflow();
-    setValidationErrors(errors);
-
-    setNodes(nds =>
-      nds.map(n => ({
-        ...n,
-        data: { ...(n.data ?? {}), hasError: errors.some(err => err.nodeId === n.id) },
-      }))
-    );
-
-    if (!isValid) {
-      console.warn('Pipeline blocked due to validation errors');
-      return;
-    }
-
-    // Clear errors and icons
-    setNodes(nds =>
-      nds.map(n => ({
-        ...n,
-        data: { ...(n.data ?? {}), hasError: false },
-      }))
-    );
-
-    executePipeline();
-  }, [validateWorkflow, setNodes, executePipeline]);
-
-  // Focus node utility
   const focusNode = useCallback(
     (nodeId: string) => {
-      const node = nodes.find(n => n.id === nodeId);
+      const combinedNodes = historyNodes.map(node => ({
+        ...node,
+        position: nodePositions[node.id] || node.position || { x: 0, y: 0 }
+      }));
+      const node = combinedNodes.find(n => n.id === nodeId);
       if (node && reactFlowInstance) {
-        reactFlowInstance.setCenter(node.position.x, node.position.y, { zoom: 1.5 });
-        setSelectedNode(node); // Also select the node to open properties
+        reactFlowInstance.fitView({ nodes: [node], padding: 0.2, duration: 800 });
       }
     },
-    [nodes, reactFlowInstance]
+    [historyNodes, nodePositions, reactFlowInstance]
   );
 
-  // Clear highlights on node change
-  useEffect(() => {
-    if (validationErrors.length > 0) {
-      setNodes(nds =>
-        nds.map(n => ({
-          ...n,
-          data: { ...n.data!, hasError: false },
-        }))
-      );
-      setValidationErrors([]);
+  // Combined undo/redo handlers
+  const handleUndo = useCallback(() => {
+    // Undo both nodes and edges, but prioritize the one with more history
+    let undoPerformed = false;
+    if (canUndoNodes) {
+      undoNodes();
+      undoPerformed = true;
     }
-  }, [nodes, validationErrors, setNodes]);
+    if (canUndoEdges) {
+      undoEdges();
+      undoPerformed = true;
+    }
+    if (!undoPerformed) {
+      console.log('Nothing to undo');
+    }
+  }, [canUndoNodes, canUndoEdges, undoNodes, undoEdges]);
 
-  // Update node status from execution events
-  const updateNodeStatus = useCallback(
-    (nodeId: string, status: string) => {
-      setNodes(nds =>
-        nds.map(n =>
-          n.id === nodeId ? { ...n, data: { ...n.data!, status: status as any } } : n
-        )
-      );
+  const handleRedo = useCallback(() => {
+    // Redo both nodes and edges, but prioritize the one with more future
+    let redoPerformed = false;
+    if (canRedoNodes) {
+      redoNodes();
+      redoPerformed = true;
+    }
+    if (canRedoEdges) {
+      redoEdges();
+      redoPerformed = true;
+    }
+    if (!redoPerformed) {
+      console.log('Nothing to redo');
+    }
+  }, [canRedoNodes, canRedoEdges, redoNodes, redoEdges]);
+
+  // Combine history nodes with current positions
+  const combinedNodes = historyNodes.map(node => ({
+    ...node,
+    position: nodePositions[node.id] || node.position || { x: 0, y: 0 },
+    data: {
+      ...node.data,
+      onDelete: handleNodeDelete,
     },
-    [setNodes]
-  );
+  }));
 
-  // Hook to listen execution status updates via WebSocket
-  useExecutionStatus(currentExecution, updateNodeStatus);
-
-  // Load workflow effect
-  useEffect(() => {
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const resp = await workflowAPI.getWorkflows({ limit: 1, status: 'draft' });
-        if (resp?.data?.workflows?.length) {
-          const wf = resp.data.workflows[0];
-          console.log('Loading existing workflow:', wf);
-          setNodes(wf.nodes || []);
-          setEdges(wf.edges || []);
-          setCurrentWorkflow(wf);
-          setLastSaved(new Date(wf.lastModified || wf.updatedAt || Date.now()));
-        } else {
-          console.log('No existing workflow found, starting fresh');
-        }
-      } catch (err) {
-        console.error("Failed to fetch workflows:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    load();
-  }, [setNodes, setEdges]);
-
-  // Debounced validation error highlighting
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const { errors } = validateWorkflow();
-
-      setNodes(nds =>
-        nds.map(n => ({
-          ...n,
-          data: { ...n.data!, hasError: errors.some(err => err.nodeId === n.id) },
-        }))
-      );
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [nodes, validateWorkflow, setNodes]);
-
-  // Auto-save with debounce
-  const debouncedSave = useCallback(
-    debounce(async (ns: Node<NodeData>[], es: Edge[]) => {
-      if (!ns.length) return;
-      setIsSaving(true);
-      try {
-        const partial: Partial<WorkflowData> = {
-          name: currentWorkflow?.name || 'Untitled',
-          description: currentWorkflow?.description || '',
-          nodes: ns,
-          edges: es,
-          viewport: { x: 0, y: 0, zoom: 1 },
-          category: 'computer-vision',
-        };
-        const resp = currentWorkflow?._id
-          ? await workflowAPI.updateWorkflow(currentWorkflow._id, partial)
-          : await workflowAPI.createWorkflow(partial as Omit<WorkflowData, '_id'>);
-
-        setCurrentWorkflow(resp?.data ?? null);
-        setLastSaved(new Date());
-      } catch {
-        toast.error('Auto-save failed', { icon: '💾' });
-      } finally {
-        setIsSaving(false);
-      }
-    }, 1000),
-    [currentWorkflow]
-  );
-
-  useEffect(() => {
-    if (autoSaveEnabled && hasChanges && !isLoading) {
-      debouncedSave(nodes, edges);
-      setHasChanges(false);
-    }
-  }, [autoSaveEnabled, hasChanges, isLoading, debouncedSave, nodes, edges]);
-
-  // Handle clicking outside to deselect node
-  const handlePaneClick = useCallback(() => {
-    setSelectedNode(null);
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">Loading FlowCraft</h2>
-        </div>
-      </div>
-    );
-  }
-
-  const nodesWithDelete = nodes.map(n => ({ ...n, data: { ...n.data!, onDelete: handleNodeDelete } }));
-
-  console.log('Rendering nodes:', nodesWithDelete);
-
+  // Provide undo/redo button handlers to Header component
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 relative">
       <Toaster position="top-right" />
@@ -389,14 +317,18 @@ function FlowCanvas() {
         autoSaveEnabled={autoSaveEnabled}
         onToggleAutoSave={handleAutoSaveToggle}
         onRun={handleRunPipeline}
-        disableRun={nodes.length === 0}
+        disableRun={historyNodes.length === 0}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        disableUndo={!(canUndoNodes || canUndoEdges)}
+        disableRedo={!(canRedoNodes || canRedoEdges)}
       />
 
       <StackEdgeDrawer
         selectedNode={selectedNode}
         onNodeUpdate={updateNodeData}
         validationErrors={validationErrors}
-        nodes={nodes}
+        nodes={historyNodes}
         edges={edges}
         onFocusNode={focusNode}
       />
@@ -405,7 +337,7 @@ function FlowCanvas() {
         <FloatingComponentsPanel onNodeDrag={handleNodeDrag} />
         <div className="flex-1 relative">
           <ReactFlow
-            nodes={nodesWithDelete}
+            nodes={combinedNodes}
             edges={edges}
             nodeTypes={nodeTypes}
             onNodesChange={handleNodesChange}
@@ -415,7 +347,7 @@ function FlowCanvas() {
               setSelectedNode(node);
               console.log('Node clicked, opening properties:', node);
             }}
-            onPaneClick={handlePaneClick}
+            onPaneClick={() => setSelectedNode(null)}
             onDrop={onDrop}
             onDragOver={onDragOver}
             fitView
@@ -439,10 +371,12 @@ function FlowCanvas() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <ReactFlowProvider>
-        <FlowCanvas />
-      </ReactFlowProvider>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider>
+        <ReactFlowProvider>
+          <FlowCanvas />
+        </ReactFlowProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
