@@ -1,0 +1,733 @@
+{
+  "execution_id": "ts-exec-001",
+  "status": "completed",
+  "message": "Pipeline execution completed successfully",
+  "results": {
+    "dataset_1": {
+      "dataset": {
+        "type": "DataFrame",
+        "shape": [
+          10,
+          4
+        ],
+        "columns": [
+          "timestamp",
+          "sensor1",
+          "sensor2",
+          "temperature"
+        ],
+        "sample": {
+          "timestamp": {
+            "0": "2023-01-01",
+            "1": "2023-01-02",
+            "2": "2023-01-03",
+            "3": "2023-01-04",
+            "4": "2023-01-05"
+          },
+          "sensor1": {
+            "0": 12.5,
+            "1": 13.1,
+            "2": 11.9,
+            "3": 14.2,
+            "4": 13.8
+          },
+          "sensor2": {
+            "0": 8.3,
+            "1": 8.7,
+            "2": 7.8,
+            "3": 9.1,
+            "4": 8.9
+          },
+          "temperature": {
+            "0": 20.1,
+            "1": 21.2,
+            "2": 19.5,
+            "3": 22.3,
+            "4": 21.8
+          }
+        }
+      },
+      "features": {
+        "type": "DataFrame",
+        "shape": [
+          10,
+          2
+        ],
+        "columns": [
+          "sensor1",
+          "sensor2"
+        ],
+        "sample": {
+          "sensor1": {
+            "0": 12.5,
+            "1": 13.1,
+            "2": 11.9,
+            "3": 14.2,
+            "4": 13.8
+          },
+          "sensor2": {
+            "0": 8.3,
+            "1": 8.7,
+            "2": 7.8,
+            "3": 9.1,
+            "4": 8.9
+          }
+        }
+      },
+      "target": {
+        "type": "Series",
+        "shape": [
+          10
+        ],
+        "name": "temperature",
+        "sample": [
+          20.1,
+          21.2,
+          19.5,
+          22.3,
+          21.8
+        ]
+      },
+      "metadata": {
+        "shape": [
+          10,
+          4
+        ],
+        "columns": [
+          "timestamp",
+          "sensor1",
+          "sensor2",
+          "temperature"
+        ],
+        "dtypes": {
+          "timestamp": "object",
+          "sensor1": "float64",
+          "sensor2": "float64",
+          "temperature": "float64"
+        },
+        "missing_values": {
+          "timestamp": 0,
+          "sensor1": 0,
+          "sensor2": 0,
+          "temperature": 0
+        },
+        "memory_usage": 1042,
+        "feature_count": 2,
+        "has_target": true,
+        "numeric_stats": {
+          "sensor1": {
+            "count": 10.0,
+            "mean": 13.36,
+            "std": 1.0606077922063786,
+            "min": 11.9,
+            "25%": 12.575,
+            "50%": 13.149999999999999,
+            "75%": 14.1,
+            "max": 15.1
+          },
+          "sensor2": {
+            "count": 10.0,
+            "mean": 8.629999999999999,
+            "std": 0.5437523946307424,
+            "min": 7.8,
+            "25%": 8.225,
+            "50%": 8.6,
+            "75%": 9.05,
+            "max": 9.5
+          },
+          "temperature": {
+            "count": 10.0,
+            "mean": 21.299999999999997,
+            "std": 1.2909944487358052,
+            "min": 19.5,
+            "25%": 20.25,
+            "50%": 21.15,
+            "75%": 22.175,
+            "max": 23.4
+          }
+        },
+        "categorical_info": {
+          "timestamp": {
+            "unique_count": 10,
+            "top_values": {
+              "2023-01-01": 1,
+              "2023-01-02": 1,
+              "2023-01-03": 1,
+              "2023-01-04": 1,
+              "2023-01-05": 1
+            }
+          }
+        },
+        "target_info": {
+          "name": "temperature",
+          "type": "float64",
+          "unique_count": 10,
+          "statistics": {
+            "count": 10.0,
+            "mean": 21.299999999999997,
+            "std": 1.2909944487358052,
+            "min": 19.5,
+            "25%": 20.25,
+            "50%": 21.15,
+            "75%": 22.175,
+            "max": 23.4
+          }
+        }
+      },
+      "shape": [
+        10,
+        4
+      ],
+      "columns": [
+        "timestamp",
+        "sensor1",
+        "sensor2",
+        "temperature"
+      ]
+    },
+    "dataset": {
+      "type": "DataFrame",
+      "shape": [
+        10,
+        4
+      ],
+      "columns": [
+        "timestamp",
+        "sensor1",
+        "sensor2",
+        "temperature"
+      ],
+      "sample": {
+        "timestamp": {
+          "0": "2023-01-01",
+          "1": "2023-01-02",
+          "2": "2023-01-03",
+          "3": "2023-01-04",
+          "4": "2023-01-05"
+        },
+        "sensor1": {
+          "0": 12.5,
+          "1": 13.1,
+          "2": 11.9,
+          "3": 14.2,
+          "4": 13.8
+        },
+        "sensor2": {
+          "0": 8.3,
+          "1": 8.7,
+          "2": 7.8,
+          "3": 9.1,
+          "4": 8.9
+        },
+        "temperature": {
+          "0": 20.1,
+          "1": 21.2,
+          "2": 19.5,
+          "3": 22.3,
+          "4": 21.8
+        }
+      }
+    },
+    "features": {
+      "type": "DataFrame",
+      "shape": [
+        10,
+        2
+      ],
+      "columns": [
+        "sensor1",
+        "sensor2"
+      ],
+      "sample": {
+        "sensor1": {
+          "0": 12.5,
+          "1": 13.1,
+          "2": 11.9,
+          "3": 14.2,
+          "4": 13.8
+        },
+        "sensor2": {
+          "0": 8.3,
+          "1": 8.7,
+          "2": 7.8,
+          "3": 9.1,
+          "4": 8.9
+        }
+      }
+    },
+    "target": {
+      "type": "Series",
+      "shape": [
+        10
+      ],
+      "name": "temperature",
+      "sample": [
+        20.1,
+        21.2,
+        19.5,
+        22.3,
+        21.8
+      ]
+    },
+    "metadata": {
+      "shape": [
+        10,
+        4
+      ],
+      "columns": [
+        "timestamp",
+        "sensor1",
+        "sensor2",
+        "temperature"
+      ],
+      "dtypes": {
+        "timestamp": "object",
+        "sensor1": "float64",
+        "sensor2": "float64",
+        "temperature": "float64"
+      },
+      "missing_values": {
+        "timestamp": 0,
+        "sensor1": 0,
+        "sensor2": 0,
+        "temperature": 0
+      },
+      "memory_usage": 1042,
+      "feature_count": 2,
+      "has_target": true,
+      "numeric_stats": {
+        "sensor1": {
+          "count": 10.0,
+          "mean": 13.36,
+          "std": 1.0606077922063786,
+          "min": 11.9,
+          "25%": 12.575,
+          "50%": 13.149999999999999,
+          "75%": 14.1,
+          "max": 15.1
+        },
+        "sensor2": {
+          "count": 10.0,
+          "mean": 8.629999999999999,
+          "std": 0.5437523946307424,
+          "min": 7.8,
+          "25%": 8.225,
+          "50%": 8.6,
+          "75%": 9.05,
+          "max": 9.5
+        },
+        "temperature": {
+          "count": 10.0,
+          "mean": 21.299999999999997,
+          "std": 1.2909944487358052,
+          "min": 19.5,
+          "25%": 20.25,
+          "50%": 21.15,
+          "75%": 22.175,
+          "max": 23.4
+        }
+      },
+      "categorical_info": {
+        "timestamp": {
+          "unique_count": 10,
+          "top_values": {
+            "2023-01-01": 1,
+            "2023-01-02": 1,
+            "2023-01-03": 1,
+            "2023-01-04": 1,
+            "2023-01-05": 1
+          }
+        }
+      },
+      "target_info": {
+        "name": "temperature",
+        "type": "float64",
+        "unique_count": 10,
+        "statistics": {
+          "count": 10.0,
+          "mean": 21.299999999999997,
+          "std": 1.2909944487358052,
+          "min": 19.5,
+          "25%": 20.25,
+          "50%": 21.15,
+          "75%": 22.175,
+          "max": 23.4
+        }
+      }
+    },
+    "shape": [
+      10,
+      4
+    ],
+    "columns": [
+      "timestamp",
+      "sensor1",
+      "sensor2",
+      "temperature"
+    ],
+    "split_1": {
+      "X_train": {
+        "type": "ndarray",
+        "shape": [
+          5,
+          2
+        ],
+        "dtype": "float64",
+        "sample": [
+          12.5,
+          8.3,
+          13.1,
+          8.7,
+          11.9,
+          7.8,
+          14.2,
+          9.1,
+          13.8,
+          8.9
+        ]
+      },
+      "X_val": {
+        "type": "ndarray",
+        "shape": [
+          3,
+          2
+        ],
+        "dtype": "float64",
+        "sample": [
+          12.3,
+          8.2,
+          15.1,
+          9.5,
+          14.7,
+          9.2
+        ]
+      },
+      "X_test": {
+        "type": "ndarray",
+        "shape": [
+          2,
+          2
+        ],
+        "dtype": "float64",
+        "sample": [
+          13.2,
+          8.5,
+          12.8,
+          8.1
+        ]
+      },
+      "y_train": {
+        "type": "ndarray",
+        "shape": [
+          5
+        ],
+        "dtype": "float64",
+        "sample": [
+          20.1,
+          21.2,
+          19.5,
+          22.3,
+          21.8
+        ]
+      },
+      "y_val": {
+        "type": "ndarray",
+        "shape": [
+          3
+        ],
+        "dtype": "float64",
+        "sample": [
+          20.0,
+          23.4,
+          22.9
+        ]
+      },
+      "y_test": {
+        "type": "ndarray",
+        "shape": [
+          2
+        ],
+        "dtype": "float64",
+        "sample": [
+          21.1,
+          20.7
+        ]
+      },
+      "split_metadata": {
+        "strategy": "time_series",
+        "train_size": 0.5,
+        "val_size": 0.3,
+        "test_size": 0.2,
+        "random_state": 42,
+        "shuffle": true,
+        "actual_sizes": {
+          "train": 0.5,
+          "val": 0.3,
+          "test": 0.2
+        },
+        "sample_counts": {
+          "train": 5,
+          "val": 3,
+          "test": 2,
+          "total": 10
+        },
+        "target_distribution": {
+          "train": {
+            "20.1": 1,
+            "21.2": 1,
+            "19.5": 1,
+            "22.3": 1,
+            "21.8": 1
+          },
+          "val": {
+            "20.0": 1,
+            "23.4": 1,
+            "22.9": 1
+          },
+          "test": {
+            "21.1": 1,
+            "20.7": 1
+          }
+        }
+      }
+    },
+    "X_train": {
+      "type": "ndarray",
+      "shape": [
+        5,
+        2
+      ],
+      "dtype": "float64",
+      "sample": [
+        12.5,
+        8.3,
+        13.1,
+        8.7,
+        11.9,
+        7.8,
+        14.2,
+        9.1,
+        13.8,
+        8.9
+      ]
+    },
+    "X_val": {
+      "type": "ndarray",
+      "shape": [
+        3,
+        2
+      ],
+      "dtype": "float64",
+      "sample": [
+        12.3,
+        8.2,
+        15.1,
+        9.5,
+        14.7,
+        9.2
+      ]
+    },
+    "X_test": {
+      "type": "ndarray",
+      "shape": [
+        2,
+        2
+      ],
+      "dtype": "float64",
+      "sample": [
+        13.2,
+        8.5,
+        12.8,
+        8.1
+      ]
+    },
+    "y_train": {
+      "type": "ndarray",
+      "shape": [
+        5
+      ],
+      "dtype": "float64",
+      "sample": [
+        20.1,
+        21.2,
+        19.5,
+        22.3,
+        21.8
+      ]
+    },
+    "y_val": {
+      "type": "ndarray",
+      "shape": [
+        3
+      ],
+      "dtype": "float64",
+      "sample": [
+        20.0,
+        23.4,
+        22.9
+      ]
+    },
+    "y_test": {
+      "type": "ndarray",
+      "shape": [
+        2
+      ],
+      "dtype": "float64",
+      "sample": [
+        21.1,
+        20.7
+      ]
+    },
+    "split_metadata": {
+      "strategy": "time_series",
+      "train_size": 0.5,
+      "val_size": 0.3,
+      "test_size": 0.2,
+      "random_state": 42,
+      "shuffle": true,
+      "actual_sizes": {
+        "train": 0.5,
+        "val": 0.3,
+        "test": 0.2
+      },
+      "sample_counts": {
+        "train": 5,
+        "val": 3,
+        "test": 2,
+        "total": 10
+      },
+      "target_distribution": {
+        "train": {
+          "20.1": 1,
+          "21.2": 1,
+          "19.5": 1,
+          "22.3": 1,
+          "21.8": 1
+        },
+        "val": {
+          "20.0": 1,
+          "23.4": 1,
+          "22.9": 1
+        },
+        "test": {
+          "21.1": 1,
+          "20.7": 1
+        }
+      }
+    },
+    "trainer_1": {
+      "trained_model": {
+        "type": "LinearRegression",
+        "module": "sklearn.linear_model._base",
+        "params": {
+          "copy_X": true,
+          "fit_intercept": true,
+          "n_jobs": null,
+          "positive": false,
+          "tol": 1e-06
+        }
+      },
+      "model_path": "/app/models/model_20250815_131143.pkl",
+      "training_metrics": {
+        "train": {
+          "mse": 0.01104676056338029,
+          "rmse": 0.10510357065000356,
+          "r2_score": 0.9898242809843586
+        },
+        "validation": {
+          "mse": 0.0032524406533095025,
+          "rmse": 0.0570301731832326,
+          "r2_score": 0.9985523261187049
+        }
+      },
+      "model_metadata": {
+        "algorithm": "linear_regression",
+        "task_type": "regression",
+        "model_type": "LinearRegression",
+        "training_config": {
+          "algorithm": "linear_regression",
+          "task_type": "regression"
+        },
+        "training_timestamp": "2025-08-15T13:11:43.397775",
+        "hyperparameters": {
+          "copy_X": true,
+          "fit_intercept": true,
+          "n_jobs": null,
+          "positive": false,
+          "tol": 1e-06
+        }
+      },
+      "predictions": {
+        "validation": {
+          "type": "ndarray",
+          "shape": [
+            3
+          ],
+          "dtype": "float64",
+          "sample": [
+            20.036845070422533,
+            23.362957746478873,
+            22.816169014084505
+          ]
+        }
+      },
+      "training_history": {}
+    },
+    "trained_model": {
+      "type": "LinearRegression",
+      "module": "sklearn.linear_model._base",
+      "params": {
+        "copy_X": true,
+        "fit_intercept": true,
+        "n_jobs": null,
+        "positive": false,
+        "tol": 1e-06
+      }
+    },
+    "model_path": "/app/models/model_20250815_131143.pkl",
+    "training_metrics": {
+      "train": {
+        "mse": 0.01104676056338029,
+        "rmse": 0.10510357065000356,
+        "r2_score": 0.9898242809843586
+      },
+      "validation": {
+        "mse": 0.0032524406533095025,
+        "rmse": 0.0570301731832326,
+        "r2_score": 0.9985523261187049
+      }
+    },
+    "model_metadata": {
+      "algorithm": "linear_regression",
+      "task_type": "regression",
+      "model_type": "LinearRegression",
+      "training_config": {
+        "algorithm": "linear_regression",
+        "task_type": "regression"
+      },
+      "training_timestamp": "2025-08-15T13:11:43.397775",
+      "hyperparameters": {
+        "copy_X": true,
+        "fit_intercept": true,
+        "n_jobs": null,
+        "positive": false,
+        "tol": 1e-06
+      }
+    },
+    "predictions": {
+      "validation": {
+        "type": "ndarray",
+        "shape": [
+          3
+        ],
+        "dtype": "float64",
+        "sample": [
+          20.036845070422533,
+          23.362957746478873,
+          22.816169014084505
+        ]
+      }
+    },
+    "training_history": {}
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "workflow_id": "regression-test",
+  "execution_id": "reg-exec-001",
+  "nodes": [
+    {
+      "id": "dataset_1",
+      "type": "dataset",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "label": "House Dataset",
+        "dataset_path": "/workspace/data/regression_data.csv",
+        "format": "auto",
+        "preprocessing_config": {
+          "target_column": "price",
+          "feature_columns": ["x1", "x2", "x3"]
+        }
+      }
+    },
+    {
+      "id": "split_1",
+      "type": "split", 
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "label": "Train/Test Split",
+        "split_config": {
+          "strategy": "random",
+          "test_size": 0.25,
+          "val_size": 0.25,
+          "train_size": 0.5,
+          "random_state": 123,
+          "shuffle": true
+        }
+      }
+    },
+    {
+      "id": "trainer_1",
+      "type": "trainer",
+      "position": { "x": 500, "y": 100 },
+      "data": {
+        "label": "Random Forest Regressor",
+        "training_config": {
+          "algorithm": "random_forest",
+          "task_type": "regression",
+          "hyperparameters": {
+            "n_estimators": 50,
+            "max_depth": 5
+          }
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "dataset_1",
+      "target": "split_1"
+    },
+    {
+      "id": "e2", 
+      "source": "split_1",
+      "target": "trainer_1"
+    }
+  ],
+  "config": {
+    "output_path": "/workspace/output/regression_test"
+  }
+}

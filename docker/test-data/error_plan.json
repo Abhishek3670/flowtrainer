@@ -1,0 +1,43 @@
+{
+  "workflow_id": "error-test",
+  "execution_id": "error-exec-001",
+  "nodes": [
+    {
+      "id": "dataset_1",
+      "type": "dataset",
+      "position": { "x": 100, "y": 100 },
+      "data": {
+        "label": "Dataset with Wrong Target",
+        "dataset_path": "/workspace/data/regression_data.csv",
+        "format": "auto",
+        "preprocessing_config": {
+          "target_column": "nonexistent_column",
+          "feature_columns": ["x1", "x2", "x3"]
+        }
+      }
+    },
+    {
+      "id": "split_1",
+      "type": "split", 
+      "position": { "x": 300, "y": 100 },
+      "data": {
+        "label": "Train/Test Split",
+        "split_config": {
+          "strategy": "random",
+          "test_size": 0.3,
+          "val_size": 0.3,
+          "train_size": 0.4,
+          "random_state": 42
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "dataset_1",
+      "target": "split_1"
+    }
+  ],
+  "config": {}
+}
