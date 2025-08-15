@@ -12,6 +12,7 @@ import path from 'path';
 const workflowRoutes = require('./routes/workflowRoutes');
 const fileRoutes = require('./routes/fileRoutes');
 import checkpointRoutes from './routes/checkpoints';
+import projectRoutes from './routes/projectRoutes';
 
 const app = express();
 const server = createServer(app);
@@ -33,6 +34,7 @@ app.use('/api/workflows/:id/checkpoints', checkpointRoutes);
 
 // File Routes
 app.use('/api/files', fileRoutes);
+app.use('/api/projects', projectRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Health check endpoint

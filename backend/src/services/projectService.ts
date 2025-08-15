@@ -32,14 +32,21 @@ export class ProjectService {
     
     await fs.mkdir(configPath, { recursive: true });
     
+    // Transform nodes to match ML engine expected format
+    const transformedNodes = nodes.map(node => ({
+      id: node.id,
+      type: node.type || 'customNode',
+      data: node.data || {},
+      position: node.position || { x: 0, y: 0 }
+    }));
     // Generate execution order using topological sort
-    const executionOrder = this.topologicalSort(nodes, edges);
+    const executionOrder = this.topologicalSort(transformedNodes, edges);
     
     // Create execution plan
     const executionPlan: ExecutionPlan = {
       workflow_id: workflowId,
       execution_id: `exec_${Date.now()}`,
-      nodes: nodes,
+      nodes: transformedNodes,
       edges: edges,
       execution_order: executionOrder,
       config: {
@@ -127,6 +134,7 @@ export class ProjectService {
       `-v ${projectPath}:/workspace`,
       '--network host',
       this.dockerImage,
+      'python', 'src/pipeline_executor.py',
       '/workspace/config/execution_plan.json'
     ].join(' ');
 

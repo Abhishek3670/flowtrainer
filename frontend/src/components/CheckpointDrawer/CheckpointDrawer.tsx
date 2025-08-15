@@ -12,7 +12,6 @@ export default function CheckpointDrawer({ workflowId, onRestore }: CheckpointDr
     stats,
     loading, 
     deleteCheckpoint, 
-    restoreCheckpoint 
   } = useCheckpoints(workflowId);
 
   // Filter out auto-generated checkpoints - only show manual ones

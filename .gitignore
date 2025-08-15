@@ -78,3 +78,13 @@ tmp/
 # upload
 backend/uploads
 frontend/src/hooks/undo-redo-status.md
+
+# Test files and test data
+backend/load-test.sh
+backend/quick-test.sh
+backend/test-complete-workflow.sh
+backend/test-with-data.sh
+backend/test-data/
+backend/workflows/
+test_workflow/
+*.backup
