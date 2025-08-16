@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
+import ExecutionLogs from './components/ExecutionLogs/ExecutionLogs';
 import ReactFlow, {
   ReactFlowProvider,
   Connection,
@@ -69,10 +70,19 @@ function FlowCanvas() {
 
   // Project execution
   const projectId = 'default-workflow';
+  // In your FlowCanvas component in App.tsx
   const {
+    status,
+    loading: execLoading,
     running,
-    executeProject
+    error: execError,
+    logs,
+    isStreaming,
+    executeProject,
+    retryExecution,
+    clearLogs
   } = useProjectExecution(projectId);
+
 
   // Persistence hook
   const persistence = useWorkflowPersistence('default-workflow');
@@ -82,18 +92,18 @@ function FlowCanvas() {
   useEffect(() => {
     if (!hasInitialized.current && reactFlowInstance) {
       hasInitialized.current = true;
-      
+
       const initializeWorkflow = async () => {
         try {
           console.log('[App] Initializing workflow...');
           const checkpointData = await persistence.loadLatestCheckpoint();
-          
+
           if (checkpointData) {
             console.log('[App] Loaded checkpoint data:', {
               nodes: checkpointData.nodes.length,
               edges: checkpointData.edges.length
             });
-            
+
             // Add delete handlers to loaded nodes
             const nodesWithHandlers = checkpointData.nodes.map(node => ({
               ...node,
@@ -105,7 +115,7 @@ function FlowCanvas() {
                 },
               }
             }));
-            
+
             setNodes(nodesWithHandlers);
             setEdges(checkpointData.edges);
             setViewport(checkpointData.viewport);
@@ -146,11 +156,11 @@ function FlowCanvas() {
     }
 
     console.log('🗑️ Deleting node:', nodeId);
-    
+
     saveToHistory(); // Save before deletion
     setNodes(prev => prev.filter(n => n.id !== nodeId));
     setEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId));
-    
+
     if (selectedNode?.id === nodeId) setSelectedNode(null);
   }, [selectedNode, saveToHistory]);
 
@@ -158,12 +168,12 @@ function FlowCanvas() {
   const handleRestoreCheckpoint = useCallback(async (checkpointId: string) => {
     try {
       console.log('[App] Restoring checkpoint:', checkpointId);
-      
+
       // Save current state to history before restoring
       saveToHistory();
-      
+
       const checkpoint = await CheckpointAPI.getCheckpoint('default-workflow', checkpointId);
-      
+
       if (checkpoint) {
         const nodesWithHandlers = checkpoint.nodes.map(node => ({
           ...node,
@@ -192,7 +202,7 @@ function FlowCanvas() {
   // Handle nodes change
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     console.log('📝 Nodes change:', changes);
-    
+
     if (skipNextNodeChangeHistory.current) {
       skipNextNodeChangeHistory.current = false;
     } else {
@@ -202,7 +212,7 @@ function FlowCanvas() {
         saveToHistory();
       }
     }
-    
+
     setNodes(nds => applyNodeChanges(changes, nds));
   }, [saveToHistory]);
 
@@ -323,7 +333,7 @@ function FlowCanvas() {
 
     try {
       console.log('🚀 Executing workflow with nodes:', nodes);
-      
+
       await executeProject(
         projectId, // workflowId
         nodes,
@@ -494,8 +504,21 @@ function FlowCanvas() {
             />
           </ReactFlow>
         </div>
-      </div>
+        {/*Logs Panel - Show when execution is running or has logs */}
+        {(running || logs.length > 0) && (
+          <div className="h-80 border-t border-gray-200 dark:border-gray-700">
+            <ExecutionLogs
+              logs={logs}
+              isStreaming={isStreaming}
+              error={execError}
+              onRetry={retryExecution}
+              onClear={clearLogs}
+              projectId={projectId}
+            />
+          </div>
+        )}
     </div>
+    </div >
   );
 }
 

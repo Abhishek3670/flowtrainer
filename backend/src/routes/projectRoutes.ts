@@ -9,22 +9,35 @@ const projectService = new ProjectService();
 // Event stream for real-time updates
 const clients = new Set<Response>();
 
-// SSE endpoint for real-time status updates
-router.get('/events', (req: Request, res: Response) => {
+// SSE route: system status
+router.get('/events', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
+    Connection: 'keep-alive',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Cache-Control'
   });
 
-  clients.add(res);
+  const sendStatus = async () => {
+    try {
+      const status = await projectService.getSystemStatus();
+      res.write(`event: system_status\n`);
+      res.write(`data: ${JSON.stringify(status)}\n\n`);
+    } catch (err) {
+      res.write(`event: error\n`);
+      res.write(`data: ${JSON.stringify({ message: 'Failed to fetch system status' })}\n\n`);
+    }
+  };
 
-  req.on('close', () => {
-    clients.delete(res);
-  });
+  // Send initial status immediately
+  sendStatus();
+
+  // Send updates every 5s
+  const interval = setInterval(sendStatus, 5000);
+
+  req.on('close', () => clearInterval(interval));
 });
+
 router.get('/:projectId/logs/stream', async (req: Request, res: Response) => {
   const { projectId } = req.params;
   
@@ -84,6 +97,10 @@ const broadcastEvent = (event: string, data: any) => {
 // Set up event listeners
 projectService.on('execution_queued', (data) => broadcastEvent('execution_queued', data));
 projectService.on('execution_progress', (data) => broadcastEvent('execution_progress', data));
+// projectService.on('execution_progress', data =>
+//   res.write(`event: execution_progress\ndata: ${JSON.stringify(data)}\n\n`)
+// );
+
 projectService.on('execution_completed', (data) => broadcastEvent('execution_completed', data));
 projectService.on('execution_failed', (data) => broadcastEvent('execution_failed', data));
 
