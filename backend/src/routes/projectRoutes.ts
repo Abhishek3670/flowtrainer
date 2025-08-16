@@ -58,9 +58,9 @@ router.get('/events', (req, res) => {
   });
 });
 
-router.get('/:projectId/logs/stream', async (req: Request, res: Response) => {
+router.get('/:projectId/logs/stream', async (req: Request, res: Response): Promise<void> => {
   const { projectId } = req.params;
-  
+
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -78,11 +78,12 @@ router.get('/:projectId/logs/stream', async (req: Request, res: Response) => {
     });
   } catch (error) {
     res.write(`data: ${JSON.stringify({ error: 'Failed to load logs' })}\n\n`);
+    res.end();
   }
 
   // Keep connection alive and stream new logs
   const logPath = path.join(process.cwd(), 'workflows', projectId, 'logs', 'execution.log');
-  
+
   // Watch for file changes (simplified - you may want to use chokidar)
   const interval = setInterval(async () => {
     try {
@@ -91,10 +92,12 @@ router.get('/:projectId/logs/stream', async (req: Request, res: Response) => {
         clearInterval(interval);
         res.write(`data: ${JSON.stringify({ status: 'execution_complete' })}\n\n`);
         res.end();
+        return;
       }
     } catch (error) {
       clearInterval(interval);
       res.end();
+      return;
     }
   }, 2000);
 
@@ -194,7 +197,7 @@ router.post('/:projectId/execute', async (req: Request, res: Response): Promise<
     const { priority = 1, timeout_minutes } = req.body;
 
     await projectService.queueExecution(
-      projectId, 
+      projectId,
       parseInt(priority),
       timeout_minutes ? parseInt(timeout_minutes) : undefined
     );
@@ -255,7 +258,7 @@ router.get('/:projectId/logs', async (req: Request, res: Response): Promise<void
     } else {
       // Return full log content
       const logs = await projectService.getExecutionLogs(projectId);
-      
+
       res.json({
         success: true,
         project_id: projectId,

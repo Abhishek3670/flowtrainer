@@ -4,7 +4,6 @@ import axios from 'axios';
 // API configuration
 const API = axios.create({
   baseURL: process.env.NODE_ENV === 'production' ? '' : 'http://localhost:4000',
-  timeout: 30000,
 });
 
 export interface ExecutionStatus {
