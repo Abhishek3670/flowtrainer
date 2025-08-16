@@ -64,14 +64,13 @@ export const useProjectExecution = (): UseProjectExecutionReturn => {
     };
   }, []);
 
-  /** Execute a project workflow */
+  /** Execute project workflow */
   const executeProject = useCallback(async (
     projectId: string,
     workflowId: string,
     nodes: any[],
     edges: any[],
-    priority: number = 1,
-    timeoutMinutes?: number
+    priority: number = 1
   ): Promise<void> => {
     try {
       setIsExecuting(true);
@@ -89,8 +88,7 @@ export const useProjectExecution = (): UseProjectExecutionReturn => {
         workflowId,
         nodes,
         edges,
-        priority,
-        timeoutMinutes
+        priority
       );
 
       // Start real-time status polling
@@ -118,7 +116,7 @@ export const useProjectExecution = (): UseProjectExecutionReturn => {
     pollingRef.current = await projectApi.pollExecutionStatus(
       projectId,
       // On status update
-      (status) => {
+      (status: any) => {
         setExecutionStatus(status);
       },
       // On complete
@@ -127,7 +125,7 @@ export const useProjectExecution = (): UseProjectExecutionReturn => {
         pollingRef.current = null;
       },
       // On error
-      (error) => {
+      (error: any) => {
         setExecutionError(error.message);
       }
     );
@@ -185,10 +183,33 @@ export const useProjectExecution = (): UseProjectExecutionReturn => {
   const refreshSystemStatus = useCallback(async (): Promise<void> => {
     try {
       setSystemError(null);
-      const status = await projectApi.getSystemStatus();
-      setSystemStatus(status);
+      const response = await projectApi.getSystemStatus();
+      // Handle both direct response and wrapped response from backend
+      const statusData = response.system || response;
+      
+      // Convert SystemStatusResponse to SystemStatus
+      const convertedStatus: SystemStatus = {
+        max_concurrent_executions: statusData.max_concurrent_executions || 0,
+        running_executions: statusData.running_executions || 0,
+        queued_executions: statusData.queued_executions || 0,
+        capacity_utilization: statusData.capacity_utilization || 0,
+        total_projects: (statusData.running_executions || 0) + (statusData.queued_executions || 0), // Calculate total
+        queue: statusData.queue || [],
+        running: statusData.running || []
+      };
+      setSystemStatus(convertedStatus);
     } catch (error) {
       setSystemError(error instanceof Error ? error.message : 'Unknown error');
+      // Set default values on error
+      setSystemStatus({
+        max_concurrent_executions: 0,
+        running_executions: 0,
+        queued_executions: 0,
+        capacity_utilization: 0,
+        total_projects: 0,
+        queue: [],
+        running: []
+      });
     }
   }, []);
 

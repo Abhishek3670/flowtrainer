@@ -1,4 +1,11 @@
 // frontend/src/services/projectApi.ts
+import axios from 'axios';
+
+// API configuration
+const API = axios.create({
+  baseURL: process.env.NODE_ENV === 'production' ? '' : 'http://localhost:4000',
+  timeout: 30000,
+});
 
 export interface ExecutionStatus {
   project_id: string;
@@ -10,6 +17,57 @@ export interface ExecutionStatus {
   started_at?: string;
   completed_at?: string;
   logs?: string[];
+}
+
+export interface StatusResponse {
+  project_id: string;
+  execution_id: string;
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'timeout';
+  current_step?: string;
+  progress?: number;
+  error?: string;
+  started_at?: string;
+  completed_at?: string;
+  results?: Record<string, any>;
+  output_files?: string[];
+}
+
+export interface SystemStatusResponse {
+  success?: boolean;
+  timestamp?: string;
+  system?: {
+    max_concurrent_executions: number;
+    running_executions: number;
+    queued_executions: number;
+    capacity_utilization: number;
+    queue: Array<{
+      project_id: string;
+      priority: number;
+      queued_at: string;
+    }>;
+    running: Array<{
+      project_id: string;
+      current_step?: string;
+      progress?: number;
+      started_at: string;
+    }>;
+  };
+  // Direct properties (fallback)
+  max_concurrent_executions?: number;
+  running_executions?: number;
+  queued_executions?: number;
+  capacity_utilization?: number;
+  queue?: Array<{
+    project_id: string;
+    priority: number;
+    queued_at: string;
+  }>;
+  running?: Array<{
+    project_id: string;
+    current_step?: string;
+    progress?: number;
+    started_at: string;
+  }>;
 }
 
 export interface SystemStatus {
@@ -40,167 +98,65 @@ class ProjectApiService {
     workflowId: string,
     nodes: any[],
     edges: any[]
-  ): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        projectId,
-        workflowId,
-        nodes,
-        edges
-      }),
+  ): Promise<{ success: boolean; execution_id: string }> {
+    const response = await API.post(`${this.baseUrl}/${projectId}/plan`, {
+      workflowId,
+      nodes,
+      edges
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.details || 'Failed to generate execution plan');
-    }
-
-    return await response.json();
+    return response.data;
   }
 
-  /** Execute a project workflow */
-  async executeProject(
-    projectId: string, 
-    priority: number = 1,
-    timeoutMinutes?: number
-  ): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/${projectId}/execute`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        priority,
-        timeout_minutes: timeoutMinutes
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.details || 'Failed to execute project');
-    }
-
-    return await response.json();
-  }
-
-  /** Get project execution status */
-  async getProjectStatus(projectId: string): Promise<ExecutionStatus> {
-    const response = await fetch(`${this.baseUrl}/${projectId}/status`);
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.details || 'Failed to get project status');
-    }
-
-    const data = await response.json();
-    return data as ExecutionStatus;
-  }
-
-  /** Get project execution logs */
-  async getProjectLogs(projectId: string): Promise<string[]> {
-    const response = await fetch(`${this.baseUrl}/${projectId}/logs`);
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.details || 'Failed to get project logs');
-    }
-
-    const data = await response.json();
-    return data.logs || [];
-  }
-
-  /** Stream project logs in real-time */
-  createLogStream(projectId: string): EventSource {
-    return new EventSource(`${this.baseUrl}/${projectId}/logs?stream=true`);
-  }
-
-  /** Retry failed execution */
-  async retryExecution(projectId: string, fromStep?: string): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/${projectId}/retry`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from_step: fromStep
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.details || 'Failed to retry execution');
-    }
-
-    return await response.json();
-  }
-
-  /** Clean up project files */
-  async cleanupProject(projectId: string): Promise<any> {
-    const response = await fetch(`${this.baseUrl}/${projectId}`, {
-      method: 'DELETE',
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.details || 'Failed to cleanup project');
-    }
-
-    return await response.json();
-  }
-
-  /** Get system status and metrics */
-  async getSystemStatus(): Promise<SystemStatus> {
-    const response = await fetch(`${this.baseUrl}/system/status`);
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.details || 'Failed to get system status');
-    }
-
-    const data = await response.json();
-    return data.system as SystemStatus;
-  }
-
-  /** Create real-time events stream for system updates */
-  createEventStream(): EventSource {
-    return new EventSource(`${this.baseUrl}/events`);
-  }
-
-  /** Execute complete workflow (generate plan + execute) */
+  /** Execute a complete workflow */
   async executeCompleteWorkflow(
     projectId: string,
     workflowId: string,
     nodes: any[],
     edges: any[],
-    priority: number = 1,
-    timeoutMinutes?: number
-  ): Promise<{
-    planGeneration: any;
-    execution: any;
-  }> {
-    // Step 1: Generate execution plan
-    const planResult = await this.generateExecutionPlan(
-      projectId,
-      workflowId,
-      nodes,
-      edges
-    );
-
-    // Step 2: Execute the project
-    const executionResult = await this.executeProject(
-      projectId,
+    priority: number = 1
+  ): Promise<{ success: boolean; execution_id: string }> {
+    // First generate the plan
+    await this.generateExecutionPlan(projectId, workflowId, nodes, edges);
+    
+    // Then execute
+    const response = await API.post(`${this.baseUrl}/${projectId}/execute`, {
       priority,
-      timeoutMinutes
-    );
+      timeout_minutes: 60
+    });
+    return response.data;
+  }
 
-    return {
-      planGeneration: planResult,
-      execution: executionResult
-    };
+  /** Execute project with options */
+  async executeWithOptions(
+    projectId: string, 
+    options: { priority?: number; timeout_minutes?: number } = {}
+  ): Promise<{ success: boolean; execution_id: string }> {
+    const response = await API.post(`${this.baseUrl}/${projectId}/execute`, options);
+    return response.data;
+  }
+
+  /** Get system status */
+  async getSystemStatus(): Promise<SystemStatusResponse> {
+    const response = await API.get<SystemStatusResponse>(`${this.baseUrl}/system/status`);
+    return response.data;
+  }
+
+  /** Get execution logs */
+  async getExecutionLogs(projectId: string): Promise<{ logs: string[]; log_count: number }> {
+    const response = await API.get<{ logs: string[]; log_count: number }>(`${this.baseUrl}/${projectId}/logs`);
+    return response.data;
+  }
+
+  /** Retry execution */
+  async retryExecution(projectId: string, fromStep?: string): Promise<{ success: boolean }> {
+    const response = await API.post(`${this.baseUrl}/${projectId}/retry`, { from_step: fromStep });
+    return response.data;
+  }
+
+  /** Get project status */
+  async getProjectStatus(projectId: string): Promise<StatusResponse> {
+    const response = await API.get<StatusResponse>(`${this.baseUrl}/${projectId}/status`);
+    return response.data;
   }
 
   /** Poll for execution status updates */
@@ -216,7 +172,7 @@ class ProjectApiService {
     const poll = async () => {
       try {
         const status = await this.getProjectStatus(projectId);
-        onStatusUpdate(status);
+        onStatusUpdate(status as ExecutionStatus);
 
         if (status.status === 'completed' || 
             status.status === 'failed' || 
@@ -240,6 +196,22 @@ class ProjectApiService {
     return () => {
       polling = false;
     };
+  }
+
+  /** Create log stream */
+  createLogStream(projectId: string): EventSource {
+    return new EventSource(`${this.baseUrl}/${projectId}/logs/stream`);
+  }
+
+  /** Create event stream */
+  createEventStream(): EventSource {
+    return new EventSource(`${this.baseUrl}/events`);
+  }
+
+  /** Cleanup project */
+  async cleanupProject(projectId: string): Promise<{ success: boolean }> {
+    const response = await API.delete(`${this.baseUrl}/${projectId}`);
+    return response.data;
   }
 
   /** Batch operations for multiple projects */
