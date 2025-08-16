@@ -64,12 +64,17 @@ export function useSystemStatus() {
 
   // Real-time updates via Server-Sent Events
   useEffect(() => {
+    // Use the same URL format that works with the proxy
     const eventSource = new EventSource('/api/projects/events');
     
     eventSource.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'system_status') {
-        setSystemStatus(data.payload);
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'system_status') {
+          setSystemStatus(data.payload);
+        }
+      } catch (error) {
+        console.error('Failed to parse SSE message:', error);
       }
     };
 

@@ -14,28 +14,48 @@ router.get('/events', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    Connection: 'keep-alive',
+    'Connection': 'keep-alive',
     'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control'
   });
 
-  const sendStatus = async () => {
+  // Add this client to the set
+  clients.add(res);
+
+  // Send initial system status
+  const sendInitialStatus = async () => {
     try {
       const status = await projectService.getSystemStatus();
-      res.write(`event: system_status\n`);
-      res.write(`data: ${JSON.stringify(status)}\n\n`);
+      res.write(`event: system_status\ndata: ${JSON.stringify(status)}\n\n`);
     } catch (err) {
-      res.write(`event: error\n`);
-      res.write(`data: ${JSON.stringify({ message: 'Failed to fetch system status' })}\n\n`);
+      res.write(`event: error\ndata: ${JSON.stringify({ message: 'Failed to fetch system status' })}\n\n`);
     }
   };
 
   // Send initial status immediately
-  sendStatus();
+  sendInitialStatus();
 
-  // Send updates every 5s
-  const interval = setInterval(sendStatus, 5000);
+  // Send periodic system status updates every 10 seconds
+  const statusInterval = setInterval(async () => {
+    try {
+      const status = await projectService.getSystemStatus();
+      res.write(`event: system_status\ndata: ${JSON.stringify(status)}\n\n`);
+    } catch (err) {
+      res.write(`event: error\ndata: ${JSON.stringify({ message: 'Failed to fetch system status' })}\n\n`);
+    }
+  }, 10000);
 
-  req.on('close', () => clearInterval(interval));
+  // Handle client disconnect
+  req.on('close', () => {
+    clients.delete(res);
+    clearInterval(statusInterval);
+  });
+
+  // Handle client disconnect (alternative method)
+  req.on('end', () => {
+    clients.delete(res);
+    clearInterval(statusInterval);
+  });
 });
 
 router.get('/:projectId/logs/stream', async (req: Request, res: Response) => {
@@ -135,7 +155,38 @@ router.post('/generate', async (req: Request, res: Response): Promise<void> => {
     });
   }
 });
+/** POST /api/projects/:projectId/plan - Generate execution plan for specific project */
+router.post('/:projectId/plan', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { projectId } = req.params;
+    const { workflowId, nodes, edges } = req.body;
 
+    if (!workflowId || !nodes || !edges) {
+      res.status(400).json({
+        error: 'Missing required fields: workflowId, nodes, edges'
+      });
+      return;
+    }
+
+    await projectService.generateExecutionPlan(projectId, workflowId, nodes, edges);
+
+    res.json({
+      success: true,
+      message: `Execution plan generated for project ${projectId}`,
+      project_id: projectId,
+      workflow_id: workflowId,
+      nodes_count: nodes.length,
+      edges_count: edges.length
+    });
+
+  } catch (error) {
+    console.error(`Failed to generate plan for project ${req.params.projectId}:`, error);
+    res.status(500).json({
+      error: 'Failed to generate execution plan',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
 /** POST /api/projects/:projectId/execute - Execute workflow */
 router.post('/:projectId/execute', async (req: Request, res: Response): Promise<void> => {
   try {
