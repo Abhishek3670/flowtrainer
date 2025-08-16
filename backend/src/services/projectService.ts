@@ -393,12 +393,26 @@ export class ProjectService extends EventEmitter {
 
   /** Get execution logs */
   async getExecutionLogs(projectId: string): Promise<string> {
-    const logPath = path.join(this.projectsRoot, projectId, 'logs', 'execution.log');
+    const logDir = path.join(this.projectsRoot, projectId, 'logs');
+    const logPath = path.join(logDir, 'execution.log');
     
     try {
-      return await fs.readFile(logPath, 'utf-8');
+      // Ensure log directory exists
+      await fs.mkdir(logDir, { recursive: true });
+      
+      // Check if log file exists
+      try {
+        await fs.access(logPath);
+        return await fs.readFile(logPath, 'utf-8');
+      } catch {
+        // Log file doesn't exist yet, create it with initial content
+        const initialLog = `[${new Date().toISOString()}] INFO: Execution started for project ${projectId}\n`;
+        await fs.writeFile(logPath, initialLog, 'utf-8');
+        return initialLog;
+      }
     } catch (error) {
-      return 'No logs available';
+      console.warn(`Failed to get/create logs for project ${projectId}:`, error);
+      return `[${new Date().toISOString()}] INFO: Execution started for project ${projectId}\n`;
     }
   }
 

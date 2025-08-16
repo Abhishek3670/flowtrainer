@@ -83,7 +83,7 @@ function FlowCanvas() {
     clearLogs
   } = useProjectExecution(projectId);
 
-
+  console.log('running:', running, 'logs length:', logs.length, 'isStreaming:', isStreaming);
   // Persistence hook
   const persistence = useWorkflowPersistence('default-workflow');
 

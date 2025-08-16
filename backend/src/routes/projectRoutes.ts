@@ -60,49 +60,55 @@ router.get('/events', (req, res) => {
 
 router.get('/:projectId/logs/stream', async (req: Request, res: Response): Promise<void> => {
   const { projectId } = req.params;
+  console.log(`📊 Starting log stream for project: ${projectId}`);
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
+    Connection: 'keep-alive',
     'Access-Control-Allow-Origin': '*'
   });
 
-  // Send initial logs
+  // Initial logs
   try {
-    const logs = await projectService.getExecutionLogs(projectId);
-    logs.split('\n').forEach(line => {
+    console.log(`📝 Fetching initial logs for project: ${projectId}`);
+    const logText = await projectService.getExecutionLogs(projectId);
+    console.log(`📝 Initial logs length: ${logText.length} characters`);
+    
+    logText.split('\n').forEach(line => {
       if (line.trim()) {
         res.write(`data: ${JSON.stringify({ message: line })}\n\n`);
       }
     });
   } catch (error) {
-    res.write(`data: ${JSON.stringify({ error: 'Failed to load logs' })}\n\n`);
-    res.end();
+    console.error(`❌ Failed to load initial logs for project ${projectId}:`, error);
+    // Send error event but do NOT end the stream
+    res.write(`data: ${JSON.stringify({ error: 'Failed to load logs', details: error instanceof Error ? error.message : 'Unknown error' })}\n\n`);
   }
 
-  // Keep connection alive and stream new logs
-  const logPath = path.join(process.cwd(), 'workflows', projectId, 'logs', 'execution.log');
-
-  // Watch for file changes (simplified - you may want to use chokidar)
+  // Poll for execution complete
   const interval = setInterval(async () => {
     try {
       const status = await projectService.getProjectStatus(projectId);
+      console.log(`📊 Status check for project ${projectId}: ${status.status}`);
+      
       if (status.status === 'completed' || status.status === 'failed') {
+        console.log(`✅ Execution ${status.status} for project ${projectId}, ending stream`);
         clearInterval(interval);
-        res.write(`data: ${JSON.stringify({ status: 'execution_complete' })}\n\n`);
-        res.end();
-        return;
+        res.write(`data: ${JSON.stringify({ status: 'execution_complete', final_status: status.status })}\n\n`);
+        res.end();              // end only here
       }
     } catch (error) {
+      console.error(`❌ Status check failed for project ${projectId}:`, error);
       clearInterval(interval);
-      res.end();
-      return;
+      res.end();                // end if status lookup fails irrecoverably
     }
   }, 2000);
 
   req.on('close', () => {
+    console.log(`🔌 Client disconnected from log stream for project: ${projectId}`);
     clearInterval(interval);
+    // no res.end() here; client closed connection
   });
 });
 // Broadcast events to all connected clients
