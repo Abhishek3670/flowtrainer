@@ -1,245 +1,254 @@
 // frontend/src/components/ExecutionLogs/ExecutionLogs.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import './ExecutionLogs.css';
+import { 
+  Terminal, Download, Trash2, Play, AlertCircle, 
+  Info, AlertTriangle, Bug, Search 
+} from 'lucide-react';
 
 interface ExecutionLogsProps {
+  logs: LogEntry[];
+  isStreaming: boolean;
+  error?: string | null;
+  onRetry?: (fromStep?: string) => void;
+  onClear: () => void;
   projectId: string;
-  isOpen: boolean;
-  onClose: () => void;
 }
 
 interface LogEntry {
   timestamp: string;
   level: string;
   message: string;
+  step?: string;
 }
-
-export const ExecutionLogs: React.FC<ExecutionLogsProps> = ({ 
-  projectId, 
-  isOpen, 
-  onClose 
-}) => {
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [isStreaming, setIsStreaming] = useState(false);
+export default function ExecutionLogs({
+  logs,
+  isStreaming,
+  error,
+  onRetry,
+  onClear,
+  projectId
+}: ExecutionLogsProps) {
+  const [filter, setFilter] = useState<string>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
   const [autoScroll, setAutoScroll] = useState(true);
   const logsEndRef = useRef<HTMLDivElement>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const logsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Fetch initial logs
+  // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
-    if (isOpen && projectId) {
-      fetchLogs();
-    }
-  }, [isOpen, projectId]);
-
-  // Auto-scroll to bottom
-  useEffect(() => {
-    if (autoScroll) {
-      scrollToBottom();
+    if (autoScroll && logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [logs, autoScroll]);
 
-  const fetchLogs = async () => {
-    try {
-      const response = await fetch(`/api/projects/${projectId}/logs`);
-      const data = await response.json();
-      
-      if (data.success) {
-        const parsedLogs = data.logs
-          .filter((line: string) => line.trim())
-          .map((line: string) => parseLogLine(line));
-        
-        setLogs(parsedLogs);
-      }
-    } catch (error) {
-      console.error('Failed to fetch logs:', error);
-    }
+  // Handle manual scrolling (disable auto-scroll if user scrolls up)
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
+    setAutoScroll(isNearBottom);
   };
 
-  const startLogStream = () => {
-    if (eventSourceRef.current) return;
-
-    setIsStreaming(true);
-    const eventSource = new EventSource(`/api/projects/${projectId}/logs?stream=true`);
-    eventSourceRef.current = eventSource;
-
-    eventSource.onmessage = (event) => {
-      try {
-        const logData = JSON.parse(event.data);
-        const newLog = parseLogLine(logData.message);
-        
-        setLogs(prev => [...prev, newLog]);
-      } catch (error) {
-        console.error('Failed to parse log message:', error);
-      }
-    };
-
-    eventSource.onerror = () => {
-      console.error('Log stream error');
-      stopLogStream();
-    };
-  };
-
-  const stopLogStream = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
-    setIsStreaming(false);
-  };
-
-  const parseLogLine = (logLine: string): LogEntry => {
-    // Parse log format: "2025-08-15T16:03:32Z: [LEVEL] message"
-    const match = logLine.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z):\s*(?:\[(\w+)\])?\s*(.*)$/);
+  // Filter logs based on level and search term
+  const filteredLogs = logs.filter(log => {
+    const matchesFilter = filter === 'ALL' || log.level === filter;
+    const matchesSearch = searchTerm === '' || 
+      log.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      log.step?.toLowerCase().includes(searchTerm.toLowerCase());
     
-    if (match) {
-      return {
-        timestamp: match[1],
-        level: match[2] || 'INFO',
-        message: match[3]
-      };
-    }
+    return matchesFilter && matchesSearch;
+  });
 
-    return {
-      timestamp: new Date().toISOString(),
-      level: 'INFO',
-      message: logLine
-    };
-  };
-
-  const scrollToBottom = () => {
-    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const clearLogs = () => {
-    setLogs([]);
-  };
-
+  // Download logs as text file
   const downloadLogs = () => {
-    const logText = logs
-      .map(log => `${log.timestamp} [${log.level}] ${log.message}`)
-      .join('\n');
+    const logText = filteredLogs.map(log => 
+      `[${log.timestamp}] [${log.level}]${log.step ? ` [${log.step}]` : ''} ${log.message}`
+    ).join('\n');
     
     const blob = new Blob([logText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${projectId}-execution.log`;
+    a.download = `${projectId}-execution-logs.txt`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
-  const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString();
-  };
-
-  const getLevelClass = (level: string) => {
-    switch (level.toUpperCase()) {
-      case 'ERROR': return 'log-error';
-      case 'WARN': case 'WARNING': return 'log-warning';
-      case 'INFO': return 'log-info';
-      case 'DEBUG': return 'log-debug';
-      default: return 'log-info';
+  // Get log level icon and color
+  const getLogLevelStyle = (level: string) => {
+    switch (level) {
+      case 'ERROR':
+        return { 
+          icon: <AlertCircle className="w-4 h-4" />, 
+          color: 'text-red-600 bg-red-50 dark:bg-red-900/20' 
+        };
+      case 'WARNING':
+        return { 
+          icon: <AlertTriangle className="w-4 h-4" />, 
+          color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-900/20' 
+        };
+      case 'DEBUG':
+        return { 
+          icon: <Bug className="w-4 h-4" />, 
+          color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20' 
+        };
+      default:
+        return { 
+          icon: <Info className="w-4 h-4" />, 
+          color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20' 
+        };
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="execution-logs-overlay">
-      <div className="execution-logs-modal">
-        <div className="logs-header">
-          <h3>Execution Logs - {projectId}</h3>
-          <div className="logs-controls">
-            <button 
-              onClick={fetchLogs}
-              className="btn-secondary"
-              title="Refresh logs"
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center space-x-3">
+          <Terminal className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white">
+            Execution Logs
+          </h3>
+          {isStreaming && (
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-green-600 dark:text-green-400">Live</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center space-x-2">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search logs..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg 
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                         focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Filter */}
+          <select
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white
+                       focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="ALL">All Levels</option>
+            <option value="INFO">Info</option>
+            <option value="WARNING">Warning</option>
+            <option value="ERROR">Error</option>
+            <option value="DEBUG">Debug</option>
+          </select>
+
+          {/* Actions */}
+          <button
+            onClick={downloadLogs}
+            className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            title="Download Logs"
+          >
+            <Download className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={onClear}
+            className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            title="Clear Logs"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+
+          {error && onRetry && (
+            <button
+              onClick={() => onRetry()}
+              className="flex items-center space-x-1 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              title="Retry Execution"
             >
-              🔄
+              <Play className="w-4 h-4" />
+              <span>Retry</span>
             </button>
-            
-            <button 
-              onClick={isStreaming ? stopLogStream : startLogStream}
-              className={`btn-secondary ${isStreaming ? 'streaming' : ''}`}
-              title={isStreaming ? "Stop streaming" : "Start streaming"}
-            >
-              {isStreaming ? '⏸️ Stop' : '▶️ Stream'}
-            </button>
-            
-            <label className="auto-scroll-toggle">
-              <input
-                type="checkbox"
-                checked={autoScroll}
-                onChange={(e) => setAutoScroll(e.target.checked)}
-              />
-              Auto-scroll
-            </label>
-            
-            <button 
-              onClick={clearLogs}
-              className="btn-secondary"
-              title="Clear logs"
-            >
-              🗑️
-            </button>
-            
-            <button 
-              onClick={downloadLogs}
-              className="btn-secondary"
-              title="Download logs"
-            >
-              📥
-            </button>
-            
-            <button 
-              onClick={onClose}
-              className="btn-close"
-            >
-              ✕
-            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-200 dark:border-red-800 p-4">
+          <div className="flex items-center space-x-2">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <span className="text-red-800 dark:text-red-200">Execution Error: {error}</span>
           </div>
         </div>
+      )}
 
-        <div className="logs-container">
-          {logs.length === 0 ? (
-            <div className="logs-empty">
-              <p>No logs available</p>
-              <button onClick={fetchLogs} className="btn-primary">
-                Load Logs
-              </button>
-            </div>
-          ) : (
-            <div className="logs-content">
-              {logs.map((log, index) => (
-                <div key={index} className={`log-entry ${getLevelClass(log.level)}`}>
-                  <span className="log-timestamp">
-                    {formatTimestamp(log.timestamp)}
-                  </span>
-                  <span className="log-level">
-                    [{log.level}]
-                  </span>
-                  <span className="log-message">
-                    {log.message}
-                  </span>
+      {/* Logs Container */}
+      <div 
+        ref={logsContainerRef}
+        onScroll={handleScroll}
+        className="h-96 overflow-y-auto bg-gray-50 dark:bg-gray-900 font-mono text-sm"
+      >
+        {filteredLogs.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+            {logs.length === 0 ? 'No logs yet...' : 'No logs match current filter'}
+          </div>
+        ) : (
+          <div className="p-4 space-y-1">
+            {filteredLogs.map((log, index) => {
+              const { icon, color } = getLogLevelStyle(log.level);
+              
+              return (
+                <div 
+                  key={index}
+                  className={`flex items-start space-x-3 p-2 rounded ${color} hover:bg-opacity-80`}
+                >
+                  <div className="flex-shrink-0 mt-0.5">
+                    {icon}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center space-x-2 text-xs opacity-75 mb-1">
+                      <span>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                      {log.step && (
+                        <>
+                          <span>•</span>
+                          <span className="font-medium">{log.step}</span>
+                        </>
+                      )}
+                    </div>
+                    <div className="break-words">{log.message}</div>
+                  </div>
                 </div>
-              ))}
-              <div ref={logsEndRef} />
-            </div>
-          )}
-        </div>
+              );
+            })}
+            <div ref={logsEndRef} />
+          </div>
+        )}
+      </div>
 
-        <div className="logs-footer">
-          <span className="logs-count">
-            {logs.length} log entries
-          </span>
-          {isStreaming && (
-            <span className="streaming-indicator">
-              🔴 Live streaming
-            </span>
-          )}
+      {/* Footer */}
+      <div className="flex items-center justify-between p-4 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
+        <div>
+          {filteredLogs.length} of {logs.length} log entries
+        </div>
+        <div className="flex items-center space-x-2">
+          <label className="flex items-center space-x-1 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoScroll}
+              onChange={(e) => setAutoScroll(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span>Auto-scroll</span>
+          </label>
         </div>
       </div>
     </div>
   );
-};
+}

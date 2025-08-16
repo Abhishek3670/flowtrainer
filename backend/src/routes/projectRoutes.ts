@@ -1,6 +1,7 @@
 // backend/src/routes/projectRoutes.ts
 import { Router, Request, Response } from 'express';
 import { ProjectService } from '../services/projectService';
+import path from 'path';
 
 const router = Router();
 const projectService = new ProjectService();
@@ -24,7 +25,50 @@ router.get('/events', (req: Request, res: Response) => {
     clients.delete(res);
   });
 });
+router.get('/:projectId/logs/stream', async (req: Request, res: Response) => {
+  const { projectId } = req.params;
+  
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*'
+  });
 
+  // Send initial logs
+  try {
+    const logs = await projectService.getExecutionLogs(projectId);
+    logs.split('\n').forEach(line => {
+      if (line.trim()) {
+        res.write(`data: ${JSON.stringify({ message: line })}\n\n`);
+      }
+    });
+  } catch (error) {
+    res.write(`data: ${JSON.stringify({ error: 'Failed to load logs' })}\n\n`);
+  }
+
+  // Keep connection alive and stream new logs
+  const logPath = path.join(process.cwd(), 'workflows', projectId, 'logs', 'execution.log');
+  
+  // Watch for file changes (simplified - you may want to use chokidar)
+  const interval = setInterval(async () => {
+    try {
+      const status = await projectService.getProjectStatus(projectId);
+      if (status.status === 'completed' || status.status === 'failed') {
+        clearInterval(interval);
+        res.write(`data: ${JSON.stringify({ status: 'execution_complete' })}\n\n`);
+        res.end();
+      }
+    } catch (error) {
+      clearInterval(interval);
+      res.end();
+    }
+  }, 2000);
+
+  req.on('close', () => {
+    clearInterval(interval);
+  });
+});
 // Broadcast events to all connected clients
 const broadcastEvent = (event: string, data: any) => {
   const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;

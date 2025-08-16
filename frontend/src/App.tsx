@@ -68,10 +68,11 @@ function FlowCanvas() {
   const [validationErrors] = useState<ValidationError[]>([]);
 
   // Project execution
+  const projectId = 'default-workflow';
   const {
-    executeProject,
-    isExecuting,
-  } = useProjectExecution();
+    running,
+    executeProject
+  } = useProjectExecution(projectId);
 
   // Persistence hook
   const persistence = useWorkflowPersistence('default-workflow');
@@ -315,7 +316,7 @@ function FlowCanvas() {
 
   // Run pipeline
   const handleRunPipeline = useCallback(async () => {
-    if (isExecuting || nodes.length === 0) {
+    if (running || nodes.length === 0) {
       toast.error('Cannot execute: workflow is empty or already running');
       return;
     }
@@ -324,12 +325,10 @@ function FlowCanvas() {
       console.log('🚀 Executing workflow with nodes:', nodes);
       
       await executeProject(
-        'default-workflow',
-        'default-workflow', // workflowId
+        projectId, // workflowId
         nodes,
         edges,
-        1, // priority
-        5 // timeoutMinutes
+        1 // priority
       );
 
       toast.success('Workflow execution started');
@@ -337,7 +336,7 @@ function FlowCanvas() {
       console.error('Failed to execute workflow:', error);
       toast.error('Failed to execute workflow');
     }
-  }, [isExecuting, nodes, edges, executeProject]);
+  }, [running, nodes, edges, executeProject, projectId]);
 
   // Open checkpoint modal
   const handleOpenCheckpointModal = useCallback(() => {
