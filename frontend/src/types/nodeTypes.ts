@@ -30,21 +30,6 @@ export const ML_NODE_TYPES: Record<string, MLNodeData> = {
     }
   },
 
-  'dataset-sample': {
-    id: 'dataset-sample',
-    type: 'dataset-sample',
-    label: 'Sample Dataset',
-    parameters: {
-      dataset_type: 'iris', // iris, titanic, housing, digits
-      sample_size: 1000
-    },
-    inputs: [],
-    outputs: ['dataset'],
-    validation: {
-      required: ['dataset_type']
-    }
-  },
-
   // Data Processing Nodes
   'data-split': {
     id: 'data-split',

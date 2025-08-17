@@ -1,6 +1,7 @@
 // backend/src/routes/projectRoutes.ts
 import { Router, Request, Response } from 'express';
 import { ProjectService } from '../services/projectService';
+import { EventEmitter } from 'events';
 import path from 'path';
 
 const router = Router();
@@ -58,7 +59,7 @@ router.get('/events', (req, res) => {
   });
 });
 
-router.get('/:projectId/logs/stream', async (req: Request, res: Response): Promise<void> => {
+router.get('/:projectId/logs/stream', async (req: Request, res: Response) => {
   const { projectId } = req.params;
   console.log(`📊 Starting log stream for project: ${projectId}`);
 
@@ -110,7 +111,10 @@ router.get('/:projectId/logs/stream', async (req: Request, res: Response): Promi
     clearInterval(interval);
     // no res.end() here; client closed connection
   });
+
+  return; // Explicit return for async function
 });
+
 // Broadcast events to all connected clients
 const broadcastEvent = (event: string, data: any) => {
   const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -124,17 +128,13 @@ const broadcastEvent = (event: string, data: any) => {
 };
 
 // Set up event listeners
-projectService.on('execution_queued', (data) => broadcastEvent('execution_queued', data));
-projectService.on('execution_progress', (data) => broadcastEvent('execution_progress', data));
-// projectService.on('execution_progress', data =>
-//   res.write(`event: execution_progress\ndata: ${JSON.stringify(data)}\n\n`)
-// );
-
-projectService.on('execution_completed', (data) => broadcastEvent('execution_completed', data));
-projectService.on('execution_failed', (data) => broadcastEvent('execution_failed', data));
+projectService.on('execution_queued', (data: any) => broadcastEvent('execution_queued', data));
+projectService.on('execution_progress', (data: any) => broadcastEvent('execution_progress', data));
+projectService.on('execution_completed', (data: any) => broadcastEvent('execution_completed', data));
+projectService.on('execution_failed', (data: any) => broadcastEvent('execution_failed', data));
 
 /** POST /api/projects/generate - Generate execution plan */
-router.post('/generate', async (req: Request, res: Response): Promise<void> => {
+router.post('/generate', async (req: Request, res: Response) => {
   try {
     const { projectId, workflowId, nodes, edges } = req.body;
 
@@ -155,6 +155,7 @@ router.post('/generate', async (req: Request, res: Response): Promise<void> => {
       nodes_count: nodes.length,
       edges_count: edges.length
     });
+    return; // Explicit return for async function
 
   } catch (error) {
     console.error('Failed to generate execution plan:', error);
@@ -162,10 +163,12 @@ router.post('/generate', async (req: Request, res: Response): Promise<void> => {
       error: 'Failed to generate execution plan',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
+    return; // Explicit return for async function
   }
 });
+
 /** POST /api/projects/:projectId/plan - Generate execution plan for specific project */
-router.post('/:projectId/plan', async (req: Request, res: Response): Promise<void> => {
+router.post('/:projectId/plan', async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const { workflowId, nodes, edges } = req.body;
@@ -187,6 +190,7 @@ router.post('/:projectId/plan', async (req: Request, res: Response): Promise<voi
       nodes_count: nodes.length,
       edges_count: edges.length
     });
+    return; // Explicit return for async function
 
   } catch (error) {
     console.error(`Failed to generate plan for project ${req.params.projectId}:`, error);
@@ -194,59 +198,116 @@ router.post('/:projectId/plan', async (req: Request, res: Response): Promise<voi
       error: 'Failed to generate execution plan',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
+    return; // Explicit return for async function
   }
 });
-/** POST /api/projects/:projectId/execute - Execute workflow */
-router.post('/:projectId/execute', async (req: Request, res: Response): Promise<void> => {
+
+/** POST /api/projects/:projectId/execute - Execute workflow with Docker */
+router.post('/:projectId/execute', async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
-    const { priority = 1, timeout_minutes } = req.body;
+    const { nodes, edges } = req.body;
+    
+    if (!nodes || !Array.isArray(nodes)) {
+      return res.status(400).json({ error: 'Nodes array is required' });
+    }
+    
+    if (!edges || !Array.isArray(edges)) {
+      return res.status(400).json({ error: 'Edges array is required' });
+    }
 
-    await projectService.queueExecution(
-      projectId,
-      parseInt(priority),
-      timeout_minutes ? parseInt(timeout_minutes) : undefined
-    );
-
-    res.json({
-      success: true,
-      message: `Execution queued for project ${projectId}`,
-      project_id: projectId,
-      priority: parseInt(priority)
+    // Set up SSE response
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
     });
+
+    const emitter = new EventEmitter();
+    
+    // Listen to execution events
+    emitter.on('log', (message: any) => {
+      res.write(`data: ${JSON.stringify({ type: 'log', message })}\n\n`);
+    });
+    
+    emitter.on('done', (result: any) => {
+      res.write(`data: ${JSON.stringify({ type: 'done', result })}\n\n`);
+      res.end();
+    });
+
+    // Start execution in background
+    projectService.executeMLWorkflowLegacy(projectId, nodes, edges, emitter)
+      .catch(error => {
+        res.write(`data: ${JSON.stringify({ type: 'error', error: error.message })}\n\n`);
+        res.end();
+      });
+
+    return; // Explicit return for async function
 
   } catch (error) {
-    console.error(`Failed to execute project ${req.params.projectId}:`, error);
     res.status(500).json({
-      error: 'Failed to execute project',
+      error: 'Failed to execute the project',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
+    return; // Explicit return for async function
+  }
+});
+
+/** GET /api/projects/:projectId/results - Get execution results */
+router.get('/:projectId/results', async (req: Request, res: Response) => {
+  try {
+    const { projectId } = req.params;
+    const fs = require('fs').promises;
+    const path = require('path');
+    
+    const resultsPath = path.join(process.cwd(), 'results', projectId);
+    
+    try {
+      const files = await fs.readdir(resultsPath);
+      const results = [];
+      
+      for (const file of files) {
+        if (file.endsWith('_result.json')) {
+          const content = await fs.readFile(path.join(resultsPath, file), 'utf-8');
+          results.push({
+            nodeId: file.replace('_result.json', ''),
+            result: JSON.parse(content)
+          });
+        }
+      }
+      
+      res.json({ success: true, results });
+      return; // Explicit return for async function
+    } catch (error) {
+      res.json({ success: true, results: [] });
+      return; // Explicit return for async function
+    }
+    
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: errorMessage });
+    return; // Explicit return for async function
   }
 });
 
 /** GET /api/projects/:projectId/status - Get execution status */
-router.get('/:projectId/status', async (req: Request, res: Response): Promise<void> => {
+router.get('/:projectId/status', async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const status = await projectService.getProjectStatus(projectId);
-
-    res.json({
-      success: true,
-      project_id: projectId,
-      ...status
-    });
-
+    res.json(status);
+    return; // Explicit return for async function
   } catch (error) {
-    console.error(`Failed to get status for project ${req.params.projectId}:`, error);
-    res.status(500).json({
-      error: 'Failed to get project status',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: errorMessage });
+    return; // Explicit return for async function
   }
 });
 
 /** GET /api/projects/:projectId/logs - Get execution logs */
-router.get('/:projectId/logs', async (req: Request, res: Response): Promise<void> => {
+router.get('/:projectId/logs', async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const { stream = false } = req.query;
@@ -261,6 +322,7 @@ router.get('/:projectId/logs', async (req: Request, res: Response): Promise<void
 
       // TODO: Implement log streaming
       res.write(`event: log\ndata: {"message": "Log streaming not yet implemented"}\n\n`);
+      return; // Explicit return for async function
     } else {
       // Return full log content
       const logs = await projectService.getExecutionLogs(projectId);
@@ -271,6 +333,7 @@ router.get('/:projectId/logs', async (req: Request, res: Response): Promise<void
         logs: logs.split('\n'),
         log_count: logs.split('\n').length
       });
+      return; // Explicit return for async function
     }
 
   } catch (error) {
@@ -279,11 +342,12 @@ router.get('/:projectId/logs', async (req: Request, res: Response): Promise<void
       error: 'Failed to get project logs',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
+    return; // Explicit return for async function
   }
 });
 
 /** POST /api/projects/:projectId/retry - Retry failed execution */
-router.post('/:projectId/retry', async (req: Request, res: Response): Promise<void> => {
+router.post('/:projectId/retry', async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const { from_step } = req.body;
@@ -296,6 +360,7 @@ router.post('/:projectId/retry', async (req: Request, res: Response): Promise<vo
       project_id: projectId,
       from_step: from_step
     });
+    return; // Explicit return for async function
 
   } catch (error) {
     console.error(`Failed to retry project ${req.params.projectId}:`, error);
@@ -303,11 +368,12 @@ router.post('/:projectId/retry', async (req: Request, res: Response): Promise<vo
       error: 'Failed to retry project execution',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
+    return; // Explicit return for async function
   }
 });
 
 /** DELETE /api/projects/:projectId - Clean up project */
-router.delete('/:projectId', async (req: Request, res: Response): Promise<void> => {
+router.delete('/:projectId', async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     await projectService.cleanupProject(projectId);
@@ -317,6 +383,7 @@ router.delete('/:projectId', async (req: Request, res: Response): Promise<void> 
       message: `Project ${projectId} cleaned up successfully`,
       project_id: projectId
     });
+    return; // Explicit return for async function
 
   } catch (error) {
     console.error(`Failed to cleanup project ${req.params.projectId}:`, error);
@@ -324,6 +391,7 @@ router.delete('/:projectId', async (req: Request, res: Response): Promise<void> 
       error: 'Failed to cleanup project',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
+    return; // Explicit return for async function
   }
 });
 

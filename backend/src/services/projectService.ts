@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
 import { EventEmitter } from 'events';
+import { WorkflowService, WorkflowNode } from './workflow.service';
 
 const execAsync = promisify(exec);
 
@@ -42,6 +43,7 @@ export class ProjectService extends EventEmitter {
   private executionQueue: QueuedExecution[] = [];
   private runningExecutions = new Map<string, ExecutionStatus>();
   private executionHistory = new Map<string, ExecutionStatus[]>();
+  private workflowSvc = new WorkflowService();
   
   // Configuration from environment
   private readonly MAX_CONCURRENT_EXECUTIONS = parseInt(process.env.MAX_CONCURRENT_EXECUTIONS || '3');
@@ -55,41 +57,243 @@ export class ProjectService extends EventEmitter {
     this.startCleanupJob();
   }
 
-  /** Execute ML workflow using Docker container */
-  async executeMLWorkflow(projectId: string, nodes: any[], edges: any[]): Promise<void> {
-    const projectPath = path.join(this.projectsRoot, projectId);
+  /** Execute ML workflow by invoking Docker for each node individually */
+  async executeMLWorkflow(projectId: string, emitter: EventEmitter): Promise<void> {
+    try {
+      // 1. Load the persisted graph 
+      const workflow = await this.workflowSvc.loadWorkflow(projectId);
+      
+      if (!workflow || !workflow.nodes) {
+        throw new Error(`No workflow found for project ${projectId}`);
+      }
+
+      // 2. Get execution order using topological sort
+      const executionOrder = this.calculateExecutionOrder(workflow.nodes, workflow.edges || []);
+      
+      emitter.emit('log', `🚀 Starting ML workflow execution for project ${projectId}\n`);
+      emitter.emit('log', `📋 Execution order: ${executionOrder.join(' → ')}\n`);
+
+      // 3. Iterate nodes in topological order
+      for (const nodeId of executionOrder) {
+        const node = workflow.nodes.find((n: WorkflowNode) => n.id === nodeId);
+        if (!node) {
+          emitter.emit('log', `⚠️ Node ${nodeId} not found, skipping...\n`);
+          continue;
+        }
+
+        emitter.emit('log', `\n🔄 Starting node ${node.id} (${node.type || 'unknown'})…\n`);
+
+        // 4. Build Docker command based on node type
+        const args = [
+          'run',
+          '--rm',
+          '-v', `${process.cwd()}/workflows/${projectId}:/app/data`,
+          '-v', `${process.cwd()}/results/${projectId}:/app/results`,
+          'flowcraft-ml-engine',
+          'python',
+          'execute_workflow.py',
+          '--node-id', node.id,
+          '--type', node.type || 'customNode',
+          '--params', JSON.stringify(node.data || {}),
+          '--project-id', projectId
+        ];
+
+        const proc = spawn('docker', args);
+
+        // 5. Stream stdout/stderr to SSE emitter
+        proc.stdout.on('data', (chunk) => {
+          emitter.emit('log', chunk.toString());
+        });
+        
+        proc.stderr.on('data', (chunk) => {
+          emitter.emit('log', `⚠️ ${chunk.toString()}`);
+        });
+
+        // 6. Await completion
+        await new Promise<void>((resolve, reject) => {
+          proc.on('exit', (code) => {
+            if (code === 0) {
+              emitter.emit('log', `✅ Node ${node.id} completed successfully.\n`);
+              resolve();
+            } else {
+              emitter.emit('log', `❌ Node ${node.id} failed with exit code ${code}.\n`);
+              reject(new Error(`Docker exited with code ${code}`));
+            }
+          });
+
+          // Handle process errors
+          proc.on('error', (error) => {
+            emitter.emit('log', `💥 Process error for node ${node.id}: ${error.message}\n`);
+            reject(error);
+          });
+        });
+
+        // 7. Load result JSON and persist
+        const resultPath = path.resolve(
+          process.cwd(),
+          'results',
+          projectId,
+          `${node.id}_result.json`
+        );
+        
+        try {
+          if (await fs.access(resultPath).then(() => true).catch(() => false)) {
+            const raw = await fs.readFile(resultPath, 'utf-8');
+            const result = JSON.parse(raw);
+            node.result = result;
+            emitter.emit('log', `📁 Loaded result for ${node.id}.\n`);
+          } else {
+            emitter.emit('log', `⚠️ Result file missing for ${node.id}.\n`);
+          }
+        } catch (error) {
+          emitter.emit('log', `⚠️ Error loading result for ${node.id}: ${error}\n`);
+        }
+
+        // 8. Update workflow state
+        try {
+          await this.workflowSvc.updateNodeResult(projectId, node.id, node.result);
+          emitter.emit('log', `💾 Updated workflow state for ${node.id}.\n`);
+        } catch (error) {
+          emitter.emit('log', `⚠️ Error updating workflow state for ${node.id}: ${error}\n`);
+        }
+      }
+
+      emitter.emit('log', `\n🎉 ML workflow execution completed successfully!\n`);
+      emitter.emit('done', { status: 'success', projectId });
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      emitter.emit('log', `\n💥 Workflow execution failed: ${errorMessage}\n`);
+      emitter.emit('done', { status: 'failed', projectId, error: errorMessage });
+      throw error;
+    }
+  }
+
+  /** Execute ML workflow with existing node/edge structure (legacy compatibility) */
+  async executeMLWorkflowLegacy(projectId: string, nodes: any[], edges: any[], emitter: EventEmitter): Promise<void> {
+    try {
+      // 1. Ensure necessary directories exist
+      await this.ensureExecutionDirectories(projectId);
+      
+      // 2. Get execution order using topological sort
+      const executionOrder = this.calculateExecutionOrder(nodes, edges);
+      
+      emitter.emit('log', `🚀 Starting ML workflow execution for project ${projectId}\n`);
+      emitter.emit('log', `📋 Execution order: ${executionOrder.join(' → ')}\n`);
+
+      // 3. Iterate nodes in topological order
+      for (const nodeId of executionOrder) {
+        const node = nodes.find((n: any) => n.id === nodeId);
+        if (!node) {
+          emitter.emit('log', `⚠️ Node ${nodeId} not found, skipping...\n`);
+          continue;
+        }
+
+        emitter.emit('log', `\n🔄 Starting node ${node.id} (${node.type || 'unknown'})…\n`);
+
+        // 4. Build Docker command based on node type
+        const args = [
+          'run',
+          '--rm',
+          '-v', `${process.cwd()}/workflows/${projectId}:/app/data`,
+          '-v', `${process.cwd()}/results/${projectId}:/app/results`,
+          'flowcraft-ml-engine',
+          'python',
+          'execute_workflow.py',
+          '--node-id', node.id,
+          '--type', node.type || 'customNode',
+          '--params', JSON.stringify(node.data || {}),
+          '--project-id', projectId
+        ];
+
+        const proc = spawn('docker', args);
+
+        // 5. Stream stdout/stderr to SSE emitter
+        proc.stdout.on('data', (chunk) => {
+          emitter.emit('log', chunk.toString());
+        });
+        
+        proc.stderr.on('data', (chunk) => {
+          emitter.emit('log', `⚠️ ${chunk.toString()}`);
+        });
+
+        // 6. Await completion
+        await new Promise<void>((resolve, reject) => {
+          proc.on('exit', (code) => {
+            if (code === 0) {
+              emitter.emit('log', `✅ Node ${node.id} completed successfully.\n`);
+              resolve();
+            } else {
+              emitter.emit('log', `❌ Node ${node.id} failed with exit code ${code}.\n`);
+              reject(new Error(`Docker exited with code ${code}`));
+            }
+          });
+
+          // Handle process errors
+          proc.on('error', (error) => {
+            emitter.emit('log', `💥 Process error for node ${node.id}: ${error.message}\n`);
+            reject(error);
+          });
+        });
+
+        // 7. Load result JSON and persist
+        const resultPath = path.resolve(
+          process.cwd(),
+          'results',
+          projectId,
+          `${node.id}_result.json`
+        );
+        
+        try {
+          if (await fs.access(resultPath).then(() => true).catch(() => false)) {
+            const raw = await fs.readFile(resultPath, 'utf-8');
+            const result = JSON.parse(raw);
+            node.result = result;
+            emitter.emit('log', `📁 Loaded result for ${node.id}.\n`);
+          } else {
+            emitter.emit('log', `⚠️ Result file missing for ${node.id}.\n`);
+          }
+        } catch (error) {
+          emitter.emit('log', `⚠️ Error loading result for ${node.id}: ${error}\n`);
+        }
+
+        // 8. Update workflow state
+        try {
+          await this.workflowSvc.updateNodeResult(projectId, node.id, node.result);
+          emitter.emit('log', `💾 Updated workflow state for ${node.id}.\n`);
+        } catch (error) {
+          emitter.emit('log', `⚠️ Error updating workflow state for ${node.id}: ${error}\n`);
+        }
+      }
+
+      emitter.emit('log', `\n🎉 ML workflow execution completed successfully!\n`);
+      emitter.emit('done', { status: 'success', projectId });
+      
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      emitter.emit('log', `\n💥 Workflow execution failed: ${errorMessage}\n`);
+      emitter.emit('done', { status: 'failed', projectId, error: errorMessage });
+      throw error;
+    }
+  }
+
+  /** Ensure necessary directories exist for Docker execution */
+  private async ensureExecutionDirectories(projectId: string): Promise<void> {
+    const projectPath = path.join(process.cwd(), 'workflows', projectId);
+    const resultsPath = path.join(process.cwd(), 'results', projectId);
     
-    // Create execution plan
-    const workflowData = {
-      project_id: projectId,
-      nodes: nodes,
-      edges: edges,
-      execution_order: this.calculateExecutionOrder(nodes, edges)
-    };
-    
-    // Save workflow file
-    const workflowFile = path.join(projectPath, 'workflow.json');
-    await fs.writeFile(workflowFile, JSON.stringify(workflowData, null, 2));
-    
-    // Execute via Docker ML engine
-    const dockerCommand = [
-      'docker', 'run', '--rm',
-      '-v', `${projectPath}:/workspace`,
-      'flowcraft-ml-engine',
-      'python', '/app/execute_workflow.py', '/workspace/workflow.json'
-    ];
-    
-    console.log(`Executing ML workflow: ${dockerCommand.join(' ')}`);
-    
-    const process = spawn(dockerCommand[0], dockerCommand.slice(1));
-    
-    process.stdout.on('data', (data: Buffer) => {
-      console.log(`ML Engine: ${data.toString().trim()}`);
-    });
-    
-    process.stderr.on('data', (data: Buffer) => {
-      console.log(`ML Engine Error: ${data.toString().trim()}`);
-    });
+    try {
+      // Create project workflow directory
+      await fs.mkdir(projectPath, { recursive: true });
+      
+      // Create results directory
+      await fs.mkdir(resultsPath, { recursive: true });
+      
+      console.log(`📁 Created execution directories for project ${projectId}`);
+    } catch (error) {
+      console.error(`❌ Failed to create execution directories for project ${projectId}:`, error);
+      throw new Error(`Failed to create execution directories: ${error}`);
+    }
   }
 
   /** Calculate execution order using topological sort */
@@ -597,3 +801,4 @@ export class ProjectService extends EventEmitter {
     };
   }
 }
+

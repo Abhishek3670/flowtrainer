@@ -32,7 +32,6 @@ const componentCategories = [
     color: 'bg-blue-500',
     nodes: [
       { id: 'dataset-upload', icon: Upload, title: 'Dataset Upload', description: 'Upload training datasets' },
-      { id: 'dataset-sample', icon: Database, title: 'Sample Dataset', description: 'Load built-in sample datasets' },
       { id: 'video-stream', icon: Camera, title: 'Video Stream', description: 'Stream videos from files or cameras' },
       { id: 'database', icon: Database, title: 'Database', description: 'Connect to databases' },
       { id: 'file-storage', icon: FileText, title: 'File Storage', description: 'Cloud storage connector' },

@@ -1,0 +1,12 @@
+{
+  "project_id": "test-project",
+  "nodes": [
+    {
+      "id": "test-node",
+      "type": "data-upload",
+      "data": { "file": "test.csv" }
+    }
+  ],
+  "edges": [],
+  "execution_order": ["test-node"]
+}
