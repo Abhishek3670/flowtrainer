@@ -1,22 +1,62 @@
+# FlowCraft Docker Compose Configuration
+#
+# This file defines the multi-container application architecture for FlowCraft.
+# It orchestrates three main services: frontend, backend, and database.
+#
+# Architecture:
+# - Frontend: React application served on port 3000
+# - Backend: Node.js/Express API server on port 4000
+# - Database: MongoDB instance on port 27017
+#
+# Service Dependencies:
+# Frontend -> Backend -> Database
+#
+# Usage:
+# docker-compose up -d    # Start all services in background
+# docker-compose down     # Stop and remove all services
+# docker-compose logs     # View service logs
+
 version: "3"
+
 services:
+  # ===== FRONTEND SERVICE =====
+  
   frontend:
-    build: ./frontend
+    build: ./frontend                    # Build from frontend directory Dockerfile
     ports:
-      - "3000:3000"
+      - "3000:3000"                     # Expose frontend on host port 3000
     depends_on:
-      - backend
+      - backend                         # Wait for backend to be ready before starting
+    # Frontend service configuration
+    # - Serves React application
+    # - Communicates with backend API
+    # - Hot reload enabled for development
+  
+  # ===== BACKEND SERVICE =====
+  
   backend:
-    build: ./backend
+    build: ./backend                     # Build from backend directory Dockerfile
     ports:
-      - "4000:4000"
+      - "4000:4000"                     # Expose backend API on host port 4000
     env_file:
-      - backend/.env.example
+      - backend/.env.example            # Load environment variables from example file
     depends_on:
-      - db
+      - db                              # Wait for database to be ready before starting
+    # Backend service configuration
+    # - Express.js API server
+    # - MongoDB connection
+    # - WebSocket support for real-time features
+  
+  # ===== DATABASE SERVICE =====
+  
   db:
-    image: mongo
+    image: mongo                         # Use official MongoDB Docker image
     ports:
-      - "27017:27017"
+      - "27017:27017"                   # Expose MongoDB on host port 27017
     volumes:
+      # Mount initialization script for database setup
       - ./db/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    # Database service configuration
+    # - MongoDB instance for workflow data
+    # - Persistent data storage
+    # - Initialization script for setup

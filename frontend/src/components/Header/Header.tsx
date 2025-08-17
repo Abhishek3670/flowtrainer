@@ -1,3 +1,30 @@
+/**
+ * Header Component
+ * 
+ * Main application header that provides navigation, workflow controls,
+ * and system status information. Includes save/load functionality,
+ * undo/redo controls, workflow execution, and theme switching.
+ * 
+ * Key Features:
+ * - Workflow save and checkpoint management
+ * - Undo/redo with keyboard shortcuts (Ctrl+Z, Ctrl+Y)
+ * - Workflow execution controls
+ * - Auto-save toggle
+ * - Theme switching (light/dark mode)
+ * - System status monitoring
+ * - Keyboard shortcut support
+ * 
+ * Keyboard Shortcuts:
+ * - Ctrl+Z / Cmd+Z: Undo
+ * - Ctrl+Y / Cmd+Shift+Z: Redo
+ * 
+ * Props:
+ * - Workflow state management (save, undo, redo)
+ * - Execution controls (run, status)
+ * - System configuration (auto-save, theme)
+ * - Checkpoint management
+ */
+
 import React, { useEffect, useState } from 'react';
 import {
   Save,
@@ -15,24 +42,43 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useSystemStatus } from '../../hooks/useSystemStatus';
 import SystemDashboard from '../SystemDashboard/SystemDashboard';
 
+/**
+ * Header component props interface
+ * Defines all the callbacks and state values needed for header functionality
+ */
 interface HeaderProps {
-  isSaving: boolean;
-  lastSaved: Date | null;
-  onSave: () => void;
-  workflowName?: string;
-  autoSaveEnabled: boolean;
-  onToggleAutoSave: () => void;
-  onRun: () => void;
-  disableRun?: boolean;
-  // Undo/Redo props
-  onUndo: () => void;
-  onRedo: () => void;
-  disableUndo: boolean;
-  disableRedo: boolean;
-  // Checkpoint props
-  onOpenCheckpointModal: () => void;
+  // Workflow persistence
+  isSaving: boolean;                    // Current save operation status
+  lastSaved: Date | null;               // Timestamp of last successful save
+  onSave: () => void;                   // Save workflow callback
+  
+  // Workflow information
+  workflowName?: string;                // Display name for current workflow
+  
+  // Auto-save configuration
+  autoSaveEnabled: boolean;             // Current auto-save state
+  onToggleAutoSave: () => void;         // Toggle auto-save callback
+  
+  // Workflow execution
+  onRun: () => void;                    // Execute workflow callback
+  disableRun?: boolean;                 // Whether run button should be disabled
+  
+  // Undo/Redo functionality
+  onUndo: () => void;                   // Undo last action callback
+  onRedo: () => void;                   // Redo last undone action callback
+  disableUndo: boolean;                 // Whether undo button should be disabled
+  disableRedo: boolean;                 // Whether redo button should be disabled
+  
+  // Checkpoint management
+  onOpenCheckpointModal: () => void;    // Open checkpoint modal callback
 }
 
+/**
+ * Header Component Implementation
+ * 
+ * Renders the main application header with all workflow controls
+ * and system status information.
+ */
 const Header: React.FC<HeaderProps> = ({
   isSaving,
   lastSaved,
@@ -48,11 +94,23 @@ const Header: React.FC<HeaderProps> = ({
   disableRedo,
   onOpenCheckpointModal,
 }) => {
+  // ===== HOOKS & STATE =====
+  
+  // Theme context for light/dark mode switching
   const { theme, toggleTheme } = useTheme();
+  
+  // System status monitoring for resource utilization
   const { systemStatus } = useSystemStatus();
+  
+  // Local state for system dashboard visibility
   const [showSystemDashboard, setShowSystemDashboard] = useState(false);
 
-  // Keyboard shortcuts for undo/redo
+  // ===== KEYBOARD SHORTCUTS =====
+  
+  /**
+   * Set up keyboard shortcuts for undo/redo operations
+   * Supports both Windows/Linux (Ctrl) and Mac (Cmd) key combinations
+   */
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       // Ctrl+Z or Cmd+Z for undo
@@ -74,11 +132,19 @@ const Header: React.FC<HeaderProps> = ({
       }
     };
 
+    // Add event listener for keyboard shortcuts
     window.addEventListener('keydown', handleKeyDown);
+    
+    // Clean up event listener on component unmount
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onUndo, onRedo, disableUndo, disableRedo]);
 
-  // Determine system status color and message
+  // ===== SYSTEM STATUS UTILITIES =====
+  
+  /**
+   * Determine system status color and message based on capacity utilization
+   * Provides visual feedback about system resource availability
+   */
   const getSystemStatusInfo = () => {
     if (!systemStatus) {
       return {
@@ -90,6 +156,7 @@ const Header: React.FC<HeaderProps> = ({
 
     const { capacity_utilization } = systemStatus;
     
+    // Determine status based on capacity utilization percentage
     if (capacity_utilization && capacity_utilization >= 100) {
       return {
         color: 'red',
@@ -102,17 +169,17 @@ const Header: React.FC<HeaderProps> = ({
         message: 'High Load',
         indicator: 'bg-yellow-500'
       };
-    } else if (capacity_utilization && capacity_utilization > 0) {
+    } else if (capacity_utilization && capacity_utilization >= 50) {
       return {
-        color: 'green',
-        message: 'Normal',
-        indicator: 'bg-green-500'
+        color: 'blue',
+        message: 'Moderate Load',
+        indicator: 'bg-blue-500'
       };
     } else {
       return {
-        color: 'blue',
-        message: 'Idle',
-        indicator: 'bg-blue-500'
+        color: 'green',
+        message: 'Available',
+        indicator: 'bg-green-500'
       };
     }
   };

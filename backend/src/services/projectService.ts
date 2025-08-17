@@ -55,6 +55,87 @@ export class ProjectService extends EventEmitter {
     this.startCleanupJob();
   }
 
+  /** Execute ML workflow using Docker container */
+  async executeMLWorkflow(projectId: string, nodes: any[], edges: any[]): Promise<void> {
+    const projectPath = path.join(this.projectsRoot, projectId);
+    
+    // Create execution plan
+    const workflowData = {
+      project_id: projectId,
+      nodes: nodes,
+      edges: edges,
+      execution_order: this.calculateExecutionOrder(nodes, edges)
+    };
+    
+    // Save workflow file
+    const workflowFile = path.join(projectPath, 'workflow.json');
+    await fs.writeFile(workflowFile, JSON.stringify(workflowData, null, 2));
+    
+    // Execute via Docker ML engine
+    const dockerCommand = [
+      'docker', 'run', '--rm',
+      '-v', `${projectPath}:/workspace`,
+      'flowcraft-ml-engine',
+      'python', '/app/execute_workflow.py', '/workspace/workflow.json'
+    ];
+    
+    console.log(`Executing ML workflow: ${dockerCommand.join(' ')}`);
+    
+    const process = spawn(dockerCommand[0], dockerCommand.slice(1));
+    
+    process.stdout.on('data', (data: Buffer) => {
+      console.log(`ML Engine: ${data.toString().trim()}`);
+    });
+    
+    process.stderr.on('data', (data: Buffer) => {
+      console.log(`ML Engine Error: ${data.toString().trim()}`);
+    });
+  }
+
+  /** Calculate execution order using topological sort */
+  private calculateExecutionOrder(nodes: any[], edges: any[]): string[] {
+    // Simple topological sort
+    const graph: Record<string, string[]> = {};
+    const inDegree: Record<string, number> = {};
+    
+    // Initialize graph
+    nodes.forEach(node => {
+      graph[node.id] = [];
+      inDegree[node.id] = 0;
+    });
+    
+    // Build graph from edges
+    edges.forEach(edge => {
+      graph[edge.source].push(edge.target);
+      inDegree[edge.target]++;
+    });
+    
+    // Topological sort
+    const queue: string[] = [];
+    const result: string[] = [];
+    
+    // Find nodes with no dependencies
+    Object.keys(inDegree).forEach(node => {
+      if (inDegree[node] === 0) {
+        queue.push(node);
+      }
+    });
+    
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      result.push(current);
+      
+      graph[current].forEach(neighbor => {
+        inDegree[neighbor]--;
+        if (inDegree[neighbor] === 0) {
+          queue.push(neighbor);
+        }
+      });
+    }
+    
+    return result;
+  }
+
   /** Generate and save execution plan JSON */
   async generateExecutionPlan(
     projectId: string,
@@ -79,7 +160,7 @@ export class ProjectService extends EventEmitter {
     }));
 
     // Generate execution order using topological sort
-    const executionOrder = this.topologicalSort(transformedNodes, edges);
+    const executionOrder = this.calculateExecutionOrder(transformedNodes, edges);
     
     // Create execution plan
     const executionPlan: ExecutionPlan = {
@@ -514,48 +595,5 @@ export class ProjectService extends EventEmitter {
         started_at: s.started_at
       }))
     };
-  }
-
-  /** Topological sort for execution order */
-  private topologicalSort(nodes: any[], edges: any[]): string[] {
-    const graph: { [key: string]: string[] } = {};
-    const inDegree: { [key: string]: number } = {};
-    
-    nodes.forEach(node => {
-      graph[node.id] = [];
-      inDegree[node.id] = 0;
-    });
-    
-    edges.forEach(edge => {
-      graph[edge.source].push(edge.target);
-      inDegree[edge.target]++;
-    });
-    
-    const queue: string[] = [];
-    const result: string[] = [];
-    
-    Object.keys(inDegree).forEach(nodeId => {
-      if (inDegree[nodeId] === 0) {
-        queue.push(nodeId);
-      }
-    });
-    
-    while (queue.length > 0) {
-      const current = queue.shift()!;
-      result.push(current);
-      
-      graph[current].forEach(neighbor => {
-        inDegree[neighbor]--;
-        if (inDegree[neighbor] === 0) {
-          queue.push(neighbor);
-        }
-      });
-    }
-    
-    if (result.length !== nodes.length) {
-      throw new Error('Workflow contains cycles - cannot determine execution order');
-    }
-    
-    return result;
   }
 }
