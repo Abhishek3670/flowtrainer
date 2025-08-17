@@ -3,6 +3,7 @@ import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs/promises';
+import fsSync from 'fs';
 import { EventEmitter } from 'events';
 import { WorkflowService, WorkflowNode } from './workflow.service';
 
@@ -44,6 +45,7 @@ export class ProjectService extends EventEmitter {
   private runningExecutions = new Map<string, ExecutionStatus>();
   private executionHistory = new Map<string, ExecutionStatus[]>();
   private workflowSvc = new WorkflowService();
+  private readonly maxRetries = 2;
   
   // Configuration from environment
   private readonly MAX_CONCURRENT_EXECUTIONS = parseInt(process.env.MAX_CONCURRENT_EXECUTIONS || '3');
@@ -57,116 +59,67 @@ export class ProjectService extends EventEmitter {
     this.startCleanupJob();
   }
 
-  /** Execute ML workflow by invoking Docker for each node individually */
-  async executeMLWorkflow(projectId: string, emitter: EventEmitter): Promise<void> {
-    try {
-      // 1. Load the persisted graph 
-      const workflow = await this.workflowSvc.loadWorkflow(projectId);
-      
-      if (!workflow || !workflow.nodes) {
-        throw new Error(`No workflow found for project ${projectId}`);
-      }
+  async executeMLWorkflow(projectId: string, emitter: EventEmitter) {
+    const workflow = await this.workflowSvc.loadWorkflow(projectId);
 
-      // 2. Get execution order using topological sort
-      const executionOrder = this.calculateExecutionOrder(workflow.nodes, workflow.edges || []);
-      
-      emitter.emit('log', `🚀 Starting ML workflow execution for project ${projectId}\n`);
-      emitter.emit('log', `📋 Execution order: ${executionOrder.join(' → ')}\n`);
+    for (const node of workflow.nodes) {
+      emitter.emit('log', `\n=== Node ${node.id} (${node.type}) ===\n`);
 
-      // 3. Iterate nodes in topological order
-      for (const nodeId of executionOrder) {
-        const node = workflow.nodes.find((n: WorkflowNode) => n.id === nodeId);
-        if (!node) {
-          emitter.emit('log', `⚠️ Node ${nodeId} not found, skipping...\n`);
-          continue;
-        }
+      // 1. Serialize node input for ML engine
+      const dataDir = path.join(process.cwd(), 'data', projectId);
+      const inputPath = path.join(dataDir, `${node.id}_input.json`);
+      fsSync.writeFileSync(inputPath, JSON.stringify(node.data || {}, null, 2));
+      emitter.emit('log', `Wrote input JSON to ${inputPath}\n`);
 
-        emitter.emit('log', `\n🔄 Starting node ${node.id} (${node.type || 'unknown'})…\n`);
+      // 2. Build Docker args
+      const args = [
+        'run', '--rm',
+        '-v', `${dataDir}:/app/data`,
+        'flowtrainer-ml',
+        'python', 'execute_workflow.py',
+        '--project-id', projectId,
+        '--node-id', node.id,
+        '--type', node.type,
+        '--params', JSON.stringify(node.data || {})
+      ];
 
-        // 4. Build Docker command based on node type
-        const args = [
-          'run',
-          '--rm',
-          '-v', `${process.cwd()}/workflows/${projectId}:/app/data`,
-          '-v', `${process.cwd()}/results/${projectId}:/app/results`,
-          'flowcraft-ml-engine',
-          'python',
-          'execute_workflow.py',
-          '--node-id', node.id,
-          '--type', node.type || 'customNode',
-          '--params', JSON.stringify(node.data || {}),
-          '--project-id', projectId
-        ];
-
+      // 3. Retry loop for robustness
+      let attempt = 0;
+      while (attempt <= this.maxRetries) {
+        attempt++;
+        emitter.emit('log', `Starting container (attempt ${attempt})...\n`);
         const proc = spawn('docker', args);
 
-        // 5. Stream stdout/stderr to SSE emitter
-        proc.stdout.on('data', (chunk) => {
-          emitter.emit('log', chunk.toString());
-        });
-        
-        proc.stderr.on('data', (chunk) => {
-          emitter.emit('log', `⚠️ ${chunk.toString()}`);
+        proc.stdout.on('data', d => emitter.emit('log', d.toString()));
+        proc.stderr.on('data', d => emitter.emit('log', d.toString()));
+
+        const exitCode: number = await new Promise((resolve) => {
+          proc.on('exit', resolve);
         });
 
-        // 6. Await completion
-        await new Promise<void>((resolve, reject) => {
-          proc.on('exit', (code) => {
-            if (code === 0) {
-              emitter.emit('log', `✅ Node ${node.id} completed successfully.\n`);
-              resolve();
-            } else {
-              emitter.emit('log', `❌ Node ${node.id} failed with exit code ${code}.\n`);
-              reject(new Error(`Docker exited with code ${code}`));
-            }
-          });
-
-          // Handle process errors
-          proc.on('error', (error) => {
-            emitter.emit('log', `💥 Process error for node ${node.id}: ${error.message}\n`);
-            reject(error);
-          });
-        });
-
-        // 7. Load result JSON and persist
-        const resultPath = path.resolve(
-          process.cwd(),
-          'results',
-          projectId,
-          `${node.id}_result.json`
-        );
-        
-        try {
-          if (await fs.access(resultPath).then(() => true).catch(() => false)) {
-            const raw = await fs.readFile(resultPath, 'utf-8');
-            const result = JSON.parse(raw);
-            node.result = result;
-            emitter.emit('log', `📁 Loaded result for ${node.id}.\n`);
-          } else {
-            emitter.emit('log', `⚠️ Result file missing for ${node.id}.\n`);
-          }
-        } catch (error) {
-          emitter.emit('log', `⚠️ Error loading result for ${node.id}: ${error}\n`);
-        }
-
-        // 8. Update workflow state
-        try {
-          await this.workflowSvc.updateNodeResult(projectId, node.id, node.result);
-          emitter.emit('log', `💾 Updated workflow state for ${node.id}.\n`);
-        } catch (error) {
-          emitter.emit('log', `⚠️ Error updating workflow state for ${node.id}: ${error}\n`);
+        if (exitCode === 0) {
+          emitter.emit('log', `Node ${node.id} succeeded.\n`);
+          break;
+        } else if (attempt <= this.maxRetries) {
+          emitter.emit('log', `Node ${node.id} failed (code ${exitCode}), retrying...\n`);
+        } else {
+          emitter.emit('log', `Node ${node.id} failed after ${attempt} attempts.\n`);
+          throw new Error(`Node ${node.id} failed`);
         }
       }
 
-      emitter.emit('log', `\n🎉 ML workflow execution completed successfully!\n`);
-      emitter.emit('done', { status: 'success', projectId });
-      
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      emitter.emit('log', `\n💥 Workflow execution failed: ${errorMessage}\n`);
-      emitter.emit('done', { status: 'failed', projectId, error: errorMessage });
-      throw error;
+      // 4. Load & persist result
+      const resultPath = path.join(dataDir, 'results', `${node.id}_result.json`);
+      if (fsSync.existsSync(resultPath)) {
+        const result = JSON.parse(fsSync.readFileSync(resultPath, 'utf-8'));
+        node.result = result;
+      } else {
+        node.result = { error: 'Result file missing' };
+      }
+      await this.workflowSvc.updateNodeResult(projectId, node.id, node.result);
     }
+
+    emitter.emit('done', { status: 'success' });
   }
 
   /** Execute ML workflow with existing node/edge structure (legacy compatibility) */

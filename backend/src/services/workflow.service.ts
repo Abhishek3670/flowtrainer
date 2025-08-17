@@ -1,9 +1,6 @@
-/**
- * WorkflowService - Basic workflow management for ML execution
- * 
- * This service provides methods to load workflows and update node results
- * for the Docker-based ML workflow execution.
- */
+import fs from 'fs';
+import path from 'path';
+import lockfile from 'proper-lockfile';
 
 export interface WorkflowNode {
   id: string;
@@ -21,23 +18,36 @@ export interface Workflow {
 }
 
 export class WorkflowService {
-  
-  /**
-   * Load workflow for a given project ID
-   * This is a placeholder implementation - you may need to connect to your actual data source
-   */
-  async loadWorkflow(projectId: string): Promise<Workflow> {
-    // TODO: Implement actual workflow loading from your data source
-    // For now, return a mock workflow structure
-    throw new Error(`Workflow loading not implemented for project ${projectId}`);
+  private baseDir = path.resolve(__dirname, '../../data');
+
+  private workflowPath(projectId: string) {
+    return path.join(this.baseDir, projectId, 'workflow.json');
   }
 
-  /**
-   * Update node result in the workflow
-   * This is a placeholder implementation - you may need to connect to your actual data source
-   */
-  async updateNodeResult(projectId: string, nodeId: string, result: any): Promise<void> {
-    // TODO: Implement actual result persistence to your data source
-    console.log(`Would update node ${nodeId} result for project ${projectId}:`, result);
+  async loadWorkflow(projectId: string) {
+    const file = this.workflowPath(projectId);
+    return JSON.parse(fs.readFileSync(file, 'utf-8'));
+  }
+
+  async updateNodeResult(projectId: string, nodeId: string, result: any) {
+    // 1. Persist result file
+    const resultsDir = path.join(this.baseDir, projectId, 'results');
+    fs.mkdirSync(resultsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(resultsDir, `${nodeId}_result.json`),
+      JSON.stringify(result, null, 2)
+    );
+
+    // 2. Acquire lock, update workflow.json, then release
+    const file = this.workflowPath(projectId);
+    const release = await lockfile.lock(file);
+    try {
+      const workflow = await this.loadWorkflow(projectId);
+      const node = workflow.nodes.find((n: WorkflowNode) => n.id === nodeId);
+      if (node) node.result = result;
+      fs.writeFileSync(file, JSON.stringify(workflow, null, 2));
+    } finally {
+      await release();
+    }
   }
 }
