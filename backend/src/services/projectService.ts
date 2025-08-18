@@ -46,7 +46,7 @@ export class ProjectService extends EventEmitter {
   private executionHistory = new Map<string, ExecutionStatus[]>();
   private workflowSvc = new WorkflowService();
   private readonly maxRetries = 2;
-  
+
   // Configuration from environment
   private readonly MAX_CONCURRENT_EXECUTIONS = parseInt(process.env.MAX_CONCURRENT_EXECUTIONS || '3');
   private readonly MAX_EXECUTION_TIME_MINUTES = parseInt(process.env.MAX_EXECUTION_TIME_MINUTES || '60');
@@ -127,13 +127,38 @@ export class ProjectService extends EventEmitter {
     try {
       // 1. Ensure necessary directories exist
       await this.ensureExecutionDirectories(projectId);
-      
+
       // 2. Get execution order using topological sort
       const executionOrder = this.calculateExecutionOrder(nodes, edges);
-      
+
       emitter.emit('log', `🚀 Starting ML workflow execution for project ${projectId}\n`);
       emitter.emit('log', `📋 Execution order: ${executionOrder.join(' → ')}\n`);
+      emitter.emit('log', `\n📊 WORKFLOW SUMMARY\n`);
+      emitter.emit('log', `═══════════════════\n`);
+      emitter.emit('log', `📦 Total Nodes: ${nodes.length}\n`);
+      emitter.emit('log', `🔗 Total Edges: ${edges.length}\n`);
+      emitter.emit('log', `📋 Execution Order: ${executionOrder.join(' → ')}\n`);
+      emitter.emit('log', `\n🔧 NODE CONFIGURATIONS:\n`);
+      nodes.forEach((node, index) => {
+        emitter.emit('log', `${index + 1}. Node ID: ${node.id}\n`);
+        emitter.emit('log', `   Type: ${node.type || 'unknown'}\n`);
+        emitter.emit('log', `   Config: ${JSON.stringify(node.data || {}, null, 2)}\n`);
+        emitter.emit('log', `\n`);
+      });
 
+      // Edge details (if any)
+      if (edges.length > 0) {
+        emitter.emit('log', `🔗 EDGE CONNECTIONS:\n`);
+        edges.forEach((edge, index) => {
+          emitter.emit('log', `${index + 1}. ${edge.source} → ${edge.target}\n`);
+        });
+        emitter.emit('log', `\n`);
+      } else {
+        emitter.emit('log', `🔗 No edge connections (single node workflow)\n\n`);
+      }
+
+      emitter.emit('log', `═══════════════════\n`);
+      emitter.emit('log', `🏃 Starting execution...\n\n`);
       // 3. Iterate nodes in topological order
       for (const nodeId of executionOrder) {
         const node = nodes.find((n: any) => n.id === nodeId);
@@ -165,7 +190,7 @@ export class ProjectService extends EventEmitter {
         proc.stdout.on('data', (chunk) => {
           emitter.emit('log', chunk.toString());
         });
-        
+
         proc.stderr.on('data', (chunk) => {
           emitter.emit('log', `⚠️ ${chunk.toString()}`);
         });
@@ -196,7 +221,7 @@ export class ProjectService extends EventEmitter {
           projectId,
           `${node.id}_result.json`
         );
-        
+
         try {
           if (await fs.access(resultPath).then(() => true).catch(() => false)) {
             const raw = await fs.readFile(resultPath, 'utf-8');
@@ -221,7 +246,7 @@ export class ProjectService extends EventEmitter {
 
       emitter.emit('log', `\n🎉 ML workflow execution completed successfully!\n`);
       emitter.emit('done', { status: 'success', projectId });
-      
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       emitter.emit('log', `\n💥 Workflow execution failed: ${errorMessage}\n`);
@@ -234,14 +259,14 @@ export class ProjectService extends EventEmitter {
   private async ensureExecutionDirectories(projectId: string): Promise<void> {
     const projectPath = path.join(process.cwd(), 'workflows', projectId);
     const resultsPath = path.join(process.cwd(), 'results', projectId);
-    
+
     try {
       // Create project workflow directory
       await fs.mkdir(projectPath, { recursive: true });
-      
+
       // Create results directory
       await fs.mkdir(resultsPath, { recursive: true });
-      
+
       console.log(`📁 Created execution directories for project ${projectId}`);
     } catch (error) {
       console.error(`❌ Failed to create execution directories for project ${projectId}:`, error);
@@ -254,34 +279,34 @@ export class ProjectService extends EventEmitter {
     // Simple topological sort
     const graph: Record<string, string[]> = {};
     const inDegree: Record<string, number> = {};
-    
+
     // Initialize graph
     nodes.forEach(node => {
       graph[node.id] = [];
       inDegree[node.id] = 0;
     });
-    
+
     // Build graph from edges
     edges.forEach(edge => {
       graph[edge.source].push(edge.target);
       inDegree[edge.target]++;
     });
-    
+
     // Topological sort
     const queue: string[] = [];
     const result: string[] = [];
-    
+
     // Find nodes with no dependencies
     Object.keys(inDegree).forEach(node => {
       if (inDegree[node] === 0) {
         queue.push(node);
       }
     });
-    
+
     while (queue.length > 0) {
       const current = queue.shift()!;
       result.push(current);
-      
+
       graph[current].forEach(neighbor => {
         inDegree[neighbor]--;
         if (inDegree[neighbor] === 0) {
@@ -289,7 +314,7 @@ export class ProjectService extends EventEmitter {
         }
       });
     }
-    
+
     return result;
   }
 
@@ -304,10 +329,10 @@ export class ProjectService extends EventEmitter {
     const projectPath = path.join(this.projectsRoot, projectId);
     const configPath = path.join(projectPath, 'config');
     const logsPath = path.join(projectPath, 'logs');
-    
+
     await fs.mkdir(configPath, { recursive: true });
     await fs.mkdir(logsPath, { recursive: true });
-    
+
     // Transform nodes to match ML engine expected format
     const transformedNodes = nodes.map(node => ({
       id: node.id,
@@ -318,7 +343,7 @@ export class ProjectService extends EventEmitter {
 
     // Generate execution order using topological sort
     const executionOrder = this.calculateExecutionOrder(transformedNodes, edges);
-    
+
     // Create execution plan
     const executionPlan: ExecutionPlan = {
       workflow_id: workflowId,
@@ -336,13 +361,13 @@ export class ProjectService extends EventEmitter {
 
     const planPath = path.join(configPath, 'execution_plan.json');
     await fs.writeFile(planPath, JSON.stringify(executionPlan, null, 2));
-    
+
     console.log(`✅ Generated execution plan for project ${projectId}`);
   }
 
   /** Queue execution with priority and resource management */
   async queueExecution(
-    projectId: string, 
+    projectId: string,
     priority: number = 1,
     timeoutMinutes?: number
   ): Promise<void> {
@@ -472,7 +497,7 @@ export class ProjectService extends EventEmitter {
     // Handle process completion
     dockerProcess.on('close', (code: number) => {
       clearTimeout(timeoutHandle);
-      
+
       if (code === 0) {
         this.markExecutionCompleted(projectId);
       } else {
@@ -489,7 +514,7 @@ export class ProjectService extends EventEmitter {
   /** Handle execution timeout */
   private async handleExecutionTimeout(projectId: string, dockerProcess: any): Promise<void> {
     console.log(`⏰ Execution timeout for project ${projectId}`);
-    
+
     try {
       // Kill the docker container
       await execAsync(`docker kill flowcraft-${projectId}`);
@@ -503,7 +528,7 @@ export class ProjectService extends EventEmitter {
   /** Process execution output for status updates */
   private processExecutionOutput(projectId: string, output: string): void {
     const lines = output.split('\n').filter(line => line.trim());
-    
+
     lines.forEach(line => {
       try {
         if (line.trim().startsWith('{')) {
@@ -525,7 +550,7 @@ export class ProjectService extends EventEmitter {
     if (status) {
       status.current_step = result.step;
       status.progress = result.progress;
-      
+
       this.emit('execution_progress', {
         projectId,
         step: result.step,
@@ -541,10 +566,10 @@ export class ProjectService extends EventEmitter {
     if (status) {
       status.status = 'completed';
       status.completed_at = new Date();
-      
+
       // Archive to history
       this.archiveExecutionStatus(projectId, status);
-      
+
       console.log(`✅ Workflow execution completed for project ${projectId}`);
       this.emit('execution_completed', { projectId, status });
     }
@@ -557,10 +582,10 @@ export class ProjectService extends EventEmitter {
       status.status = statusType;
       status.error = error;
       status.completed_at = new Date();
-      
+
       // Archive to history
       this.archiveExecutionStatus(projectId, status);
-      
+
       console.error(`❌ Workflow execution ${statusType} for project ${projectId}: ${error}`);
       this.emit('execution_failed', { projectId, error, status });
     }
@@ -571,7 +596,7 @@ export class ProjectService extends EventEmitter {
     const history = this.executionHistory.get(projectId) || [];
     history.push({ ...status });
     this.executionHistory.set(projectId, history);
-    
+
     // Remove from running executions
     this.runningExecutions.delete(projectId);
   }
@@ -600,11 +625,11 @@ export class ProjectService extends EventEmitter {
     // Check for output files
     const projectPath = path.join(this.projectsRoot, projectId);
     const outputPath = path.join(projectPath, 'output');
-    
+
     try {
       const files = await fs.readdir(outputPath);
       const results: any = {};
-      
+
       for (const file of files) {
         if (file.endsWith('.json')) {
           const filePath = path.join(outputPath, file);
@@ -612,14 +637,14 @@ export class ProjectService extends EventEmitter {
           results[file.replace('.json', '')] = JSON.parse(content);
         }
       }
-      
+
       return {
         project_id: projectId,
         status: 'completed',
         results: results,
         output_files: files
       };
-      
+
     } catch (error) {
       return {
         project_id: projectId,
@@ -633,11 +658,11 @@ export class ProjectService extends EventEmitter {
   async getExecutionLogs(projectId: string): Promise<string> {
     const logDir = path.join(this.projectsRoot, projectId, 'logs');
     const logPath = path.join(logDir, 'execution.log');
-    
+
     try {
       // Ensure log directory exists
       await fs.mkdir(logDir, { recursive: true });
-      
+
       // Check if log file exists
       try {
         await fs.access(logPath);
@@ -667,7 +692,7 @@ export class ProjectService extends EventEmitter {
     }
 
     console.log(`🔄 Retrying execution for project ${projectId}${fromStep ? ` from step ${fromStep}` : ''}`);
-    
+
     // TODO: Implement step-specific retry logic by modifying execution plan
     await this.queueExecution(projectId, 2); // Higher priority for retries
   }
@@ -687,7 +712,7 @@ export class ProjectService extends EventEmitter {
 
   private async cleanupOldProjects(): Promise<void> {
     console.log('🧹 Starting scheduled project cleanup...');
-    
+
     try {
       const projects = await fs.readdir(this.projectsRoot);
       const cutoffTime = new Date();
@@ -695,7 +720,7 @@ export class ProjectService extends EventEmitter {
 
       for (const projectId of projects) {
         const projectPath = path.join(this.projectsRoot, projectId);
-        
+
         try {
           const stats = await fs.stat(projectPath);
           if (stats.mtime < cutoffTime) {
@@ -713,14 +738,14 @@ export class ProjectService extends EventEmitter {
   /** Clean up project files */
   async cleanupProject(projectId: string): Promise<void> {
     const projectPath = path.join(this.projectsRoot, projectId);
-    
+
     try {
       await fs.rm(projectPath, { recursive: true, force: true });
-      
+
       // Remove from running executions and history
       this.runningExecutions.delete(projectId);
       this.executionHistory.delete(projectId);
-      
+
       console.log(`🧹 Cleaned up project ${projectId}`);
       this.emit('project_cleaned', { projectId });
     } catch (error) {

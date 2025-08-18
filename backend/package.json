@@ -8,6 +8,16 @@
     "build": "tsc",
     "test": "jest"
   },
+  "nodemonConfig": {
+    "watch": ["src"],
+    "ext": "ts,js", 
+    "ignore": [
+      "data/**/*",
+      "workflows/**/*",
+      "results/**/*", 
+      "**/*.json"
+    ]
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

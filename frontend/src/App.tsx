@@ -81,16 +81,16 @@ interface StateSnapshot {
  */
 function FlowCanvas() {
   // ===== CORE STATE MANAGEMENT =====
-  
+
   // Canvas state - nodes and edges that make up the workflow
   const [nodes, setNodes] = useState<Node<NodeData>[]>(initialNodes);
   const [edges, setEdges] = useState<Edge[]>(initialEdges);
-  
+
   // Viewport state for canvas positioning and zoom
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
-  
+
   // ===== UNDO/REDO SYSTEM =====
-  
+
   // History management for undo/redo operations
   // Positions are kept separate and NOT included in undo/redo to prevent clutter
   const [history, setHistory] = useState<{
@@ -100,7 +100,7 @@ function FlowCanvas() {
 
   // Flags to prevent saving to history during undo/redo operations
   const isUndoRedoInProgress = useRef(false);
-  
+
   // Flag to prevent React Flow's onNodesChange from saving duplicate history
   // This is needed because React Flow fires position changes separately
   const skipNextNodeChangeHistory = useRef(false);
@@ -109,48 +109,46 @@ function FlowCanvas() {
   const reactFlowInstance = useReactFlow();
 
   // ===== APPLICATION STATE =====
-  
+
   // Currently selected node for editing
   const [selectedNode, setSelectedNode] = useState<Node<NodeData> | null>(null);
-  
+
   // Current workflow data (loaded from backend)
   const [currentWorkflow] = useState<WorkflowData | null>(null);
-  
+
   // Auto-save configuration
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
-  
+
   // Validation errors for workflow nodes
   const [validationErrors] = useState<ValidationError[]>([]);
 
   // ===== PROJECT EXECUTION =====
-  
+
   // Project execution state and controls
-  const projectId = 'default-workflow';
+  const projectId = 'default-project';
+  const workflowId = 'default-workflow';
   const {
     status,
     loading: execLoading,
     running,
-    error: execError,
+    error,
     logs,
     isStreaming,
     executeProject,
     retryExecution,
-    clearLogs
+    clearLogs,
   } = useProjectExecution(projectId);
 
-  // Debug logging for execution state
-  console.log('running:', running, 'logs length:', logs.length, 'isStreaming:', isStreaming);
-  
   // ===== PERSISTENCE =====
-  
+
   // Workflow persistence hook for saving/loading checkpoints
-  const persistence = useWorkflowPersistence('default-workflow');
+  const persistence = useWorkflowPersistence(workflowId);
 
   // ===== INITIALIZATION =====
-  
+
   // Flag to ensure workflow is only initialized once
   const hasInitialized = useRef(false);
-  
+
   // Initialize workflow data on component mount
   useEffect(() => {
     if (!hasInitialized.current && reactFlowInstance) {
@@ -159,7 +157,7 @@ function FlowCanvas() {
       const initializeWorkflow = async () => {
         try {
           console.log('[App] Initializing workflow...');
-          
+
           // Load the latest checkpoint to restore workflow state
           const checkpointData = await persistence.loadLatestCheckpoint();
 
@@ -200,7 +198,7 @@ function FlowCanvas() {
   }, [reactFlowInstance, persistence]);
 
   // ===== HISTORY MANAGEMENT =====
-  
+
   /**
    * Save current state to history for undo/redo functionality
    * Excludes position changes to prevent history clutter
@@ -221,7 +219,7 @@ function FlowCanvas() {
   }, [nodes, edges]);
 
   // ===== NODE OPERATIONS =====
-  
+
   /**
    * Handle node deletion from the workflow
    * Removes the node and all connected edges
@@ -236,7 +234,7 @@ function FlowCanvas() {
 
     // Save current state before deletion for undo capability
     saveToHistory();
-    
+
     // Remove the node and all edges connected to it
     setNodes(prev => prev.filter(n => n.id !== nodeId));
     setEdges(prev => prev.filter(e => e.source !== nodeId && e.target !== nodeId));
@@ -246,7 +244,7 @@ function FlowCanvas() {
   }, [selectedNode, saveToHistory]);
 
   // ===== CHECKPOINT MANAGEMENT =====
-  
+
   /**
    * Restore workflow state from a specific checkpoint
    * Saves current state to history before restoration
@@ -260,7 +258,7 @@ function FlowCanvas() {
       saveToHistory();
 
       // Fetch checkpoint data from the backend
-      const checkpoint = await CheckpointAPI.getCheckpoint('default-workflow', checkpointId);
+      const checkpoint = await CheckpointAPI.getCheckpoint(workflowId, checkpointId);
 
       if (checkpoint) {
         // Add delete handlers to restored nodes
@@ -291,7 +289,7 @@ function FlowCanvas() {
   }, [saveToHistory, handleNodeDelete, reactFlowInstance]);
 
   // ===== REACT FLOW EVENT HANDLERS =====
-  
+
   /**
    * Handle node changes from React Flow
    * Filters out position-only changes to prevent unnecessary history entries
@@ -338,7 +336,7 @@ function FlowCanvas() {
   }, [saveToHistory]);
 
   // ===== UNDO/REDO FUNCTIONALITY =====
-  
+
   /**
    * Undo the last action by restoring previous state
    * Excludes position changes from history to prevent clutter
@@ -351,7 +349,7 @@ function FlowCanvas() {
 
     // Get the previous state from history
     const previous = history.past[history.past.length - 1];
-    
+
     // Save current state for potential redo
     const current = {
       nodes: JSON.parse(JSON.stringify(nodes)),
@@ -396,7 +394,7 @@ function FlowCanvas() {
 
     // Get the next state from future history
     const next = history.future[0];
-    
+
     // Save current state for potential undo
     const current = {
       nodes: JSON.parse(JSON.stringify(nodes)),
@@ -430,7 +428,7 @@ function FlowCanvas() {
   }, [history.future, nodes, edges, handleNodeDelete]);
 
   // ===== CHECKPOINT & WORKFLOW MANAGEMENT =====
-  
+
   /**
    * Save current workflow state as a checkpoint
    * Allows users to restore to this point later
@@ -456,7 +454,7 @@ function FlowCanvas() {
   }, [autoSaveEnabled]);
 
   // ===== WORKFLOW EXECUTION =====
-  
+
   /**
    * Execute the current workflow
    * Validates workflow state and starts execution
@@ -472,7 +470,7 @@ function FlowCanvas() {
 
       // Start workflow execution with current nodes and edges
       await executeProject(
-        projectId, // workflowId
+        projectId,
         nodes,
         edges,
         1 // priority
@@ -495,7 +493,7 @@ function FlowCanvas() {
   }, [handleSaveCheckpoint]);
 
   // ===== DRAG & DROP FUNCTIONALITY =====
-  
+
   /**
    * Handle node drag from components panel
    * Sets up drag data for React Flow compatibility
@@ -537,7 +535,7 @@ function FlowCanvas() {
 
     // Create unique ID for new node
     const newNodeId = `${type}-${nodes.length + 1}`;
-    
+
     // Create new node with proper configuration
     const newNode: Node<NodeData> = {
       id: newNodeId,
@@ -550,21 +548,18 @@ function FlowCanvas() {
       },
     };
 
-    console.log('🎯 Dropping new node:', newNode);
-    
     // Save to history and add new node
     saveToHistory();
     setNodes(nds => nds.concat(newNode));
   }, [reactFlowInstance, nodes, handleNodeDelete, saveToHistory]);
 
   // ===== UTILITY FUNCTIONS =====
-  
+
   /**
    * Update node data with new properties
    * Triggers history save for undo capability
    */
   const updateNodeData = useCallback((nodeId: string, newData: Partial<NodeData>) => {
-    console.log('📝 Updating node data:', nodeId, newData);
     saveToHistory();
     setNodes(nds =>
       nds.map(node =>
@@ -588,7 +583,7 @@ function FlowCanvas() {
   }, [nodes, reactFlowInstance]);
 
   // ===== STATE PREPARATION =====
-  
+
   // Combine nodes with delete handlers for consistent functionality
   // This ensures all nodes have proper event handlers
   const combinedNodes = nodes.map(node => ({
@@ -600,7 +595,7 @@ function FlowCanvas() {
   }));
 
   // ===== DEBUGGING & MONITORING =====
-  
+
   // Debug log current state for development
   useEffect(() => {
     console.log('📊 State update:');
@@ -612,7 +607,7 @@ function FlowCanvas() {
   }, [nodes.length, edges.length, history.past.length, history.future.length, persistence.isSaving]);
 
   // ===== RENDER SECTION =====
-  
+
   // Provide undo/redo button handlers to Header component
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900 relative">
@@ -638,21 +633,28 @@ function FlowCanvas() {
 
       {/* Right sidebar for node properties and checkpoint management */}
       <StackEdgeDrawer
+        projectId={projectId}
+        logs={logs}
+        isStreaming={isStreaming}
+        error={error}
+        executeProject={executeProject}
+        retryExecution={retryExecution}
+        clearLogs={clearLogs}
         selectedNode={selectedNode}
-        onNodeUpdate={updateNodeData}
         validationErrors={validationErrors}
         nodes={nodes}
         edges={edges}
         onFocusNode={focusNode}
-        workflowId="default-workflow"
-        onRestoreCheckpoint={handleRestoreCheckpoint}
+        workflowId={workflowId}
+        onRestoreCheckpoint={handleRestoreCheckpoint} 
+        onNodeUpdate={updateNodeData}
       />
 
       {/* Main workflow canvas area */}
       <div className="flex flex-1 relative overflow-hidden flow-canvas">
         {/* Left sidebar with available components */}
         <FloatingComponentsPanel onNodeDrag={handleNodeDrag} />
-        
+
         {/* React Flow canvas container */}
         <div className="flex-1 relative">
           <ReactFlow
@@ -664,7 +666,6 @@ function FlowCanvas() {
             onConnect={onConnect}
             onNodeClick={(_event, node) => {
               setSelectedNode(node);
-              console.log('Node clicked, opening properties:', node);
             }}
             onPaneClick={() => setSelectedNode(null)}
             onDrop={onDrop}
@@ -684,14 +685,14 @@ function FlowCanvas() {
             />
           </ReactFlow>
         </div>
-        
+
         {/* Execution logs panel - shown when workflow is running or has logs */}
-        {(running || logs.length > 0) && (
+        {(true || logs.length > 0) && (
           <div className="h-80 border-t border-gray-200 dark:border-gray-700">
             <ExecutionLogs
               logs={logs}
               isStreaming={isStreaming}
-              error={execError}
+              error={error}
               onRetry={retryExecution}
               onClear={clearLogs}
               projectId={projectId}

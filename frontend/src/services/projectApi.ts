@@ -103,6 +103,7 @@ class ProjectApiService {
       nodes,
       edges
     });
+    console.log("Run payload", response.data);
     return response.data;
   }
 
@@ -115,19 +116,25 @@ class ProjectApiService {
     priority: number = 1
   ): Promise<{ success: boolean; execution_id: string }> {
     // First generate the plan
+    console.log("Generating Plan", nodes);
     await this.generateExecutionPlan(projectId, workflowId, nodes, edges);
-    
-    // Then execute
-    const response = await API.post(`${this.baseUrl}/${projectId}/execute`, {
-      priority,
-      timeout_minutes: 60
-    });
+    console.log("Plan generated, now executing");
+    const response = await API.post(
+      `${this.baseUrl}/${projectId}/execute`,
+      {
+        nodes,
+        edges,
+        priority,
+        timeout_minutes: 60
+      }
+    );
+    console.log("Execution response", response.data);
     return response.data;
   }
 
   /** Execute project with options */
   async executeWithOptions(
-    projectId: string, 
+    projectId: string,
     options: { priority?: number; timeout_minutes?: number } = {}
   ): Promise<{ success: boolean; execution_id: string }> {
     const response = await API.post(`${this.baseUrl}/${projectId}/execute`, options);
@@ -173,9 +180,9 @@ class ProjectApiService {
         const status = await this.getProjectStatus(projectId);
         onStatusUpdate(status as ExecutionStatus);
 
-        if (status.status === 'completed' || 
-            status.status === 'failed' || 
-            status.status === 'timeout') {
+        if (status.status === 'completed' ||
+          status.status === 'failed' ||
+          status.status === 'timeout') {
           polling = false;
           onComplete();
         } else if (polling) {
@@ -244,9 +251,9 @@ class ProjectApiService {
       })
     );
 
-    return results.map((result) => 
-      result.status === 'fulfilled' 
-        ? result.value 
+    return results.map((result) =>
+      result.status === 'fulfilled'
+        ? result.value
         : { projectId: 'unknown', success: false, error: 'Promise rejected' }
     );
   }

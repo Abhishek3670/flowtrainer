@@ -2,7 +2,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { projectApi, StatusResponse  } from '../services/projectApi';
 
-interface LogEntry {
+export interface LogEntry {
   timestamp: string;
   level: 'INFO' | 'ERROR' | 'WARNING' | 'DEBUG';
   message: string;
@@ -32,10 +32,12 @@ export function useProjectExecution(projectId: string) {
     setLogs([]);
     
     try {
+      // POST: /api/:projectId/execute
+      console.log("POST request to a backend endpoint");
       const result = await projectApi.executeCompleteWorkflow(
         projectId, workflowId, nodes, edges, priority
       );
-      
+      console.log("Execution result:", result);
       setRunning(true);
       
       // Start log streaming
