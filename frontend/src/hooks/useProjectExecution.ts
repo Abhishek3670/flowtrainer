@@ -33,11 +33,9 @@ export function useProjectExecution(projectId: string) {
     
     try {
       // POST: /api/:projectId/execute
-      console.log("POST request to a backend endpoint");
       const result = await projectApi.executeCompleteWorkflow(
         projectId, workflowId, nodes, edges, priority
       );
-      console.log("Execution result:", result);
       setRunning(true);
       
       // Start log streaming

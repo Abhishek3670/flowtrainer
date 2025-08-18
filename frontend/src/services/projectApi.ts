@@ -103,7 +103,6 @@ class ProjectApiService {
       nodes,
       edges
     });
-    console.log("Run payload", response.data);
     return response.data;
   }
 
@@ -116,9 +115,7 @@ class ProjectApiService {
     priority: number = 1
   ): Promise<{ success: boolean; execution_id: string }> {
     // First generate the plan
-    console.log("Generating Plan", nodes);
     await this.generateExecutionPlan(projectId, workflowId, nodes, edges);
-    console.log("Plan generated, now executing");
     const response = await API.post(
       `${this.baseUrl}/${projectId}/execute`,
       {
@@ -128,7 +125,6 @@ class ProjectApiService {
         timeout_minutes: 60
       }
     );
-    console.log("Execution response", response.data);
     return response.data;
   }
 
@@ -206,6 +202,7 @@ class ProjectApiService {
 
   /** Create log stream */
   createLogStream(projectId: string): EventSource {
+    console.log("logging")
     return new EventSource(`${this.baseUrl}/${projectId}/logs/stream`);
   }
 

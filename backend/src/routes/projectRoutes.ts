@@ -61,59 +61,75 @@ router.get('/events', (req, res) => {
 
 router.get('/:projectId/logs/stream', async (req: Request, res: Response) => {
   const { projectId } = req.params;
-  console.log(`📊 Starting log stream for project: ${projectId}`);
 
+  // 1) SSE headers
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     Connection: 'keep-alive',
     'Access-Control-Allow-Origin': '*'
   });
+  res.flushHeaders(); 
 
-  // Initial logs
+  // 2) Heartbeat
+  res.write(': connected\n\n');
+
+  // 3) Replay initial logs
   try {
-    console.log(`📝 Fetching initial logs for project: ${projectId}`);
     const logText = await projectService.getExecutionLogs(projectId);
-    console.log(`📝 Initial logs length: ${logText.length} characters`);
-    
     logText.split('\n').forEach(line => {
-      if (line.trim()) {
-        res.write(`data: ${JSON.stringify({ message: line })}\n\n`);
-      }
+      if (!line.trim()) return;
+      const entry = {
+        timestamp: new Date().toISOString(),
+        level: 'INFO' as const,
+        message: line
+      };
+      try { res.write(`data: ${JSON.stringify(entry)}\n\n`); } catch {}
     });
-  } catch (error) {
-    console.error(`❌ Failed to load initial logs for project ${projectId}:`, error);
-    // Send error event but do NOT end the stream
-    res.write(`data: ${JSON.stringify({ error: 'Failed to load logs', details: error instanceof Error ? error.message : 'Unknown error' })}\n\n`);
+  } catch {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      level: 'ERROR' as const,
+      message: 'Failed to load initial logs'
+    };
+    try { res.write(`data: ${JSON.stringify(entry)}\n\n`); } catch {}
   }
 
-  // Poll for execution complete
-  const interval = setInterval(async () => {
+  // 4) Real-time log listener
+  const onLog = (msg: string) => {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      level: 'INFO' as const,
+      message: msg.trim()
+    };
+    try { res.write(`data: ${JSON.stringify(entry)}\n\n`); } catch {}
+  };
+  projectService.on('log', onLog);
+
+  // 5) Completion listener
+  const onDone = (result: any) => {
+    const entry = {
+      timestamp: new Date().toISOString(),
+      level: 'INFO' as const,
+      message: 'Execution completed'
+    };
     try {
-      const status = await projectService.getProjectStatus(projectId);
-      console.log(`📊 Status check for project ${projectId}: ${status.status}`);
-      
-      if (status.status === 'completed' || status.status === 'failed') {
-        console.log(`✅ Execution ${status.status} for project ${projectId}, ending stream`);
-        clearInterval(interval);
-        res.write(`data: ${JSON.stringify({ status: 'execution_complete', final_status: status.status })}\n\n`);
-        res.end();              // end only here
-      }
-    } catch (error) {
-      console.error(`❌ Status check failed for project ${projectId}:`, error);
-      clearInterval(interval);
-      res.end();                // end if status lookup fails irrecoverably
-    }
-  }, 2000);
+      res.write(`data: ${JSON.stringify(entry)}\n\n`);
+      res.write(`event: done\ndata: ${JSON.stringify(result)}\n\n`);
+    } catch {}
+    projectService.off('log', onLog);
+    projectService.off('done', onDone);
+    res.end();
+  };
+  projectService.on('done', onDone);
 
+  // 6) Cleanup on client disconnect
   req.on('close', () => {
-    console.log(`🔌 Client disconnected from log stream for project: ${projectId}`);
-    clearInterval(interval);
-    // no res.end() here; client closed connection
+    projectService.off('log', onLog);
+    projectService.off('done', onDone);
   });
-
-  return; // Explicit return for async function
 });
+
 
 // Broadcast events to all connected clients
 const broadcastEvent = (event: string, data: any) => {
@@ -207,11 +223,11 @@ router.post('/:projectId/execute', async (req: Request, res: Response) => {
   try {
     const { projectId } = req.params;
     const { nodes, edges } = req.body;
-    
+
     if (!nodes || !Array.isArray(nodes)) {
       return res.status(400).json({ error: 'Nodes array is required' });
     }
-    
+
     if (!edges || !Array.isArray(edges)) {
       return res.status(400).json({ error: 'Edges array is required' });
     }
@@ -226,12 +242,12 @@ router.post('/:projectId/execute', async (req: Request, res: Response) => {
     });
 
     const emitter = new EventEmitter();
-    
+
     // Listen to execution events
     emitter.on('log', (message: any) => {
       res.write(`data: ${JSON.stringify({ type: 'log', message })}\n\n`);
     });
-    
+
     emitter.on('done', (result: any) => {
       res.write(`data: ${JSON.stringify({ type: 'done', result })}\n\n`);
       res.end();
@@ -261,13 +277,13 @@ router.get('/:projectId/results', async (req: Request, res: Response) => {
     const { projectId } = req.params;
     const fs = require('fs').promises;
     const path = require('path');
-    
+
     const resultsPath = path.join(process.cwd(), 'results', projectId);
-    
+
     try {
       const files = await fs.readdir(resultsPath);
       const results = [];
-      
+
       for (const file of files) {
         if (file.endsWith('_result.json')) {
           const content = await fs.readFile(path.join(resultsPath, file), 'utf-8');
@@ -277,14 +293,14 @@ router.get('/:projectId/results', async (req: Request, res: Response) => {
           });
         }
       }
-      
+
       res.json({ success: true, results });
       return; // Explicit return for async function
     } catch (error) {
       res.json({ success: true, results: [] });
       return; // Explicit return for async function
     }
-    
+
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({ error: errorMessage });

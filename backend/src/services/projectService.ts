@@ -131,34 +131,6 @@ export class ProjectService extends EventEmitter {
       // 2. Get execution order using topological sort
       const executionOrder = this.calculateExecutionOrder(nodes, edges);
 
-      emitter.emit('log', `🚀 Starting ML workflow execution for project ${projectId}\n`);
-      emitter.emit('log', `📋 Execution order: ${executionOrder.join(' → ')}\n`);
-      emitter.emit('log', `\n📊 WORKFLOW SUMMARY\n`);
-      emitter.emit('log', `═══════════════════\n`);
-      emitter.emit('log', `📦 Total Nodes: ${nodes.length}\n`);
-      emitter.emit('log', `🔗 Total Edges: ${edges.length}\n`);
-      emitter.emit('log', `📋 Execution Order: ${executionOrder.join(' → ')}\n`);
-      emitter.emit('log', `\n🔧 NODE CONFIGURATIONS:\n`);
-      nodes.forEach((node, index) => {
-        emitter.emit('log', `${index + 1}. Node ID: ${node.id}\n`);
-        emitter.emit('log', `   Type: ${node.type || 'unknown'}\n`);
-        emitter.emit('log', `   Config: ${JSON.stringify(node.data || {}, null, 2)}\n`);
-        emitter.emit('log', `\n`);
-      });
-
-      // Edge details (if any)
-      if (edges.length > 0) {
-        emitter.emit('log', `🔗 EDGE CONNECTIONS:\n`);
-        edges.forEach((edge, index) => {
-          emitter.emit('log', `${index + 1}. ${edge.source} → ${edge.target}\n`);
-        });
-        emitter.emit('log', `\n`);
-      } else {
-        emitter.emit('log', `🔗 No edge connections (single node workflow)\n\n`);
-      }
-
-      emitter.emit('log', `═══════════════════\n`);
-      emitter.emit('log', `🏃 Starting execution...\n\n`);
       // 3. Iterate nodes in topological order
       for (const nodeId of executionOrder) {
         const node = nodes.find((n: any) => n.id === nodeId);
