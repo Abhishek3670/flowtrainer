@@ -293,7 +293,7 @@ export default function StackEdgeDrawer({
 
               {activeTab === "executionlogs" && (
                 <ExecutionLogs
-                  logs={normalizedLogs}
+                  logs={logs}
                   isStreaming={isStreaming}
                   error={error}
                   onRetry={retryExecution}

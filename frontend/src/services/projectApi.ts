@@ -202,7 +202,6 @@ class ProjectApiService {
 
   /** Create log stream */
   createLogStream(projectId: string): EventSource {
-    console.log("logging")
     return new EventSource(`${this.baseUrl}/${projectId}/logs/stream`);
   }
 

@@ -128,8 +128,6 @@ function FlowCanvas() {
   const projectId = 'default-project';
   const workflowId = 'default-workflow';
   const {
-    status,
-    loading: execLoading,
     running,
     error,
     logs,
