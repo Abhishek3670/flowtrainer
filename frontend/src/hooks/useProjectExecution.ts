@@ -218,7 +218,7 @@ export function useProjectExecution(projectId: string) {
       if (logData && logData.logs) {
         const logEntries = logData.logs
           .filter(logLine => logLine && logLine.trim())
-          .map((logLine, index) => ({
+          .map((logLine) => ({
             timestamp: new Date().toISOString(),
             level: 'INFO' as const,
             message: logLine.trim()

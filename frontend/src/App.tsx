@@ -21,7 +21,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import ExecutionLogs from './components/ExecutionLogs/ExecutionLogs';
 import ReactFlow, {
   ReactFlowProvider,
   Connection,
@@ -685,20 +684,6 @@ function FlowCanvas() {
             />
           </ReactFlow>
         </div>
-
-        {/* Execution logs panel - shown when workflow is running or has logs */}
-        {(true || logs.length > 0) && (
-          <div className="h-80 border-t border-gray-200 dark:border-gray-700">
-            <ExecutionLogs
-              logs={logs}
-              isStreaming={isStreaming}
-              error={error}
-              onRetry={retryExecution}
-              onClear={clearLogs}
-              projectId={projectId}
-            />
-          </div>
-        )}
       </div>
     </div>
   );
