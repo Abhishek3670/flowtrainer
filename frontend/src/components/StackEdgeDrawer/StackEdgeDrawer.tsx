@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { X, FileCog, ClipboardCheck, Archive } from "lucide-react";
+import { X, FileCog, ClipboardCheck, Archive, Terminal } from "lucide-react";
 import PropertiesPanel from "../PropertiesPanel/PropertiesPanel";
 import ValidationPanel from "../ValidationPanel/ValidationPanel";
 import CheckpointDrawer from "../CheckpointDrawer/CheckpointDrawer";
+import ExecutionLogs from "../ExecutionLogs/ExecutionLogs";
+import type { LogEntry } from '../../hooks/useProjectExecution';
 import type { Node, Edge } from "reactflow";
 import { NodeData, ValidationError } from '../../types';
 
@@ -18,9 +20,17 @@ interface StackEdgeDrawerProps {
   // Checkpoint props
   workflowId: string;
   onRestoreCheckpoint: (checkpointId: string) => void;
+  // Execution panel props - FIXED SIGNATURE:
+  projectId: string;
+  logs: LogEntry[];
+  isStreaming: boolean;
+  error: string | null;
+  // Fixed executeProject signature to match the hook
+  executeProject: (workflowId: string, nodes: any[], edges: any[], priority?: number) => Promise<any>;
+  retryExecution: (fromStep?: string) => Promise<void>;
+  clearLogs: () => void;
 }
-
-type DrawerTab = "properties" | "validation" | "checkpoints" | null;
+type DrawerTab = "properties" | "validation" | "checkpoints" | "executionlogs" | null;
 
 export default function StackEdgeDrawer({
   selectedNode,
@@ -31,6 +41,13 @@ export default function StackEdgeDrawer({
   onFocusNode,
   workflowId,
   onRestoreCheckpoint,
+  // Execution panel props
+  projectId,
+  logs,
+  isStreaming,
+  error,
+  retryExecution,
+  clearLogs,
 }: StackEdgeDrawerProps) {
   const [activeTab, setActiveTab] = useState<DrawerTab>(null);
   const [hoveredButton, setHoveredButton] = useState<string | null>(null);
@@ -57,10 +74,10 @@ export default function StackEdgeDrawer({
 
     const handleMouseMove = (moveEvent: MouseEvent) => {
       if (!dragStartRef.current) return;
-      
+
       const deltaX = Math.abs(moveEvent.clientX - dragStartRef.current.x);
       const deltaY = Math.abs(moveEvent.clientY - dragStartRef.current.y);
-      
+
       // If mouse moved more than 3px, consider it a drag
       if (deltaX > 3 || deltaY > 3) {
         mouseMoveRef.current = true;
@@ -71,15 +88,15 @@ export default function StackEdgeDrawer({
 
     const handleMouseUp = () => {
       setIsDragging(false);
-      
+
       // If it was a click (no mouse movement), handle click logic
       if (!mouseMoveRef.current) {
         handleButtonClick(buttonId as DrawerTab);
       }
-      
+
       dragStartRef.current = null;
       mouseMoveRef.current = false;
-      
+
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -99,7 +116,10 @@ export default function StackEdgeDrawer({
   };
 
   const closeDrawer = () => setActiveTab(null);
-
+  const normalizedLogs = logs.map((log) => ({
+    ...log,
+    level: log.level ?? 'INFO'  // guarantee level is never undefined
+  }));
   const buttons = [
     {
       id: "properties",
@@ -119,12 +139,18 @@ export default function StackEdgeDrawer({
       label: "Checkpoints",
       hasError: false,
     },
+    {
+      id: "executionlogs",
+      icon: Terminal,
+      label: "Execution Logs",
+      hasError: false,
+    },
   ];
 
   return (
     <>
       {/* Stack of Edge Buttons */}
-      <div 
+      <div
         className={`
           fixed top-20 z-40 flex flex-col transition-all duration-200
           ${isOpen ? 'right-96' : 'right-0'}
@@ -148,10 +174,9 @@ export default function StackEdgeDrawer({
                   transition-all duration-200 ease-out
                   shadow-lg hover:shadow-xl
                   group select-none
-                  ${
-                    isActive
-                      ? "bg-blue-600 text-white translate-x-0 shadow-blue-200"
-                      : isHovered
+                  ${isActive
+                    ? "bg-blue-600 text-white translate-x-0 shadow-blue-200"
+                    : isHovered
                       ? "bg-white text-gray-700 -translate-x-1 shadow-md"
                       : "bg-white text-gray-600 translate-x-2 shadow-sm hover:-translate-x-1"
                   }
@@ -163,9 +188,8 @@ export default function StackEdgeDrawer({
                 aria-controls={tabId}
               >
                 <Icon
-                  className={`w-5 h-5 transition-transform duration-200 ${
-                    isActive ? "scale-110" : "group-hover:scale-105"
-                  }`}
+                  className={`w-5 h-5 transition-transform duration-200 ${isActive ? "scale-110" : "group-hover:scale-105"
+                    }`}
                 />
 
                 {/* Error indicator */}
@@ -215,6 +239,9 @@ export default function StackEdgeDrawer({
                 {activeTab === "checkpoints" && (
                   <Archive className="w-5 h-5 text-blue-600" />
                 )}
+                {activeTab === "executionlogs" && (
+                  <Terminal className="w-5 h-5 text-blue-600" />
+                )}
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   {activeTab}
                 </h2>
@@ -260,6 +287,17 @@ export default function StackEdgeDrawer({
                 <CheckpointDrawer
                   workflowId={workflowId}
                   onRestore={onRestoreCheckpoint}
+                />
+              )}
+
+              {activeTab === "executionlogs" && (
+                <ExecutionLogs
+                  logs={normalizedLogs}
+                  isStreaming={isStreaming}
+                  error={error}
+                  onRetry={retryExecution}
+                  onClear={clearLogs}
+                  projectId={projectId}
                 />
               )}
             </div>

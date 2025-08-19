@@ -1,0 +1,377 @@
+"""
+FlowCraft ML Pipeline Executor
+Main service for executing ML workflows from FlowCraft diagrams
+"""
+
+import asyncio
+import json
+import logging
+import os
+from typing import Dict, Any, List, Optional
+from datetime import datetime
+import uvicorn
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
+
+from src.processors.base_processor import ProcessorRegistry
+from src.processors.dataset_processor import DatasetProcessor
+from src.processors.split_processor import SplitProcessor  
+from src.processors.trainer_processor import TrainerProcessor
+from src.utils.logger import setup_logger
+from src.utils.status_updater import StatusUpdater
+
+# Initialize logging
+logger = setup_logger("pipeline_executor")
+
+# Initialize FastAPI app
+app = FastAPI(
+    title="FlowCraft ML Engine",
+    description="ML Pipeline Execution Engine for FlowCraft",
+    version="1.0.0"
+)
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Global processor registry
+processor_registry = ProcessorRegistry()
+status_updater = StatusUpdater()
+
+# Pydantic models
+class NodeData(BaseModel):
+    id: str
+    type: str
+    data: Dict[str, Any]
+    position: Dict[str, float]
+
+class EdgeData(BaseModel):
+    id: str
+    source: str
+    target: str
+    sourceHandle: Optional[str] = None
+    targetHandle: Optional[str] = None
+
+class PipelineRequest(BaseModel):
+    workflow_id: str
+    execution_id: str
+    nodes: List[NodeData]
+    edges: List[EdgeData]
+    config: Optional[Dict[str, Any]] = {}
+
+class ExecutionStatus(BaseModel):
+    execution_id: str
+    status: str
+    progress: int = Field(ge=0, le=100)
+    message: str
+    current_node: Optional[str] = None
+    results: Optional[Dict[str, Any]] = {}
+    error: Optional[str] = None
+    started_at: datetime
+    updated_at: datetime
+
+# In-memory execution tracking
+active_executions: Dict[str, ExecutionStatus] = {}
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize the ML engine on startup"""
+    logger.info("🚀 Starting FlowCraft ML Engine")
+    
+    # Register processors
+    processor_registry.register("dataset", DatasetProcessor())
+    processor_registry.register("split", SplitProcessor()) 
+    processor_registry.register("trainer", TrainerProcessor())
+    
+    logger.info(f"📦 Registered {len(processor_registry.processors)} processors")
+    logger.info("✅ ML Engine startup complete")
+
+@app.get("/")
+async def root():
+    """Root endpoint"""
+    return {
+        "service": "FlowCraft ML Engine",
+        "status": "running",
+        "version": "1.0.0",
+        "processors": list(processor_registry.processors.keys())
+    }
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "active_executions": len(active_executions)
+    }
+
+@app.get("/processors")
+async def list_processors():
+    """List available processors"""
+    return {
+        "processors": [
+            {
+                "name": name,
+                "description": processor.description,
+                "inputs": processor.get_inputs(),
+                "outputs": processor.get_outputs()
+            }
+            for name, processor in processor_registry.processors.items()
+        ]
+    }
+
+@app.post("/execute")
+async def execute_pipeline(request: PipelineRequest, background_tasks: BackgroundTasks):
+    """Execute an ML pipeline from FlowCraft workflow"""
+    logger.info(f"🎯 Executing pipeline {request.execution_id} for workflow {request.workflow_id}")
+    
+    # Initialize execution status
+    execution_status = ExecutionStatus(
+        execution_id=request.execution_id,
+        status="queued",
+        progress=0,
+        message="Pipeline queued for execution",
+        started_at=datetime.utcnow(),
+        updated_at=datetime.utcnow()
+    )
+    
+    active_executions[request.execution_id] = execution_status
+    
+    # Start pipeline execution in background
+    background_tasks.add_task(
+        run_pipeline,
+        request.execution_id,
+        request.workflow_id,
+        request.nodes,
+        request.edges,
+        request.config
+    )
+    
+    return {
+        "execution_id": request.execution_id,
+        "status": "queued",
+        "message": "Pipeline execution started"
+    }
+
+@app.get("/status/{execution_id}")
+async def get_execution_status(execution_id: str):
+    """Get execution status"""
+    if execution_id not in active_executions:
+        raise HTTPException(status_code=404, detail="Execution not found")
+    
+    return active_executions[execution_id]
+
+@app.delete("/execution/{execution_id}")
+async def cancel_execution(execution_id: str):
+    """Cancel a running execution"""
+    if execution_id not in active_executions:
+        raise HTTPException(status_code=404, detail="Execution not found")
+    
+    execution = active_executions[execution_id]
+    if execution.status in ["completed", "failed", "cancelled"]:
+        return {"message": "Execution already finished"}
+    
+    execution.status = "cancelled"
+    execution.message = "Execution cancelled by user"
+    execution.updated_at = datetime.utcnow()
+    
+    logger.info(f"❌ Cancelled execution {execution_id}")
+    return {"message": "Execution cancelled"}
+
+async def run_pipeline(
+    execution_id: str,
+    workflow_id: str,
+    nodes: List[NodeData],
+    edges: List[EdgeData],
+    config: Dict[str, Any]
+):
+    """Execute the ML pipeline"""
+    execution = active_executions[execution_id]
+    
+    try:
+        execution.status = "running"
+        execution.message = "Analyzing workflow structure"
+        execution.updated_at = datetime.utcnow()
+        
+        # Build execution graph
+        execution_graph = build_execution_graph(nodes, edges)
+        logger.info(f"📊 Built execution graph with {len(execution_graph)} nodes")
+        
+        # Execute nodes in topological order
+        execution_order = topological_sort(execution_graph)
+        total_nodes = len(execution_order)
+        
+        # Context for passing data between nodes
+        execution_context = {}
+        
+        for i, node_id in enumerate(execution_order):
+            node = next(n for n in nodes if n.id == node_id)
+            
+            execution.current_node = node_id
+            execution.progress = int((i / total_nodes) * 100)
+            execution.message = f"Processing node: {node.data.get('label', node.type)}"
+            execution.updated_at = datetime.utcnow()
+            
+            logger.info(f"⚙️ Processing node {node_id} ({node.type})")
+            
+            # Get processor
+            processor = processor_registry.get_processor(node.type)
+            if not processor:
+                raise Exception(f"No processor found for node type: {node.type}")
+            
+            # Process node
+            result = await processor.process(node, execution_context, config)
+            execution_context[node_id] = result
+            
+            # Update status
+            await status_updater.update_node_status(
+                workflow_id, node_id, "completed", {"result": result}
+            )
+        
+        # Execution completed successfully
+        execution.status = "completed"
+        execution.progress = 100
+        execution.message = "Pipeline execution completed successfully"
+        execution.results = execution_context
+        execution.updated_at = datetime.utcnow()
+        
+        logger.info(f"✅ Pipeline {execution_id} completed successfully")
+        
+    except Exception as e:
+        logger.error(f"❌ Pipeline {execution_id} failed: {str(e)}")
+        
+        execution.status = "failed"
+        execution.error = str(e)
+        execution.message = f"Pipeline execution failed: {str(e)}"
+        execution.updated_at = datetime.utcnow()
+        
+        # Update failed node status
+        if execution.current_node:
+            await status_updater.update_node_status(
+                workflow_id, execution.current_node, "error", {"error": str(e)}
+            )
+
+def build_execution_graph(nodes: List[NodeData], edges: List[EdgeData]) -> Dict[str, List[str]]:
+    """Build execution graph from nodes and edges"""
+    graph = {node.id: [] for node in nodes}
+    
+    for edge in edges:
+        if edge.target in graph:
+            graph[edge.target].append(edge.source)
+    
+    return graph
+
+def topological_sort(graph: Dict[str, List[str]]) -> List[str]:
+    """Topological sort for execution order"""
+    in_degree = {node: 0 for node in graph}
+    
+    for node in graph:
+        for neighbor in graph[node]:
+            in_degree[node] += 1
+    
+    queue = [node for node in in_degree if in_degree[node] == 0]
+    result = []
+    
+    while queue:
+        node = queue.pop(0)
+        result.append(node)
+        
+        for neighbor in graph:
+            if node in graph[neighbor]:
+                in_degree[neighbor] -= 1
+                if in_degree[neighbor] == 0:
+                    queue.append(neighbor)
+    
+    return result
+
+
+# Command-line execution support
+async def execute_from_file(execution_plan_path: str):
+    """Execute workflow from execution plan file (for Docker CLI usage)"""
+    import json
+    
+    try:
+        with open(execution_plan_path, 'r') as f:
+            plan = json.load(f)
+        
+        print(f"📋 Executing workflow {plan['workflow_id']} with {len(plan['nodes'])} nodes")
+        
+        # Convert plan to PipelineRequest format
+        request = PipelineRequest(
+            workflow_id=plan['workflow_id'],
+            execution_id=plan['execution_id'],
+            nodes=[NodeData(**node) for node in plan['nodes']],
+            edges=[EdgeData(**edge) for edge in plan['edges']],
+            config=plan.get('config', {})
+        )
+        
+        # Initialize processors
+        processor_registry.register("dataset", DatasetProcessor())
+        processor_registry.register("split", SplitProcessor()) 
+        processor_registry.register("trainer", TrainerProcessor())
+        
+        # Execute the pipeline
+        await run_pipeline(
+            request.execution_id,
+            request.workflow_id,
+            request.nodes,
+            request.edges,
+            request.config
+        )
+        
+        # Output final status
+        execution = active_executions.get(request.execution_id)
+        if execution:
+            result = {
+                "execution_id": request.execution_id,
+                "status": execution.status,
+                "message": execution.message,
+                "results": execution.results or {}
+            }
+            print(json.dumps(result))
+            
+            # Save results to output directory
+            output_path = plan.get('config', {}).get('output_path', '/workspace/output')
+            if output_path and execution.results:
+                import os
+                os.makedirs(output_path, exist_ok=True)
+                with open(f"{output_path}/execution_results.json", 'w') as f:
+                    json.dump(result, f, indent=2)
+        
+    except Exception as e:
+        error_result = {
+            "execution_id": "unknown",
+            "status": "failed",
+            "error": str(e)
+        }
+        print(json.dumps(error_result))
+        logger.error(f"Failed to execute from file: {str(e)}")
+
+if __name__ == "__main__":
+    import sys
+    
+    if len(sys.argv) > 1:
+        # Command-line execution mode
+        execution_plan_path = sys.argv[1]
+        print(f"🚀 Starting ML Engine in CLI mode with plan: {execution_plan_path}")
+        asyncio.run(execute_from_file(execution_plan_path))
+    else:
+        # Web server mode
+        host = os.getenv("ML_ENGINE_HOST", "0.0.0.0")
+        port = int(os.getenv("ML_ENGINE_PORT", "8080"))
+        
+        print(f"🌐 Starting ML Engine server on {host}:{port}")
+        
+        uvicorn.run(
+            "pipeline_executor:app",
+            host=host,
+            port=port,
+            reload=os.getenv("ENVIRONMENT") == "development",
+            log_level="info"
+        )

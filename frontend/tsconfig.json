@@ -1,22 +1,44 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "ESNext",
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "types": ["node"]
+    // ===== LANGUAGE & MODULE SETTINGS =====
+    
+    "target": "ES2020",                    // Target ECMAScript version for compilation
+    "useDefineForClassFields": true,       // Use Object.defineProperty for class fields
+    "lib": ["ES2020", "DOM", "DOM.Iterable"], // Include ES2020, DOM, and DOM iteration APIs
+    "module": "ESNext",                    // Use modern ES module syntax
+    "moduleResolution": "bundler",         // Use bundler-friendly module resolution
+    
+    // ===== TYPE CHECKING =====
+    
+    "skipLibCheck": true,                  // Skip type checking of declaration files
+    "strict": true,                        // Enable all strict type checking options
+    "noUnusedLocals": true,               // Report errors on unused local variables
+    "noUnusedParameters": true,            // Report errors on unused parameters
+    "noFallthroughCasesInSwitch": true,   // Report errors for fallthrough cases in switch
+    
+    // ===== MODULE & IMPORT SETTINGS =====
+    
+    "allowImportingTsExtensions": true,    // Allow importing TypeScript files with extensions
+    "resolveJsonModule": true,             // Allow importing JSON files as modules
+    "isolatedModules": true,               // Ensure each file can be safely transpiled independently
+    
+    // ===== OUTPUT & JSX =====
+    
+    "noEmit": true,                        // Don't emit output (Vite handles compilation)
+    "jsx": "react-jsx",                   // Use React 17+ JSX transform (no React import needed)
+    
+    // ===== TYPE DEFINITIONS =====
+    
+    "types": ["node"]                      // Include Node.js type definitions
   },
-  "include": ["src"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+  
+  // ===== PROJECT STRUCTURE =====
+  
+  "include": ["src"],                      // Include all files in src directory
+  
+  // ===== PROJECT REFERENCES =====
+  
+  "references": [
+    { "path": "./tsconfig.node.json" }     // Reference to Node.js-specific TypeScript config
+  ]
 }

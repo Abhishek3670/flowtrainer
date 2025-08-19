@@ -1,0 +1,157 @@
+{
+  "name": "FlowCraft ML Execution API Tests",
+  "version": "1.0.0",
+  "description": "Collection for testing FlowCraft ML workflow execution with Docker",
+  "requests": [
+    {
+      "name": "Health Check",
+      "method": "GET",
+      "url": "{{baseUrl}}/health",
+      "description": "Check if the backend server is running"
+    },
+    {
+      "name": "Execute ML Workflow",
+      "method": "POST",
+      "url": "{{baseUrl}}/api/projects/{{projectId}}/execute",
+      "description": "Execute a complete ML workflow using Docker containers",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mode": "json",
+        "json": {
+          "nodes": [
+            {
+              "id": "data-upload-1",
+              "type": "data-upload",
+              "data": {
+                "label": "Dataset",
+                "dataset_path": "/app/data/test_data.csv",
+                "format": "auto"
+              }
+            },
+            {
+              "id": "split-1",
+              "type": "split",
+              "data": {
+                "label": "Train/Test Split",
+                "split_config": {
+                  "strategy": "random",
+                  "test_size": 0.2,
+                  "val_size": 0.15,
+                  "train_size": 0.65,
+                  "random_state": 42,
+                  "shuffle": true
+                }
+              }
+            },
+            {
+              "id": "trainer-1",
+              "type": "trainer",
+              "data": {
+                "label": "Model Trainer",
+                "model_type": "linear_regression",
+                "target_column": "target",
+                "feature_columns": ["feature1", "feature2"]
+              }
+            }
+          ],
+          "edges": [
+            {
+              "id": "e1",
+              "source": "data-upload-1",
+              "target": "split-1"
+            },
+            {
+              "id": "e2",
+              "source": "split-1",
+              "target": "trainer-1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Execution Results",
+      "method": "GET",
+      "url": "{{baseUrl}}/api/projects/{{projectId}}/results",
+      "description": "Retrieve all execution results from the local results directory"
+    },
+    {
+      "name": "Get Project Status",
+      "method": "GET",
+      "url": "{{baseUrl}}/api/projects/{{projectId}}/status",
+      "description": "Get the current execution status of a project"
+    },
+    {
+      "name": "Get Execution Logs",
+      "method": "GET",
+      "url": "{{baseUrl}}/api/projects/{{projectId}}/logs",
+      "description": "Get execution logs for a project"
+    },
+    {
+      "name": "Generate Execution Plan",
+      "method": "POST",
+      "url": "{{baseUrl}}/api/projects/{{projectId}}/plan",
+      "description": "Generate an execution plan for a specific project",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mode": "json",
+        "json": {
+          "workflowId": "test-workflow-001",
+          "nodes": [
+            {
+              "id": "data-upload-1",
+              "type": "data-upload",
+              "data": {
+                "label": "Dataset",
+                "dataset_path": "/app/data/test_data.csv",
+                "format": "auto"
+              }
+            }
+          ],
+          "edges": []
+        }
+      }
+    }
+  ],
+  "environments": [
+    {
+      "name": "Local Development",
+      "variables": [
+        {
+          "name": "baseUrl",
+          "value": "http://localhost:4000"
+        },
+        {
+          "name": "projectId",
+          "value": "test-project-123"
+        }
+      ]
+    },
+    {
+      "name": "Docker Development",
+      "variables": [
+        {
+          "name": "baseUrl",
+          "value": "http://localhost:4000"
+        },
+        {
+          "name": "projectId",
+          "value": "docker-test-456"
+        }
+      ]
+    }
+  ],
+  "settings": {
+    "defaultEnvironment": "Local Development"
+  }
+}

@@ -1,20 +1,79 @@
+/**
+ * useWorkflowPersistence Hook
+ * 
+ * Custom React hook that manages workflow state persistence through checkpoints.
+ * Provides functionality to save, load, and manage workflow states with both
+ * backend persistence and local storage backup.
+ * 
+ * Key Features:
+ * - Load latest checkpoint on component mount
+ * - Save manual checkpoints with custom names and descriptions
+ * - Create automatic checkpoints for auto-save functionality
+ * - Local storage backup for offline resilience
+ * - Loading and saving state management
+ * - Checkpoint metadata and statistics
+ * 
+ * Usage:
+ * ```tsx
+ * const persistence = useWorkflowPersistence('workflow-id');
+ * 
+ * // Load latest state
+ * const state = await persistence.loadLatestCheckpoint();
+ * 
+ * // Save current state
+ * await persistence.saveCheckpoint(currentState, 'My Checkpoint');
+ * 
+ * // Auto-save
+ * await persistence.saveAutoCheckpoint(currentState);
+ * ```
+ * 
+ * State Management:
+ * - isLoading: Whether checkpoint loading is in progress
+ * - isSaving: Whether checkpoint saving is in progress
+ * - lastCheckpoint: Most recently saved checkpoint data
+ */
+
 import { useState, useCallback } from 'react';
 import { Node, Edge, Viewport } from 'reactflow';
 import { NodeData } from '../types';
 import { CheckpointAPI, CheckpointData } from '../services/checkpointApi';
 
+/**
+ * Workflow state interface representing the complete canvas state
+ * Includes nodes, edges, and viewport information
+ */
 interface WorkflowState {
-  nodes: Node<NodeData>[];
-  edges: Edge[];
-  viewport: Viewport;
+  nodes: Node<NodeData>[];              // Array of workflow nodes
+  edges: Edge[];                        // Array of workflow connections
+  viewport: Viewport;                   // Canvas viewport state (position, zoom)
 }
 
+/**
+ * useWorkflowPersistence Hook Implementation
+ * 
+ * @param workflowId - Unique identifier for the workflow
+ * @returns Object containing persistence methods and state
+ */
 export const useWorkflowPersistence = (workflowId: string) => {
+  // ===== STATE MANAGEMENT =====
+  
+  // Loading state for checkpoint operations
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Saving state for checkpoint operations
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Most recently saved checkpoint data
   const [lastCheckpoint, setLastCheckpoint] = useState<any>(null);
 
-  // Load the latest checkpoint on mount
+  // ===== CHECKPOINT LOADING =====
+  
+  /**
+   * Load the latest checkpoint for the workflow
+   * Called on component mount to restore previous state
+   * 
+   * @returns Promise resolving to workflow state or null if no checkpoints exist
+   */
   const loadLatestCheckpoint = useCallback(async (): Promise<WorkflowState | null> => {
     if (!workflowId) return null;
 
@@ -29,7 +88,7 @@ export const useWorkflowPersistence = (workflowId: string) => {
         console.log('[Persistence] Found latest checkpoint:', stats.latestCheckpoint.name);
         setLastCheckpoint(stats.latestCheckpoint);
         
-        // Return the checkpoint data
+        // Return the checkpoint data in the expected format
         return {
           nodes: stats.latestCheckpoint.nodes || [],
           edges: stats.latestCheckpoint.edges || [],
@@ -47,7 +106,17 @@ export const useWorkflowPersistence = (workflowId: string) => {
     }
   }, [workflowId]);
 
-  // Save current state as a checkpoint
+  // ===== CHECKPOINT SAVING =====
+  
+  /**
+   * Save current workflow state as a manual checkpoint
+   * Creates a named checkpoint with optional description and metadata
+   * 
+   * @param state - Current workflow state to save
+   * @param name - Optional custom name for the checkpoint
+   * @param description - Optional description of the checkpoint
+   * @returns Promise that resolves when save is complete
+   */
   const saveCheckpoint = useCallback(async (
     state: WorkflowState,
     name?: string,
@@ -59,6 +128,7 @@ export const useWorkflowPersistence = (workflowId: string) => {
       setIsSaving(true);
       console.log('[Persistence] Saving checkpoint...');
 
+      // Prepare checkpoint data with metadata
       const checkpointData: CheckpointData = {
         name: name || `Checkpoint ${new Date().toLocaleString()}`,
         description: description || 'Manual checkpoint',
@@ -73,12 +143,13 @@ export const useWorkflowPersistence = (workflowId: string) => {
         }
       };
 
+      // Save to backend via API
       const newCheckpoint = await CheckpointAPI.createCheckpoint(workflowId, checkpointData);
       setLastCheckpoint(newCheckpoint);
       
       console.log('[Persistence] Checkpoint saved successfully:', newCheckpoint.name);
       
-      // Also save to localStorage as backup
+      // Also save to localStorage as backup for offline resilience
       saveToLocalStorage(state);
     } catch (error) {
       console.error('[Persistence] Failed to save checkpoint:', error);
@@ -88,13 +159,22 @@ export const useWorkflowPersistence = (workflowId: string) => {
     }
   }, [workflowId]);
 
-  // Create an auto-checkpoint (for auto-save functionality)
+  // ===== AUTOMATIC CHECKPOINTS =====
+  
+  /**
+   * Create an automatic checkpoint for auto-save functionality
+   * Used for background state preservation without user interaction
+   * 
+   * @param state - Current workflow state to save
+   * @returns Promise that resolves when auto-save is complete
+   */
   const saveAutoCheckpoint = useCallback(async (state: WorkflowState): Promise<void> => {
     if (!workflowId) return;
 
     try {
       console.log('[Persistence] Creating auto-checkpoint...');
       
+      // Create auto-checkpoint via API
       const autoCheckpoint = await CheckpointAPI.createAutoCheckpoint(workflowId, state);
       setLastCheckpoint(autoCheckpoint);
       

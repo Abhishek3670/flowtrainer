@@ -1,11 +1,48 @@
+/**
+ * Checkpoint Management Routes
+ * 
+ * This module provides RESTful API endpoints for managing workflow checkpoints.
+ * Checkpoints allow users to save and restore workflow states at different points
+ * in time, enabling version control and recovery capabilities.
+ * 
+ * Endpoints:
+ * - POST /: Create new checkpoint
+ * - GET /: List all checkpoints for a workflow
+ * - GET /stats: Get checkpoint statistics
+ * - GET /:cpId: Get specific checkpoint
+ * - POST /:cpId/restore: Restore checkpoint data
+ * - POST /auto: Create automatic checkpoint
+ * 
+ * Authentication: All endpoints require valid user authentication
+ * Workflow Context: Routes are nested under /api/workflows/:id/checkpoints
+ */
+
 import { Router, Request, Response } from 'express';
 import { CheckpointService } from '../services/checkpoint.service';
 import { authenticate } from '../middleware/auth';
 
+// Create router with mergeParams to access parent route parameters
 const router = Router({ mergeParams: true });
 const checkpointService = new CheckpointService();
 
-// Create a new checkpoint
+// ===== CHECKPOINT CREATION =====
+
+/**
+ * POST / - Create a new checkpoint
+ * 
+ * Creates a new checkpoint with the current workflow state.
+ * Users can provide a name and description for the checkpoint.
+ * 
+ * Request Body:
+ * - name: Checkpoint name (optional)
+ * - description: Checkpoint description (optional)
+ * - nodes: Current workflow nodes
+ * - edges: Current workflow edges
+ * - viewport: Current canvas viewport
+ * - metadata: Additional checkpoint metadata
+ * 
+ * Response: 201 with created checkpoint data
+ */
 router.post('/', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, description, nodes, edges, viewport, metadata } = req.body;
@@ -28,7 +65,16 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<void
   }
 });
 
-// List all checkpoints for a workflow
+// ===== CHECKPOINT RETRIEVAL =====
+
+/**
+ * GET / - List all checkpoints for a workflow
+ * 
+ * Retrieves all checkpoints associated with the specified workflow.
+ * Returns checkpoint metadata without the full workflow state.
+ * 
+ * Response: 200 with array of checkpoint summaries
+ */
 router.get('/', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const checkpoints = await checkpointService.getWorkflowCheckpoints(req.params.id);
@@ -39,7 +85,14 @@ router.get('/', authenticate, async (req: Request, res: Response): Promise<void>
   }
 });
 
-// Get workflow checkpoint statistics
+/**
+ * GET /stats - Get workflow checkpoint statistics
+ * 
+ * Returns aggregated statistics about checkpoints for a workflow,
+ * such as total count, creation frequency, and storage usage.
+ * 
+ * Response: 200 with checkpoint statistics
+ */
 router.get('/stats', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const stats = await checkpointService.getCheckpointStats(req.params.id);
@@ -50,7 +103,17 @@ router.get('/stats', authenticate, async (req: Request, res: Response): Promise<
   }
 });
 
-// Get a specific checkpoint
+/**
+ * GET /:cpId - Get a specific checkpoint
+ * 
+ * Retrieves the complete data for a specific checkpoint,
+ * including the full workflow state (nodes, edges, viewport).
+ * 
+ * Parameters:
+ * - cpId: Checkpoint ID to retrieve
+ * 
+ * Response: 200 with checkpoint data or 404 if not found
+ */
 router.get('/:cpId', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const checkpoint = await checkpointService.getCheckpointById(req.params.cpId);
@@ -65,7 +128,19 @@ router.get('/:cpId', authenticate, async (req: Request, res: Response): Promise<
   }
 });
 
-// Restore a checkpoint: returns its data for frontend to apply
+// ===== CHECKPOINT RESTORATION =====
+
+/**
+ * POST /:cpId/restore - Restore a checkpoint
+ * 
+ * Retrieves checkpoint data for restoration purposes.
+ * The frontend applies this data to restore the workflow state.
+ * 
+ * Parameters:
+ * - cpId: Checkpoint ID to restore
+ * 
+ * Response: 200 with checkpoint data or 404 if not found
+ */
 router.post('/:cpId/restore', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const restoredData = await checkpointService.restoreCheckpoint(req.params.cpId);
@@ -80,7 +155,21 @@ router.post('/:cpId/restore', authenticate, async (req: Request, res: Response):
   }
 });
 
-// Create auto-checkpoint from current workflow state
+// ===== AUTOMATIC CHECKPOINTS =====
+
+/**
+ * POST /auto - Create automatic checkpoint
+ * 
+ * Creates a checkpoint automatically without user input.
+ * Used for auto-save functionality and background state preservation.
+ * 
+ * Request Body:
+ * - nodes: Current workflow nodes
+ * - edges: Current workflow edges
+ * - viewport: Current canvas viewport
+ * 
+ * Response: 201 with created auto-checkpoint data
+ */
 router.post('/auto', authenticate, async (req: Request, res: Response): Promise<void> => {
   try {
     const { nodes, edges, viewport } = req.body;

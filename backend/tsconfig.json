@@ -1,35 +1,62 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020"],
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "removeComments": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true,
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "types": ["node"]
+    // ===== LANGUAGE & MODULE SETTINGS =====
+    
+    "target": "ES2020",                    // Target ECMAScript version for compilation
+    "module": "commonjs",                  // Module system (CommonJS for Node.js compatibility)
+    "lib": ["ES2020"],                     // Library files to include (ES2020 features)
+    
+    // ===== OUTPUT CONFIGURATION =====
+    
+    "outDir": "./dist",                    // Output directory for compiled JavaScript
+    "rootDir": "./src",                    // Root directory for source files
+    
+    // ===== TYPE CHECKING =====
+    
+    "strict": true,                        // Enable all strict type checking options
+    "esModuleInterop": true,               // Enable ES module interop for CommonJS modules
+    "skipLibCheck": true,                  // Skip type checking of declaration files
+    "forceConsistentCasingInFileNames": true, // Ensure consistent file naming
+    
+    // ===== MODULE RESOLUTION =====
+    
+    "resolveJsonModule": true,             // Allow importing JSON files as modules
+    "moduleResolution": "node",            // Use Node.js module resolution strategy
+    "allowSyntheticDefaultImports": true,  // Allow default imports from modules without default exports
+    
+    // ===== DECLARATION FILES =====
+    
+    "declaration": true,                   // Generate corresponding .d.ts declaration files
+    "declarationMap": true,                // Generate source maps for declaration files
+    "sourceMap": true,                     // Generate source maps for debugging
+    
+    // ===== CODE QUALITY =====
+    
+    "removeComments": true,                // Remove comments from output (keeps JSDoc)
+    "noImplicitReturns": true,            // Report error when function doesn't return explicitly
+    "noFallthroughCasesInSwitch": true,   // Report errors for fallthrough cases in switch statements
+    
+    // ===== DECORATOR SUPPORT =====
+    
+    "experimentalDecorators": true,       // Enable experimental decorator support
+    "emitDecoratorMetadata": true,        // Emit decorator metadata for reflection
+    
+    // ===== TYPE DEFINITIONS =====
+    
+    "types": ["node"]                      // Include Node.js type definitions
   },
+  
+  // ===== PROJECT STRUCTURE =====
+  
   "include": [
-    "src/**/*"
+    "src/**/*"                             // Include all files in src directory and subdirectories
   ],
+  
   "exclude": [
-    "src/**/*.test.ts",
-    "src/**/*.spec.ts",
-    "src/controllers/__test__",
-    "node_modules",
-    "dist"
+    "src/**/*.test.ts",                    // Exclude test files
+    "src/**/*.spec.ts",                    // Exclude spec files
+    "src/controllers/__test__",            // Exclude test directories
+    "node_modules",                        // Exclude dependencies
+    "dist"                                 // Exclude build output
   ]
 }
