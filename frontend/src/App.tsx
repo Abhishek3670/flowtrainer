@@ -631,6 +631,16 @@ function FlowCanvas() {
 
       {/* Right sidebar for node properties and checkpoint management */}
       <StackEdgeDrawer
+        selectedNode={selectedNode}
+        onNodeUpdate={updateNodeData}
+        validationErrors={validationErrors}
+        nodes={combinedNodes}
+        edges={edges}
+        onFocusNode={focusNode}
+        workflowId={workflowId}
+        onRestoreCheckpoint={handleRestoreCheckpoint}
+
+        
         projectId={projectId}
         logs={logs}
         isStreaming={isStreaming}
@@ -638,14 +648,6 @@ function FlowCanvas() {
         executeProject={executeProject}
         retryExecution={retryExecution}
         clearLogs={clearLogs}
-        selectedNode={selectedNode}
-        validationErrors={validationErrors}
-        nodes={nodes}
-        edges={edges}
-        onFocusNode={focusNode}
-        workflowId={workflowId}
-        onRestoreCheckpoint={handleRestoreCheckpoint} 
-        onNodeUpdate={updateNodeData}
       />
 
       {/* Main workflow canvas area */}
