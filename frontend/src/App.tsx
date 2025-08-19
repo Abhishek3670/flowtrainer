@@ -468,7 +468,7 @@ function FlowCanvas() {
 
       // Start workflow execution with current nodes and edges
       await executeProject(
-        projectId,
+        workflowId,
         nodes,
         edges,
         1 // priority
@@ -479,7 +479,7 @@ function FlowCanvas() {
       console.error('Failed to execute workflow:', error);
       toast.error('Failed to execute workflow');
     }
-  }, [running, nodes, edges, executeProject, projectId]);
+  }, [running, nodes, edges, executeProject, workflowId]);
 
   /**
    * Open checkpoint modal for workflow management

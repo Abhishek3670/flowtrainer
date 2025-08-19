@@ -20,16 +20,16 @@ interface StackEdgeDrawerProps {
   // Checkpoint props
   workflowId: string;
   onRestoreCheckpoint: (checkpointId: string) => void;
-  // New execution panel props:
+  // Execution panel props - FIXED SIGNATURE:
   projectId: string;
   logs: LogEntry[];
   isStreaming: boolean;
   error: string | null;
-  executeProject: (workflowId: string, nodes: any[], edges: any[]) => Promise<any>;
+  // Fixed executeProject signature to match the hook
+  executeProject: (workflowId: string, nodes: any[], edges: any[], priority?: number) => Promise<any>;
   retryExecution: (fromStep?: string) => Promise<void>;
   clearLogs: () => void;
 }
-
 type DrawerTab = "properties" | "validation" | "checkpoints" | "executionlogs" | null;
 
 export default function StackEdgeDrawer({
