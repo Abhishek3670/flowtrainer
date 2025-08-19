@@ -1,278 +1,194 @@
 // frontend/src/services/projectApi.ts
-import axios from 'axios';
-
-// API configuration
-const API = axios.create({
-  baseURL: process.env.NODE_ENV === 'production' ? '' : 'http://localhost:4000',
-});
-
-export interface ExecutionStatus {
-  project_id: string;
-  execution_id: string;
-  status: 'queued' | 'running' | 'completed' | 'failed' | 'timeout';
-  current_step?: string;
-  progress?: number;
-  error?: string;
-  started_at?: string;
-  completed_at?: string;
-  logs?: string[];
-}
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3000';
 
 export interface StatusResponse {
-  project_id: string;
-  execution_id: string;
-  status: 'queued' | 'running' | 'completed' | 'failed' | 'timeout';
-  current_step?: string;
+  status: 'idle' | 'running' | 'completed' | 'failed' | 'timeout';
   progress?: number;
+  currentStep?: string;
   error?: string;
-  started_at?: string;
-  completed_at?: string;
-  results?: Record<string, any>;
-  output_files?: string[];
+  startTime?: string;
+  endTime?: string;
+  duration?: number;
 }
 
-export interface SystemStatusResponse {
-  success?: boolean;
-  timestamp?: string;
-  system?: {
-    max_concurrent_executions: number;
-    running_executions: number;
-    queued_executions: number;
-    capacity_utilization: number;
-    queue: Array<{
-      project_id: string;
-      priority: number;
-      queued_at: string;
-    }>;
-    running: Array<{
-      project_id: string;
-      current_step?: string;
-      progress?: number;
-      started_at: string;
-    }>;
-  };
-  // Direct properties (fallback)
-  max_concurrent_executions?: number;
-  running_executions?: number;
-  queued_executions?: number;
-  capacity_utilization?: number;
-  queue?: Array<{
-    project_id: string;
-    priority: number;
-    queued_at: string;
-  }>;
-  running?: Array<{
-    project_id: string;
-    current_step?: string;
-    progress?: number;
-    started_at: string;
-  }>;
+export interface ExecutionLogsResponse {
+  success: boolean;
+  project_id: string;
+  logs: string[];
+  log_count: number;
 }
 
-export interface SystemStatus {
-  max_concurrent_executions: number;
-  running_executions: number;
-  queued_executions: number;
-  total_projects: number;
-  capacity_utilization: number;
-  queue: Array<{
-    project_id: string;
-    priority: number;
-    queued_at: string;
-  }>;
-  running: Array<{
-    project_id: string;
-    current_step?: string;
-    progress?: number;
-    started_at: string;
-  }>;
+export interface ExecutionResult {
+  success: boolean;
+  message: string;
+  project_id: string;
+  workflow_id: string;
+  nodes_count: number;
+  edges_count: number;
 }
 
 class ProjectApiService {
-  private baseUrl = '/api/projects';
+  /**
+   * Execute complete workflow with nodes and edges
+   */
+  async executeCompleteWorkflow(
+    projectId: string,
+    workflowId: string, 
+    nodes: any[], 
+    edges: any[],
+    priority: number = 1
+  ): Promise<ExecutionResult> {
+    console.log(`🚀 API: Executing workflow for project ${projectId}`);
+    
+    const response = await fetch(`${API_BASE}/api/projects/${projectId}/execute`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        workflowId,
+        nodes,
+        edges,
+        priority
+      })
+    });
 
-  /** Generate execution plan for a project */
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    // For the SSE endpoint, we don't expect JSON response
+    if (response.headers.get('content-type')?.includes('text/event-stream')) {
+      return {
+        success: true,
+        message: 'Execution started - streaming logs',
+        project_id: projectId,
+        workflow_id: workflowId,
+        nodes_count: nodes.length,
+        edges_count: edges.length
+      };
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Get project execution status
+   */
+  async getProjectStatus(projectId: string): Promise<StatusResponse> {
+    const response = await fetch(`${API_BASE}/api/projects/${projectId}/status`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get status: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Get execution logs for a project
+   */
+  async getExecutionLogs(projectId: string): Promise<ExecutionLogsResponse> {
+    const response = await fetch(`${API_BASE}/api/projects/${projectId}/logs`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get logs: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Create log stream EventSource (not used directly, but for reference)
+   * This is handled in the hook using new EventSource()
+   */
+  createLogStream(projectId: string): EventSource {
+    const streamUrl = `${API_BASE}/api/projects/${projectId}/logs/stream`;
+    console.log(`📡 Creating log stream: ${streamUrl}`);
+    return new EventSource(streamUrl);
+  }
+
+  /**
+   * Retry execution from a specific step
+   */
+  async retryExecution(projectId: string, fromStep?: string): Promise<any> {
+    const response = await fetch(`${API_BASE}/api/projects/${projectId}/retry`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from_step: fromStep
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Generate execution plan (if needed separately)
+   */
   async generateExecutionPlan(
     projectId: string,
     workflowId: string,
     nodes: any[],
     edges: any[]
-  ): Promise<{ success: boolean; execution_id: string }> {
-    const response = await API.post(`${this.baseUrl}/${projectId}/plan`, {
-      workflowId,
-      nodes,
-      edges
-    });
-    return response.data;
-  }
-
-  /** Execute a complete workflow */
-  async executeCompleteWorkflow(
-    projectId: string,
-    workflowId: string,
-    nodes: any[],
-    edges: any[],
-    priority: number = 1
-  ): Promise<{ success: boolean; execution_id: string }> {
-    // First generate the plan
-    await this.generateExecutionPlan(projectId, workflowId, nodes, edges);
-    const response = await API.post(
-      `${this.baseUrl}/${projectId}/execute`,
-      {
+  ): Promise<any> {
+    const response = await fetch(`${API_BASE}/api/projects/${projectId}/plan`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        workflowId,
         nodes,
-        edges,
-        priority,
-        timeout_minutes: 60
-      }
-    );
-    return response.data;
-  }
-
-  /** Execute project with options */
-  async executeWithOptions(
-    projectId: string,
-    options: { priority?: number; timeout_minutes?: number } = {}
-  ): Promise<{ success: boolean; execution_id: string }> {
-    const response = await API.post(`${this.baseUrl}/${projectId}/execute`, options);
-    return response.data;
-  }
-
-  /** Get system status */
-  async getSystemStatus(): Promise<SystemStatusResponse> {
-    const response = await API.get<SystemStatusResponse>(`${this.baseUrl}/system/status`);
-    return response.data;
-  }
-
-  /** Get execution logs */
-  async getExecutionLogs(projectId: string): Promise<{ logs: string[]; log_count: number }> {
-    const response = await API.get<{ logs: string[]; log_count: number }>(`${this.baseUrl}/${projectId}/logs`);
-    return response.data;
-  }
-
-  /** Retry execution */
-  async retryExecution(projectId: string, fromStep?: string): Promise<{ success: boolean }> {
-    const response = await API.post(`${this.baseUrl}/${projectId}/retry`, { from_step: fromStep });
-    return response.data;
-  }
-
-  /** Get project status */
-  async getProjectStatus(projectId: string): Promise<StatusResponse> {
-    const response = await API.get<StatusResponse>(`${this.baseUrl}/${projectId}/status`);
-    return response.data;
-  }
-
-  /** Poll for execution status updates */
-  async pollExecutionStatus(
-    projectId: string,
-    onStatusUpdate: (status: ExecutionStatus) => void,
-    onComplete: () => void,
-    onError: (error: Error) => void,
-    intervalMs: number = 2000
-  ): Promise<() => void> {
-    let polling = true;
-
-    const poll = async () => {
-      try {
-        const status = await this.getProjectStatus(projectId);
-        onStatusUpdate(status as ExecutionStatus);
-
-        if (status.status === 'completed' ||
-          status.status === 'failed' ||
-          status.status === 'timeout') {
-          polling = false;
-          onComplete();
-        } else if (polling) {
-          setTimeout(poll, intervalMs);
-        }
-      } catch (error) {
-        if (polling) {
-          onError(error as Error);
-          setTimeout(poll, intervalMs * 2); // Back off on error
-        }
-      }
-    };
-
-    poll();
-
-    // Return stop function
-    return () => {
-      polling = false;
-    };
-  }
-
-  /** Create log stream */
-  createLogStream(projectId: string): EventSource {
-    return new EventSource(`${this.baseUrl}/${projectId}/logs/stream`);
-  }
-
-  /** Create event stream */
-  createEventStream(): EventSource {
-    return new EventSource(`${this.baseUrl}/events`);
-  }
-
-  /** Cleanup project */
-  async cleanupProject(projectId: string): Promise<{ success: boolean }> {
-    const response = await API.delete(`${this.baseUrl}/${projectId}`);
-    return response.data;
-  }
-
-  /** Batch operations for multiple projects */
-  async batchExecute(
-    projects: Array<{
-      projectId: string;
-      workflowId: string;
-      nodes: any[];
-      edges: any[];
-      priority?: number;
-    }>
-  ): Promise<Array<{ projectId: string; success: boolean; error?: string }>> {
-    const results = await Promise.allSettled(
-      projects.map(async (project) => {
-        try {
-          await this.executeCompleteWorkflow(
-            project.projectId,
-            project.workflowId,
-            project.nodes,
-            project.edges,
-            project.priority || 1
-          );
-          return { projectId: project.projectId, success: true };
-        } catch (error) {
-          return {
-            projectId: project.projectId,
-            success: false,
-            error: error instanceof Error ? error.message : 'Unknown error'
-          };
-        }
+        edges
       })
-    );
-
-    return results.map((result) =>
-      result.status === 'fulfilled'
-        ? result.value
-        : { projectId: 'unknown', success: false, error: 'Promise rejected' }
-    );
-  }
-
-  /** Get execution history for analytics */
-  async getExecutionHistory(
-    limit: number = 100,
-    status?: string
-  ): Promise<ExecutionStatus[]> {
-    const params = new URLSearchParams();
-    params.append('limit', limit.toString());
-    if (status) params.append('status', status);
-
-    const response = await fetch(`${this.baseUrl}/history?${params}`);
+    });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.details || 'Failed to get execution history');
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
     }
 
-    const data = await response.json();
-    return data.history || [];
+    return await response.json();
+  }
+
+  /**
+   * Get execution results
+   */
+  async getExecutionResults(projectId: string): Promise<any> {
+    const response = await fetch(`${API_BASE}/api/projects/${projectId}/results`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to get results: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Clean up project
+   */
+  async cleanupProject(projectId: string): Promise<any> {
+    const response = await fetch(`${API_BASE}/api/projects/${projectId}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(errorData.error || `HTTP ${response.status}`);
+    }
+
+    return await response.json();
   }
 }
 
+// Export singleton instance
 export const projectApi = new ProjectApiService();

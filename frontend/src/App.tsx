@@ -21,7 +21,6 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
-import ExecutionLogs from './components/ExecutionLogs/ExecutionLogs';
 import ReactFlow, {
   ReactFlowProvider,
   Connection,
@@ -468,7 +467,7 @@ function FlowCanvas() {
 
       // Start workflow execution with current nodes and edges
       await executeProject(
-        projectId,
+        workflowId,
         nodes,
         edges,
         1 // priority
@@ -479,7 +478,7 @@ function FlowCanvas() {
       console.error('Failed to execute workflow:', error);
       toast.error('Failed to execute workflow');
     }
-  }, [running, nodes, edges, executeProject, projectId]);
+  }, [running, nodes, edges, executeProject, workflowId]);
 
   /**
    * Open checkpoint modal for workflow management
@@ -631,6 +630,16 @@ function FlowCanvas() {
 
       {/* Right sidebar for node properties and checkpoint management */}
       <StackEdgeDrawer
+        selectedNode={selectedNode}
+        onNodeUpdate={updateNodeData}
+        validationErrors={validationErrors}
+        nodes={combinedNodes}
+        edges={edges}
+        onFocusNode={focusNode}
+        workflowId={workflowId}
+        onRestoreCheckpoint={handleRestoreCheckpoint}
+
+        
         projectId={projectId}
         logs={logs}
         isStreaming={isStreaming}
@@ -638,14 +647,6 @@ function FlowCanvas() {
         executeProject={executeProject}
         retryExecution={retryExecution}
         clearLogs={clearLogs}
-        selectedNode={selectedNode}
-        validationErrors={validationErrors}
-        nodes={nodes}
-        edges={edges}
-        onFocusNode={focusNode}
-        workflowId={workflowId}
-        onRestoreCheckpoint={handleRestoreCheckpoint} 
-        onNodeUpdate={updateNodeData}
       />
 
       {/* Main workflow canvas area */}
@@ -683,20 +684,6 @@ function FlowCanvas() {
             />
           </ReactFlow>
         </div>
-
-        {/* Execution logs panel - shown when workflow is running or has logs */}
-        {(true || logs.length > 0) && (
-          <div className="h-80 border-t border-gray-200 dark:border-gray-700">
-            <ExecutionLogs
-              logs={logs}
-              isStreaming={isStreaming}
-              error={error}
-              onRetry={retryExecution}
-              onClear={clearLogs}
-              projectId={projectId}
-            />
-          </div>
-        )}
       </div>
     </div>
   );
