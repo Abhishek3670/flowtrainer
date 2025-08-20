@@ -30,12 +30,19 @@ export interface NodeData {
   selectedFile?: FileData;
   status?: 'empty' | 'uploading' | 'ready' | 'error' | 'configuring';
   onDelete: (nodeId: string) => void;
+  parameters?: Record<string, any>;
+  validation?: {
+    isValid: boolean;
+    errors: ValidationError[];
+    warnings: ValidationError[];
+  };
+  selectedDataset?: FileData;
   [key: string]: any;
 }
 
 // Validation error interface
 export interface ValidationError {
-  nodeId: string;
+  field: string;
   message: string;
   severity?: 'error' | 'warning' | 'info';
 }
@@ -81,4 +88,11 @@ export interface FileApiResponse<T> {
   message?: string;
   data?: T;
   error?: string;
+}
+
+export interface DatasetPreview {
+  headers: string[];
+  rows: any[][];
+  totalRows: number;
+  columnTypes: Record<string, string>;
 }

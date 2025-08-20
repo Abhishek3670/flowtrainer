@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { 
+import {
   Database,
   Camera,
   Image,
@@ -20,8 +20,27 @@ import {
   Bell
 } from 'lucide-react';
 
+// Define the React Flow node type instead of using DOM Node
+interface FlowNode {
+  id: string;
+  type: string;
+  data: {
+    nodeType: string;
+    label: string;
+    onDelete: () => void;
+  };
+  position: { x: number; y: number };
+}
+
 interface FloatingComponentsPanelProps {
-  onNodeDrag: (event: React.DragEvent, nodeType: string) => void;
+  onNodeDrag: (event: React.DragEvent, node: FlowNode) => void;
+}
+
+let nodeCounter: Record<string, number> = {};
+
+function generateUniqueId(baseType: string): string {
+  nodeCounter[baseType] = (nodeCounter[baseType] || 0) + 1;
+  return `${baseType}-${nodeCounter[baseType]}`;
 }
 
 const componentCategories = [
@@ -113,7 +132,19 @@ const FloatingComponentsPanel: React.FC<FloatingComponentsPanelProps> = ({ onNod
   };
 
   const handleNodeDragStart = (event: React.DragEvent, nodeType: string) => {
-    onNodeDrag(event, nodeType);
+    const id = generateUniqueId(nodeType);
+    const newNode: FlowNode = {
+      id,
+      type: 'custom',
+      data: {
+        nodeType,      // canonical node type string
+        label: '',
+        onDelete: () => { /* delete handler here or passed down */ },
+      },
+      position: { x: 100, y: 100 }
+    };
+
+    onNodeDrag(event, newNode);  // Now matches (event, FlowNode) params
     setTimeout(() => setExpandedCategories(new Set()), 100);
   };
 
