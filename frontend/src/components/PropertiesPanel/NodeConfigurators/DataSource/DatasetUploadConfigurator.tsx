@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { Node } from 'reactflow';
 import { CheckCircle, AlertCircle, X, Database, Eye } from 'lucide-react';
-import { UploadProgress, FileData, DatasetPreview } from '../../../types';
-import { fileAPI } from '../../../services/fileApi';
-import FileUploadSection from '../../Shared/FileUploadSection';
-import CheckboxInput from '../../Shared/CheckboxInput';
-import SelectInput from '../../Shared/SelectInput';
-import TextInput from '../../Shared/TextInput';
-import DataPreview from '../../Shared/DataPreview';
+import { UploadProgress, FileData, DatasetPreview } from '../../../../types';
+import { fileAPI } from '../../../../services/fileApi';
+import FileUploadSection from '../../../Shared/FileUploadSection';
+import CheckboxInput from '../../../Shared/CheckboxInput';
+import SelectInput from '../../../Shared/SelectInput';
+import TextInput from '../../../Shared/TextInput';
+import DataPreview from '../../../Shared/DataPreview';
 
 interface ConfiguratorProps {
   node: Node;
@@ -24,12 +24,12 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
   const [datasetPreview, setDatasetPreview] = useState<DatasetPreview | null>(null);
-  
+
   // CSV parsing parameters
   const [separator, setSeparator] = useState(node.data.parameters?.separator || ',');
   const [hasHeader, setHasHeader] = useState(node.data.parameters?.hasHeader ?? true);
   const [encoding, setEncoding] = useState(node.data.parameters?.encoding || 'utf-8');
-  
+
   // Validation state
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
@@ -60,8 +60,8 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
   // Update parameters with debounce
   useEffect(() => {
     const handler = setTimeout(() => {
-      onNodeUpdate(node.id, { 
-        parameters: { separator, hasHeader, encoding } 
+      onNodeUpdate(node.id, {
+        parameters: { separator, hasHeader, encoding }
       });
     }, 500);
     return () => clearTimeout(handler);
@@ -70,32 +70,31 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
   // Validate dataset file
   const validateFile = (file: File): string[] => {
     const errors: string[] = [];
-    
+
     const validTypes = ['.csv', 'text/csv', 'application/csv'];
-    const isValidType = validTypes.some(type => 
+    const isValidType = validTypes.some(type =>
       file.type === type || file.name.toLowerCase().endsWith('.csv')
     );
-    
+
     if (!isValidType) {
       errors.push('Please upload a CSV file');
     }
-    
+
     const maxSize = 100 * 1024 * 1024;
     if (file.size > maxSize) {
       errors.push(`File size exceeds 100MB limit (${fileAPI.formatFileSize(file.size)})`);
     }
-    
+
     return errors;
   };
 
   // Generate dataset preview from an already uploaded file
   const generatePreview = async (
-    fileId: string, 
-    params: { separator: string; hasHeader: boolean; encoding: string }
+    fileId: string
   ): Promise<DatasetPreview | null> => {
     try {
-      const response = await fileAPI.previewDataset(fileId, params);
-      return response.data; // FIX: Return the nested data object
+      const preview = await fileAPI.previewDataset(fileId);
+      return preview; // FIX: Return the nested data object
     } catch (error) {
       console.error('Preview generation failed:', error);
       return null;
@@ -126,14 +125,14 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
     try {
       const uploadResp = await fileAPI.uploadDataset(file, setUploadProgress);
       const fileData = uploadResp.data!;
-      
+
       // FIX: Generate preview using the new file's ID and current parsing params
-      const preview = await generatePreview(fileData.id, { separator, hasHeader, encoding });
-      
+      const preview = await generatePreview(fileData.fileId);
+
       setSelectedFile(fileData);
       setDatasetPreview(preview);
-      onNodeUpdate(node.id, { 
-        selectedFile: fileData, 
+      onNodeUpdate(node.id, {
+        selectedFile: fileData,
         preview,
         status: 'ready',
         validation: { isValid: true, errors: [] }
@@ -141,7 +140,7 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
       setUploadSuccess(`Uploaded "${file.name}" successfully`);
       setUploadError(null);
     } catch (err: any) {
-      onNodeUpdate(node.id, { 
+      onNodeUpdate(node.id, {
         status: 'error',
         validation: { isValid: false, errors: [err.message] }
       });
@@ -161,9 +160,9 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
     setUploadError(null);
     setUploadSuccess(null);
     setValidationErrors([]);
-    onNodeUpdate(node.id, { 
-      selectedFile: undefined, 
-      preview: undefined, 
+    onNodeUpdate(node.id, {
+      selectedFile: undefined,
+      preview: undefined,
       status: 'empty',
       validation: undefined
     });
@@ -174,7 +173,7 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
     // FIX: Depend on selectedFile (which has the ID) instead of the raw file object
     if (selectedFile) {
       const updatePreview = async () => {
-        const newPreview = await generatePreview(selectedFile.id, { separator, hasHeader, encoding });
+        const newPreview = await generatePreview(selectedFile.fileId);
         setDatasetPreview(newPreview);
         onNodeUpdate(node.id, { preview: newPreview });
       };
@@ -236,8 +235,8 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-3 flex items-center space-x-2">
             <CheckCircle className="h-4 w-4 text-green-500" />
             <span className="text-sm text-green-700 dark:text-green-400">{uploadSuccess}</span>
-            <button 
-              onClick={() => setUploadSuccess(null)} 
+            <button
+              onClick={() => setUploadSuccess(null)}
               className="ml-auto text-green-500 hover:text-green-700"
             >
               <X className="h-4 w-4" />
@@ -249,8 +248,8 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-3 flex items-center space-x-2">
             <AlertCircle className="h-4 w-4 text-red-500" />
             <span className="text-sm text-red-700 dark:text-red-400">{uploadError}</span>
-            <button 
-              onClick={() => setUploadError(null)} 
+            <button
+              onClick={() => setUploadError(null)}
               className="ml-auto text-red-500 hover:text-red-700"
             >
               <X className="h-4 w-4" />
@@ -270,13 +269,13 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
               options={separatorOptions}
               onChange={setSeparator}
             />
-            
+
             <CheckboxInput
               label="First row contains headers"
               checked={hasHeader}
               onChange={setHasHeader}
             />
-            
+
             <SelectInput
               label="File Encoding"
               value={encoding}
@@ -300,7 +299,7 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
             </span>
           </div>
 
-          <DataPreview dataset={datasetPreview} />
+          <DataPreview preview={datasetPreview} />
 
           <div className="mt-3 flex items-center justify-between">
             <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -310,7 +309,7 @@ const DatasetUploadConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUp
               {selectedFile ? fileAPI.formatFileSize(selectedFile.size) : ''}
             </span>
           </div>
-          
+
           {selectedFile && (
             <div className="mt-3 flex justify-center">
               <button
