@@ -5,7 +5,7 @@ const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000/api';
 class FileAPI {
   // Upload file with progress tracking
   async uploadFile(
-    file: File, 
+    file: File,
     onProgress?: (progress: UploadProgress) => void
   ): Promise<FileApiResponse<FileData>> {
     return new Promise((resolve, reject) => {
@@ -82,20 +82,20 @@ class FileAPI {
     const maxSize = 500 * 1024 * 1024; // 500MB
     const allowedTypes = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/avi'];
     const allowedExtensions = ['.mp4', '.mov', '.avi', '.m4v'];
-    
+
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    
+
     if (file.size > maxSize) {
       return { valid: false, error: 'File size must be less than 500MB' };
     }
 
-    const isValidType = allowedTypes.includes(file.type) || 
-                       allowedExtensions.includes(fileExtension);
-    
+    const isValidType = allowedTypes.includes(file.type) ||
+      allowedExtensions.includes(fileExtension);
+
     if (!isValidType) {
-      return { 
-        valid: false, 
-        error: 'Please upload MP4, MOV, or AVI video files only' 
+      return {
+        valid: false,
+        error: 'Please upload MP4, MOV, or AVI video files only'
       };
     }
 
@@ -107,11 +107,11 @@ class FileAPI {
     try {
       const response = await fetch(`${API_BASE}/files`);
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
-      
+
       return data;
     } catch (error) {
       console.error('Failed to fetch files:', error);
@@ -124,16 +124,92 @@ class FileAPI {
     try {
       const response = await fetch(`${API_BASE}/files/${fileId}`);
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || `HTTP error! status: ${response.status}`);
       }
-      
+
       return data;
     } catch (error) {
       console.error('Failed to fetch file:', error);
       throw error;
     }
+  }
+  // 1. Upload dataset file with progress tracking
+  async uploadDataset(
+    file: File,
+    onProgress?: (progress: UploadProgress) => void
+  ): Promise<FileApiResponse<FileData>> {
+    return new Promise((resolve, reject) => {
+      const formData = new FormData();
+      formData.append('dataset', file); // Use “dataset” field
+
+      const xhr = new XMLHttpRequest();
+
+      // Progress listener
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable && onProgress) {
+          const progress: UploadProgress = {
+            loaded: event.loaded,
+            total: event.total,
+            percentage: Math.round((event.loaded / event.total) * 100),
+          };
+          onProgress(progress);
+        }
+      });
+
+      // Completion handler
+      xhr.addEventListener('load', () => {
+        try {
+          const response = JSON.parse(xhr.responseText);
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve(response);
+          } else {
+            reject(new Error(response.message || 'Dataset upload failed'));
+          }
+        } catch {
+          reject(new Error('Invalid response from server'));
+        }
+      });
+
+      // Error handlers
+      xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+      xhr.addEventListener('timeout', () => reject(new Error('Upload timeout')));
+      xhr.timeout = 5 * 60 * 1000; // 5 minutes
+
+      xhr.open('POST', `${API_BASE}/files/upload-dataset`);
+      xhr.send(formData);
+    });
+  }
+
+  // 2. Validate dataset file (100 MB max, CSV/JSON/Parquet/XLSX)
+  validateDatasetFile(file: File): { valid: boolean; error?: string } {
+    const maxSize = 100 * 1024 * 1024;
+    const allowedTypes = ['text/csv', 'application/json', 'application/octet-stream'];
+    const allowedExtensions = ['.csv', '.json', '.parquet', '.xlsx'];
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+
+    if (file.size > maxSize) {
+      return { valid: false, error: 'Dataset must be < 100 MB' };
+    }
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(ext)) {
+      return { valid: false, error: 'Allowed dataset types: CSV, JSON, Parquet, XLSX' };
+    }
+    return { valid: true };
+  }
+
+  // 3. Fetch preview (first 10 rows + metadata)
+  async previewDataset(fileId: string): Promise<{
+    headers: string[];
+    rows: any[][];
+    totalRows: number;
+    columnTypes: Record<string, string>;
+  }> {
+    const resp = await fetch(`${API_BASE}/files/${fileId}/preview`);
+    if (!resp.ok) {
+      throw new Error(`Preview fetch failed: ${resp.statusText}`);
+    }
+    return resp.json();
   }
 }
 

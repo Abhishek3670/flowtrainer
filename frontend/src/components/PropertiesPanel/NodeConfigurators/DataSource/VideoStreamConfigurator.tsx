@@ -1,95 +1,16 @@
-// frontend/src/components/PropertiesPanel/PropertiesPanel.tsx
-
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, Video, Upload, Loader2, CheckCircle, AlertCircle, X, ExternalLink } from 'lucide-react';
 import { Node } from 'reactflow';
-import { NodeData, FileData, UploadProgress } from '../../types';
-import { fileAPI } from '../../services/fileApi';
-import { NodeConfiguratorFactory } from './NodeConfigurators/factory';
-import GenericConfigurator from './NodeConfigurators/GenericConfigurator';
-import FileUploadSection from '../Shared/FileUploadSection';
+import { Upload, Loader2, CheckCircle, AlertCircle, X, Video, ExternalLink } from 'lucide-react';
+import { UploadProgress, FileData } from '../../../../types';
+import { fileAPI } from '../../../../services/fileApi';
+import FileUploadSection from '../../../Shared/FileUploadSection';
 
-interface PropertiesPanelProps {
-  selectedNode: Node<NodeData> | null;
-  collapsed?: boolean;
-  onNodeUpdate: (nodeId: string, newData: Partial<NodeData>) => void;
+interface ConfiguratorProps {
+  node: Node;
+  onNodeUpdate: (nodeId: string, newData: Partial<Node['data']>) => void;
 }
 
-const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
-  selectedNode,
-  collapsed = false,
-  onNodeUpdate,
-}) => {
-  // Early returns for collapsed state or no selection
-  if (collapsed) {
-    return (
-      <div className="p-4 text-gray-500 dark:text-gray-400">
-        <div className="flex items-center space-x-2">
-          <ChevronRight className="w-4 h-4" />
-          <span>Properties collapsed</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (!selectedNode) {
-    return (
-      <div className="p-4 text-gray-500 dark:text-gray-400 text-center">
-        <div className="space-y-2">
-          <div className="w-12 h-12 mx-auto bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-            <ChevronRight className="w-6 h-6" />
-          </div>
-          <p>Select a node to view its properties</p>
-        </div>
-      </div>
-    );
-  }
-
-  console.log('[PropertiesPanel] Selected node:', selectedNode);
-  console.log('[PropertiesPanel] Node data:', selectedNode.data);
-
-  // Extract nodeType from the selected node
-  const nodeType = selectedNode.data.nodeType || selectedNode.data.type;
-  console.log('[PropertiesPanel] Extracted nodeType:', nodeType);
-
-  // Handle video-stream nodes with the existing legacy logic
-  if (nodeType === 'video-stream') {
-    return <VideoStreamProperties node={selectedNode} onNodeUpdate={onNodeUpdate} />;
-  }
-
-  // For all other node types, try to use the configurator factory
-  try {
-    // Clean the node type (remove any trailing numbers like -1, -2, etc.)
-    const cleanNodeType = typeof nodeType === 'string' ? nodeType.replace(/-\d+$/, '') : String(nodeType);
-    console.log('[PropertiesPanel] Clean nodeType:', cleanNodeType);
-
-    const Configurator = NodeConfiguratorFactory.getConfigurator(cleanNodeType);
-    console.log('[PropertiesPanel] Found configurator:', !!Configurator);
-
-    if (Configurator) {
-      return (
-        <div className="h-full overflow-y-auto">
-          <Configurator node={selectedNode} onNodeUpdate={onNodeUpdate} />
-        </div>
-      );
-    }
-  } catch (error) {
-    console.warn('[PropertiesPanel] Error getting configurator:', error);
-  }
-
-  // Fallback: Use your existing GenericConfigurator for unknown node types
-  return (
-    <div className="h-full overflow-y-auto p-4">
-      <GenericConfigurator node={selectedNode} onNodeUpdate={onNodeUpdate} />
-    </div>
-  );
-};
-
-// Legacy video stream properties component
-const VideoStreamProperties: React.FC<{
-  node: Node<NodeData>;
-  onNodeUpdate: (nodeId: string, newData: Partial<NodeData>) => void;
-}> = ({ node, onNodeUpdate }) => {
+const VideoStreamConfigurator: React.FC<ConfiguratorProps> = ({ node, onNodeUpdate }) => {
   const [nodeName, setNodeName] = useState(node.data.label || '');
   const [isLive, setIsLive] = useState(!!node.data.isLive);
   const [rtspUrl, setRtspUrl] = useState(node.data.rtspUrl || '');
@@ -102,10 +23,13 @@ const VideoStreamProperties: React.FC<{
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
+    setSelectedFile(node.data.selectedFile || null);
+  }, [node.data.selectedFile]);
+
+  useEffect(() => {
     setNodeName(node.data.label || '');
     setIsLive(!!node.data.isLive);
     setRtspUrl(node.data.rtspUrl || '');
-    setSelectedFile(node.data.selectedFile || null);
     setUploadError(null);
     setUploadSuccess(null);
     setVideoFile(null);
@@ -114,18 +38,14 @@ const VideoStreamProperties: React.FC<{
   }, [node]);
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      onNodeUpdate(node.id, { label: nodeName });
-    }, 500);
+    const handler = setTimeout(() => onNodeUpdate(node.id, { label: nodeName }), 500);
     return () => clearTimeout(handler);
-  }, [nodeName, node.id, onNodeUpdate]);
+  }, [nodeName]);
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      onNodeUpdate(node.id, { isLive, rtspUrl });
-    }, 500);
+    const handler = setTimeout(() => onNodeUpdate(node.id, { isLive, rtspUrl }), 500);
     return () => clearTimeout(handler);
-  }, [isLive, rtspUrl, node.id, onNodeUpdate]);
+  }, [isLive, rtspUrl]);
 
   useEffect(() => {
     if (!videoFile) return;
@@ -314,4 +234,4 @@ const VideoStreamProperties: React.FC<{
   );
 };
 
-export default PropertiesPanel;
+export default VideoStreamConfigurator;
