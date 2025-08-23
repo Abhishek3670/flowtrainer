@@ -19,6 +19,7 @@
  * - Modular route structure
  */
 import { connectDB, getDBHealth } from './database/connection';
+import { createIndexes, dropConflictingIndexes } from "./database/createIndexes";
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -156,10 +157,15 @@ const PORT: number = parseInt(process.env.PORT || '4000', 10);
 console.log('Attempting to connect to MongoDB with URI:', MONGO_URI);
 
 // Connect to MongoDB and start the server
+
+// For production: Consider running this in an admin/init script or a migration tool so you don't block server startup if indexes take time to build on large datasets.
+// For development: This pattern is ideal—fast, idempotent, and keeps your schema healthy.
 connectDB()
-  .then(() => {
+  .then(async () => {
     console.log('✅ Database connection established');
-    
+
+    await dropConflictingIndexes();
+    await createIndexes();
     // Start HTTP server after successful database connection
     server.listen(PORT, () => {
       console.log(`🚀 FlowCraft backend listening on port ${PORT}`);

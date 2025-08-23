@@ -1,11 +1,13 @@
 const mongoose = require('mongoose');
 
 const FileSchema = new mongoose.Schema({
-    fileId: { type: String, required: true, unique: true },
+    fileId: {
+        type: String,
+        required: true
+    },
     filename: {
         type: String,
         required: true,
-        unique: true
     },
     originalName: {
         type: String,
@@ -71,10 +73,5 @@ const FileSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
-
-// Indexes for better performance
-FileSchema.index({ uploadedBy: 1 });
-FileSchema.index({ status: 1 });
-FileSchema.index({ mimetype: 1 });
 
 module.exports = mongoose.model('File', FileSchema);
