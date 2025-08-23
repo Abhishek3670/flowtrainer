@@ -8,7 +8,8 @@
     "build": "tsc",
     "test": "jest",
     "test:stress": "jest --testPathPattern=connection.test.ts --testNamePattern='stress'",
-    "test:connection": "jest --testPathPattern=connection.test.ts"
+    "test:connection": "jest --testPathPattern=connection.test.ts",
+    "test:cache": "ts-node backend/src/cache/testCache.ts"
   },
   "nodemonConfig": {
     "watch": [
