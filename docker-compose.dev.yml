@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  mongo:
+    image: mongo:6
+    container_name: flowtrainer_mongo_dev
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  redis:
+    image: redis:7-alpine
+    container_name: flowtrainer_redis_dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: flowtrainer_backend_dev
+    env_file:
+      - ./backend/.env.example
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/uploads:/app/uploads
+    depends_on:
+      - mongo
+      - redis
+    command: npm run dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: flowtrainer_frontend_dev
+    env_file:
+      - ./frontend/.env.example
+    ports:
+      - "3000:80"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:
+  redis-data:

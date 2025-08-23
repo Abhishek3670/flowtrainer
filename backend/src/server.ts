@@ -18,7 +18,8 @@
  * - Mongoose for MongoDB operations
  * - Modular route structure
  */
-
+import { connectDB, getDBHealth } from './database/connection';
+import { createIndexes, dropConflictingIndexes } from "./database/createIndexes";
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -87,12 +88,19 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
  * Health check endpoint for monitoring and load balancers
  * Returns server status, uptime, and timestamp
  */
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    success: true, 
+app.get('/api/health', async (req, res) => {
+  const dbHealth = await getDBHealth();
+  
+  res.json({
+    success: true,
     message: 'FlowCraft API is running',
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
+    uptime: process.uptime(),
+    database: dbHealth,
+    memory: {
+      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) + ' MB',
+      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024) + ' MB',
+    },
   });
 });
 
@@ -149,20 +157,24 @@ const PORT: number = parseInt(process.env.PORT || '4000', 10);
 console.log('Attempting to connect to MongoDB with URI:', MONGO_URI);
 
 // Connect to MongoDB and start the server
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log('✅ Connected to MongoDB successfully');
-    
+
+// For production: Consider running this in an admin/init script or a migration tool so you don't block server startup if indexes take time to build on large datasets.
+// For development: This pattern is ideal—fast, idempotent, and keeps your schema healthy.
+connectDB()
+  .then(async () => {
+    console.log('✅ Database connection established');
+
+    await dropConflictingIndexes();
+    await createIndexes();
     // Start HTTP server after successful database connection
     server.listen(PORT, () => {
       console.log(`🚀 FlowCraft backend listening on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`📁 Workflow API: http://localhost:${PORT}/api/workflows`);
-      console.log(`💾 Checkpoint API: http://localhost:${PORT}/api/workflows/:id/checkpoints`);
     });
   })
   .catch((err: Error) => {
-    console.error('❌ MongoDB connection error:', err.message);
+    console.error('❌ Database connection failed:', err.message);
     process.exit(1);
   });
 
