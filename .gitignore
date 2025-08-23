@@ -92,3 +92,4 @@ backend/test-data/
 backend/workflows/
 test_workflow/
 *.backup
+.github/workflows/ci.yml
