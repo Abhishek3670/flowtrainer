@@ -1,22 +1,38 @@
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs').promises;
-const { v4: uuidv4 } = require('uuid');
-const mongoose = require('mongoose');
-const File = require('../models/File');
+import multer, { FileFilterCallback } from 'multer';
+import path from 'path';
+import fs from 'fs';
+import { promises as fsPromises } from 'fs';
+import { v4 as uuidv4 } from 'uuid';
+import mongoose, { Document, FilterQuery, Model } from 'mongoose';
+import { Request, Response } from 'express';
+
+interface IFile extends Document {
+    fileId: string;
+    filename: string;
+    originalName: string;
+    mimetype: string;
+    size: number;
+    path: string;
+    status: 'processing' | 'ready' | 'failed';
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+// Assume 'File' is a Mongoose model of type IFile
+const File: Model<IFile> = require('../models/File');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-    destination: async (req, file, cb) => {
+    destination: async (req: Request, file: Express.Multer.File, cb: (error: Error | null, destination: string) => void) => {
         const uploadDir = path.join(__dirname, '../../uploads/videos');
         try {
-            await fs.access(uploadDir);
+            await fsPromises.access(uploadDir);
         } catch {
-            await fs.mkdir(uploadDir, { recursive: true });
+            await fsPromises.mkdir(uploadDir, { recursive: true });
         }
         cb(null, uploadDir);
     },
-    filename: (req, file, cb) => {
+    filename: (req: Request, file: Express.Multer.File, cb: (error: Error | null, filename: string) => void) => {
         const fileExtension = path.extname(file.originalname);
         const uniqueFilename = `${uuidv4()}${fileExtension}`;
         cb(null, uniqueFilename);
@@ -24,25 +40,18 @@ const storage = multer.diskStorage({
 });
 
 // File validation
-const fileFilter = (req, file, cb) => {
+const fileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallback): void => {
     console.log('=== FILE UPLOAD DEBUG ===');
     console.log('Original filename:', file.originalname);
     console.log('Detected MIME type:', file.mimetype);
     console.log('File extension:', path.extname(file.originalname));
 
-    const allowedMimeTypes = [
-        'video/mp4',
-        'video/avi',
-        'video/mov',
-        'video/quicktime',
-        'video/x-msvideo',
-        'video/x-quicktime',
-        'video/mp4v-es',
-        'application/octet-stream',
-        'video/x-m4v'
+    const allowedMimeTypes: string[] = [
+        'video/mp4', 'video/avi', 'video/mov', 'video/quicktime',
+        'video/x-msvideo', 'video/x-quicktime', 'video/mp4v-es',
+        'application/octet-stream', 'video/x-m4v'
     ];
-
-    const allowedExtensions = ['.mp4', '.mov', '.avi', '.m4v'];
+    const allowedExtensions: string[] = ['.mp4', '.mov', '.avi', '.m4v'];
     const fileExtension = path.extname(file.originalname).toLowerCase();
     
     const mimeTypeAllowed = allowedMimeTypes.includes(file.mimetype);
@@ -68,9 +77,9 @@ const upload = multer({
     }
 }).single('video');
 
-const uploadVideo = async (req, res) => {
+export const uploadVideo = (req: Request, res: Response): void => {
     try {
-        upload(req, res, async (err) => {
+        upload(req, res, async (err: any) => {
             if (err instanceof multer.MulterError) {
                 if (err.code === 'LIMIT_FILE_SIZE') {
                     return res.status(400).json({
@@ -83,47 +92,37 @@ const uploadVideo = async (req, res) => {
                     message: `Upload error: ${err.message}`
                 });
             } else if (err) {
-                return res.status(400).json({
-                    success: false,
-                    message: err.message
-                });
+                return res.status(400).json({ success: false, message: err.message });
             }
 
             if (!req.file) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'No file uploaded'
-                });
+                return res.status(400).json({ success: false, message: 'No file uploaded' });
             }
 
             console.log('File uploaded successfully:', req.file);
 
-            // Generate a unique fileId
             const fileId = uuidv4();
 
-            // Save file metadata to database
             const fileRecord = new File({
-                fileId: fileId,  // Set the required fileId
+                fileId: fileId,
                 filename: req.file.filename,
                 originalName: req.file.originalname,
                 mimetype: req.file.mimetype,
                 size: req.file.size,
                 path: req.file.path,
-                status: 'processing' // Will be updated after video processing
+                status: 'processing'
             });
 
             console.log('Saving file record:', fileRecord);
             const savedFile = await fileRecord.save();
             console.log('File record saved:', savedFile);
 
-            // TODO: Process video for metadata (duration, resolution, etc.)
-            // For now, mark as ready
             savedFile.status = 'ready';
             await savedFile.save();
 
             console.log('File marked as ready, sending response');
 
-            res.status(201).json({
+            return res.status(201).json({
                 success: true,
                 message: 'Video uploaded successfully',
                 data: {
@@ -138,7 +137,7 @@ const uploadVideo = async (req, res) => {
                 }
             });
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error uploading file:', error);
         res.status(500).json({
             success: false,
@@ -148,24 +147,21 @@ const uploadVideo = async (req, res) => {
     }
 };
 
-// Get all files
-const getFiles = async (req, res) => {
+export const getFiles = async (req: Request, res: Response): Promise<void> => {
     try {
-        const {
-            page = 1,
-            limit = 10,
-            status,
-            mimetype
-        } = req.query;
+        const page = parseInt(req.query.page as string) || 1;
+        const limit = parseInt(req.query.limit as string) || 10;
+        const status = req.query.status as string;
+        const mimetype = req.query.mimetype as string;
 
-        const query = {};
+        const query: FilterQuery<IFile> = {};
         if (status) query.status = status;
         if (mimetype) query.mimetype = mimetype;
 
         const files = await File.find(query)
-            .select('_id fileId filename originalName size mimetype status uploadedAt')
+            .select('_id fileId filename originalName size mimetype status createdAt')
             .sort({ createdAt: -1 })
-            .limit(limit * 1)
+            .limit(limit)
             .skip((page - 1) * limit);
 
         const total = await File.countDocuments(query);
@@ -182,7 +178,7 @@ const getFiles = async (req, res) => {
                 }
             }
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching files:', error);
         res.status(500).json({
             success: false,
@@ -192,34 +188,25 @@ const getFiles = async (req, res) => {
     }
 };
 
-// Get single file
-const getFile = async (req, res) => {
+export const getFile = async (req: Request, res: Response): Promise<Response | void> => {
     try {
-        let query;
+        let query: FilterQuery<IFile>;
         const id = req.params.id;
 
-        // Check if the ID is a valid ObjectId
         if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
             query = { _id: id };
         } else {
-            // Otherwise search by fileId
             query = { fileId: id };
         }
 
         const file = await File.findOne(query);
 
         if (!file) {
-            return res.status(404).json({
-                success: false,
-                message: 'File not found'
-            });
+            return res.status(404).json({ success: false, message: 'File not found' });
         }
 
-        res.json({
-            success: true,
-            data: file
-        });
-    } catch (error) {
+        res.json({ success: true, data: file });
+    } catch (error: any) {
         console.error('Error fetching file:', error);
         res.status(500).json({
             success: false,
@@ -229,34 +216,25 @@ const getFile = async (req, res) => {
     }
 };
 
-// Delete file
-const deleteFile = async (req, res) => {
+export const deleteFile = async (req: Request, res: Response): Promise<Response | void> => {
     try {
         const file = await File.findById(req.params.id);
         
         if (!file) {
-            return res.status(404).json({
-                success: false,
-                message: 'File not found'
-            });
+            return res.status(404).json({ success: false, message: 'File not found' });
         }
 
-        // Delete physical file
         try {
-            await fs.unlink(file.path);
+            await fsPromises.unlink(file.path);
             console.log('Physical file deleted:', file.path);
-        } catch (err) {
+        } catch (err: any) {
             console.warn('Could not delete physical file:', err.message);
         }
 
-        // Delete from database
         await File.findByIdAndDelete(req.params.id);
 
-        res.json({
-            success: true,
-            message: 'File deleted successfully'
-        });
-    } catch (error) {
+        res.json({ success: true, message: 'File deleted successfully' });
+    } catch (error: any) {
         console.error('Error deleting file:', error);
         res.status(500).json({
             success: false,
@@ -266,16 +244,14 @@ const deleteFile = async (req, res) => {
     }
 };
 
-// Serve video file for streaming
-const serveVideo = async (req, res) => {
+export const serveVideo = async (req: Request, res: Response): Promise<Response | void> => {
     try {
         const id = req.params.id;
-        let query;
+        let query: FilterQuery<IFile>;
 
         console.log('=== VIDEO STREAMING DEBUG ===');
         console.log('Requested ID:', id);
 
-        // Check if the ID is a valid ObjectId
         if (mongoose.Types.ObjectId.isValid(id) && id.length === 24) {
             console.log('Searching by ObjectId (_id)');
             query = { _id: id };
@@ -288,40 +264,28 @@ const serveVideo = async (req, res) => {
 
         if (!file) {
             console.log('File not found in database');
-            return res.status(404).json({
-                success: false,
-                message: 'File not found'
-            });
+            return res.status(404).json({ success: false, message: 'File not found' });
         }
 
-        console.log('File found:', { 
-            fileId: file.fileId, 
-            filename: file.filename, 
-            path: file.path 
-        });
+        console.log('File found:', { fileId: file.fileId, filename: file.filename, path: file.path });
 
         const videoPath = file.path;
         
-        // Check if file exists on disk
         try {
-            await fs.access(videoPath);
+            await fsPromises.access(videoPath);
             console.log('Video file exists on disk:', videoPath);
         } catch {
             console.log('Video file not found on disk:', videoPath);
-            return res.status(404).json({
-                success: false,
-                message: 'Video file not found on disk'
-            });
+            return res.status(404).json({ success: false, message: 'Video file not found on disk' });
         }
 
-        const stat = await fs.stat(videoPath);
+        const stat = await fsPromises.stat(videoPath);
         const fileSize = stat.size;
         const range = req.headers.range;
 
         console.log('File size:', fileSize, 'Range requested:', range);
 
         if (range) {
-            // Handle range requests for video streaming
             const parts = range.replace(/bytes=/, "").split("-");
             const start = parseInt(parts[0], 10);
             const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
@@ -329,12 +293,7 @@ const serveVideo = async (req, res) => {
             
             console.log('Range request:', { start, end, chunksize });
             
-            const streamOptions = {
-                start: start,
-                end: end
-            };
-            
-            const stream = require('fs').createReadStream(videoPath, streamOptions);
+            const stream = fs.createReadStream(videoPath, { start, end });
             
             res.writeHead(206, {
                 'Content-Range': `bytes ${start}-${end}/${fileSize}`,
@@ -345,30 +304,21 @@ const serveVideo = async (req, res) => {
             
             stream.pipe(res);
         } else {
-            // Serve entire file
             console.log('Serving entire file');
             res.writeHead(200, {
                 'Content-Length': fileSize,
                 'Content-Type': file.mimetype || 'video/mp4',
             });
-            
-            const stream = require('fs').createReadStream(videoPath);
-            stream.pipe(res);
+            fs.createReadStream(videoPath).pipe(res);
         }
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error serving video:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to serve video',
-            error: error.message
-        });
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: 'Failed to serve video',
+                error: error.message
+            });
+        }
     }
-};
-
-module.exports = {
-    uploadVideo,
-    getFiles,
-    getFile,
-    deleteFile,
-    serveVideo
 };
