@@ -4,12 +4,20 @@
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
-    "dev": "nodemon src/server.ts",
+    "dev": "ts-node src/server.ts",
     "build": "tsc",
     "test": "jest",
     "test:stress": "jest --testPathPattern=connection.test.ts --testNamePattern='stress'",
     "test:connection": "jest --testPathPattern=connection.test.ts",
-    "test:cache": "ts-node backend/src/cache/testCache.ts"
+    "test:cache": "ts-node backend/src/cache/testCache.ts",
+    "db:indexes": "ts-node src/database/createIndexes.ts",
+    "db:clean-indexes": "ts-node src/database/createIndexes.ts --clean",
+    "db:list-indexes": "ts-node src/database/createIndexes.ts --list",
+    "redis:up": "docker-compose -f docker-compose.redis.dev.yml up -d",
+    "redis:down": "docker-compose -f docker-compose.redis.dev.yml down",
+    "cache:test": "ts-node src/cache/testCache.ts",
+    "lint": "eslint \"src/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "nodemonConfig": {
     "watch": [
@@ -56,5 +64,17 @@
     "ts-jest": "^29.4.1",
     "ts-node": "^10.9.1",
     "typescript": "^5.9.2"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "src/**/*.{ts,js}": [
+      "npm run lint",
+      "npm run format",
+      "git add"
+    ]
   }
 }
