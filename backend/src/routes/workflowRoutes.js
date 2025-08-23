@@ -1,8 +1,14 @@
+// backend/src/routes/workflowRoutes.js
+
 const express = require('express');
 const router = express.Router();
+const { cacheMiddleware } = require('../middleware/cache');
+const { CacheService } = require('../cache/redis');
+
+// Import the controller properly
 const {
   getWorkflows,
-  getWorkflow,
+  getWorkflow, 
   createWorkflow,
   updateWorkflow,
   deleteWorkflow,
@@ -10,25 +16,64 @@ const {
   executeWorkflow
 } = require('../controllers/workflowController');
 
-// GET /api/workflows - Get all workflows with filtering
-router.get('/', getWorkflows);
+// Get cache instance for manual invalidation
+const cache = CacheService.getInstance();
 
-// GET /api/workflows/:id - Get single workflow
-router.get('/:id', getWorkflow);
+// === CACHED ROUTES ===
 
-// POST /api/workflows - Create new workflow
-router.post('/', createWorkflow);
+// Cache GET /api/workflows for 60 seconds
+router.get('/', cacheMiddleware(60), getWorkflows);
 
-// PUT /api/workflows/:id - Update workflow
-router.put('/:id', updateWorkflow);
+// Cache individual workflow for 120 seconds
+router.get('/:id', cacheMiddleware(120), getWorkflow);
 
-// DELETE /api/workflows/:id - Delete (archive) workflow
-router.delete('/:id', deleteWorkflow);
+// === ROUTES WITH CACHE INVALIDATION ===
 
-// POST /api/workflows/:id/duplicate - Duplicate workflow
-router.post('/:id/duplicate', duplicateWorkflow);
+// Create workflow - invalidate cache
+router.post('/', async (req, res, next) => {
+  try {
+    await cache.invalidate('GET:/api/workflows*');
+    console.log('🧹 Cache invalidated: workflows');
+  } catch (err) {
+    console.warn('⚠️ Cache invalidation failed:', err);
+  }
+  next();
+}, createWorkflow);
 
-// POST /api/workflows/:id/execute - Execute workflow
+// Update workflow - invalidate cache
+router.put('/:id', async (req, res, next) => {
+  try {
+    await cache.invalidate('GET:/api/workflows*');
+    console.log('🧹 Cache invalidated: workflows');
+  } catch (err) {
+    console.warn('⚠️ Cache invalidation failed:', err);
+  }
+  next();
+}, updateWorkflow);
+
+// Delete workflow - invalidate cache
+router.delete('/:id', async (req, res, next) => {
+  try {
+    await cache.invalidate('GET:/api/workflows*');
+    console.log('🧹 Cache invalidated: workflows');
+  } catch (err) {
+    console.warn('⚠️ Cache invalidation failed:', err);
+  }
+  next();
+}, deleteWorkflow);
+
+// Duplicate workflow - invalidate cache
+router.post('/:id/duplicate', async (req, res, next) => {
+  try {
+    await cache.invalidate('GET:/api/workflows*');
+    console.log('🧹 Cache invalidated: workflows');
+  } catch (err) {
+    console.warn('⚠️ Cache invalidation failed:', err);
+  }
+  next();
+}, duplicateWorkflow);
+
+// Execute workflow - no cache invalidation needed
 router.post('/:id/execute', executeWorkflow);
 
 module.exports = router;

@@ -1,5 +1,11 @@
+// backend/src/routes/fileRoutes.js
+
 const express = require('express');
 const router = express.Router();
+const { cacheMiddleware } = require('../middleware/cache');
+const { CacheService } = require('../cache/redis');
+
+// Import controller functions
 const {
   uploadVideo,
   getFiles,
@@ -8,19 +14,44 @@ const {
   serveVideo
 } = require('../controllers/fileController');
 
-// POST /api/files/upload - Upload video file
-router.post('/upload', uploadVideo);
+// Get cache instance
+const cache = CacheService.getInstance();
 
-// GET /api/files - Get all files
-router.get('/', getFiles);
+// === CACHED ROUTES ===
 
-// GET /api/files/:id - Get single file metadata
-router.get('/:id', getFile);
+// Cache file listings for 120 seconds
+router.get('/', cacheMiddleware(120), getFiles);
 
-// GET /api/files/:id/stream - Serve/stream video file
+// Cache individual file metadata for 300 seconds (5 min)
+router.get('/:id', cacheMiddleware(300), getFile);
+
+// === ROUTES WITH CACHE INVALIDATION ===
+
+// Upload file - invalidate file listings cache
+router.post('/', async (req, res, next) => {
+  try {
+    await cache.invalidate('GET:/api/files');
+    console.log('🧹 Cache invalidated: file listings');
+  } catch (err) {
+    console.warn('⚠️ Cache invalidation failed:', err);
+  }
+  next();
+}, uploadVideo);
+
+// Delete file - invalidate cache
+router.delete('/:id', async (req, res, next) => {
+  try {
+    await cache.invalidate('GET:/api/files*');
+    console.log('🧹 Cache invalidated: files');
+  } catch (err) {
+    console.warn('⚠️ Cache invalidation failed:', err);
+  }
+  next();
+}, deleteFile);
+
+// === NON-CACHED ROUTES ===
+
+// Video streaming - never cache
 router.get('/:id/stream', serveVideo);
-
-// DELETE /api/files/:id - Delete file
-router.delete('/:id', deleteFile);
 
 module.exports = router;
