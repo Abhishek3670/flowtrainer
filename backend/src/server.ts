@@ -31,9 +31,8 @@ import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
 
 // Import API routes
-// Note: Some routes use require() due to JS/TS compatibility issues
-const workflowRoutes = require('./routes/workflowRoutes');
-const fileRoutes = require('./routes/fileRoutes');
+import workflowRoutes from './routes/workflowRoutes';
+import fileRoutes from './routes/fileRoutes';
 import checkpointRoutes from './routes/checkpoints';
 import projectRoutes from './routes/projectRoutes';
 

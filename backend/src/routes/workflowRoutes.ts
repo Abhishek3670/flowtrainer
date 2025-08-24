@@ -1,22 +1,20 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
+import { RequestHandler } from 'express-serve-static-core';
+import { authenticate } from '../middleware/auth';
 import { cacheMiddleware } from '../middleware/cache';
 import { CacheService } from '../cache/redis';
+import { WorkflowController } from '../controllers';
+import { AuthenticatedRequest } from '../types';
 
-// Import controller functions
-import {
-  getWorkflows,
-  getWorkflow,
-  createWorkflow,
-  updateWorkflow,
-  deleteWorkflow,
-  duplicateWorkflow,
-  executeWorkflow
-} from '../controllers/workflowController';
+// Define type-safe request handler
+type TypedRequestHandler<T> = (req: Request & T, res: Response, next: NextFunction) => Promise<void> | void;
 
 const router: Router = express.Router();
-
-// Get the singleton cache instance
+const workflowController = new WorkflowController();
 const cache = CacheService.getInstance();
+
+// Apply authentication middleware to all routes
+router.use(authenticate);
 
 // --- Reusable Middleware for Cache Invalidation ---
 
@@ -35,34 +33,50 @@ const invalidateWorkflowsCache = async (req: Request, res: Response, next: NextF
   next();
 };
 
-
 // --- CACHED ROUTES ---
 
-// Cache the list of workflows for 60 seconds
-router.get('/', cacheMiddleware(60), getWorkflows);
+// Get all workflows (cached for 60 seconds)
+router.get('/', cacheMiddleware(60), (req: AuthenticatedRequest, res) => {
+  return workflowController.getWorkflows(req, res);
+});
 
-// Cache an individual workflow for 120 seconds
-router.get('/:id', cacheMiddleware(120), getWorkflow);
+// Get single workflow (cached for 120 seconds)
+router.get('/:id', cacheMiddleware(120), (req: AuthenticatedRequest, res) => {
+  return workflowController.getWorkflow(req, res);
+});
 
+// Get workflow history
+router.get('/:id/history', cacheMiddleware(60), (req: AuthenticatedRequest, res) => {
+  return workflowController.getWorkflowHistory(req, res);
+});
 
 // --- ROUTES WITH CACHE INVALIDATION ---
 
-// Create a new workflow
-router.post('/', invalidateWorkflowsCache, createWorkflow);
+// Create new workflow
+router.post('/', invalidateWorkflowsCache, (req: AuthenticatedRequest, res) => {
+  return workflowController.createWorkflow(req, res);
+});
 
-// Update an existing workflow
-router.put('/:id', invalidateWorkflowsCache, updateWorkflow);
+// Update workflow
+router.put('/:id', invalidateWorkflowsCache, (req: AuthenticatedRequest, res) => {
+  return workflowController.updateWorkflow(req, res);
+});
 
-// Delete (archive) a workflow
-router.delete('/:id', invalidateWorkflowsCache, deleteWorkflow);
+// Delete workflow
+router.delete('/:id', invalidateWorkflowsCache, (req: AuthenticatedRequest, res) => {
+  return workflowController.deleteWorkflow(req, res);
+});
 
-// Duplicate a workflow
-router.post('/:id/duplicate', invalidateWorkflowsCache, duplicateWorkflow);
-
+// Duplicate workflow
+router.post('/:id/duplicate', invalidateWorkflowsCache, (req: AuthenticatedRequest, res) => {
+  return workflowController.duplicateWorkflow(req, res);
+});
 
 // --- NON-CACHED ACTION ROUTES ---
 
-// Execute a workflow - this action does not need to invalidate read-only caches
-router.post('/:id/execute', executeWorkflow);
+// Execute workflow - this action does not need to invalidate read-only caches
+router.post('/:id/execute', (req: AuthenticatedRequest, res) => {
+  return workflowController.executeWorkflow(req, res);
+});
 
 export default router;

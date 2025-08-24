@@ -51,7 +51,7 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<void
       workflowId: req.params.id,
       name,
       description,
-      createdBy: req.user!.id,
+      createdBy: req.user!.userId,
       nodes,
       edges,
       viewport,
@@ -176,7 +176,7 @@ router.post('/auto', authenticate, async (req: Request, res: Response): Promise<
     
     const checkpoint = await checkpointService.createAutoCheckpoint(
       req.params.id,
-      req.user!.id,
+      req.user!.userId,
       { nodes, edges, viewport }
     );
     
