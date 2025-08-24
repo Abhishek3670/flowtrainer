@@ -29,7 +29,7 @@ import mongoose from 'mongoose';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
-
+import app from './app';
 // Import API routes
 // Note: Some routes use require() due to JS/TS compatibility issues
 const workflowRoutes = require('./routes/workflowRoutes');
@@ -40,7 +40,7 @@ import projectRoutes from './routes/projectRoutes';
 // ===== SERVER SETUP =====
 
 // Create Express application instance
-const app = express();
+// const app = express();
 
 // Create HTTP server from Express app
 const server = createServer(app);
@@ -171,6 +171,7 @@ connectDB()
       console.log(`🚀 FlowCraft backend listening on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/api/health`);
       console.log(`📁 Workflow API: http://localhost:${PORT}/api/workflows`);
+      console.log(`📊 Performance:  http://localhost:${PORT}/api/performance`);
     });
   })
   .catch((err: Error) => {

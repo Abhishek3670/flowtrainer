@@ -21,7 +21,8 @@ import morgan from "morgan";
 import checkpointRoutes from "./routes/checkpoints";
 import cleanupRoutes from "./routes/cleanup";
 import projectRoutes from './routes/projectRoutes';
-
+import { performanceMiddleware, getPerformanceReport, exportPerformanceData } from './middleware/performance-middleware';
+import { SystemMetricsCollector } from './monitoring/system-metrics';
 // Create Express application instance
 const app: Application = express();
 
@@ -52,6 +53,33 @@ app.use("/api/cleanup", cleanupRoutes);
 
 // Project management endpoints
 app.use('/api/projects', projectRoutes);
+
+// Add performance middleware early in the middleware stack
+app.use(performanceMiddleware);
+
+// Start system monitoring
+const systemMetrics = new SystemMetricsCollector();
+systemMetrics.startContinuousMonitoring(30000); // Every 30 seconds
+
+// Add performance endpoint
+app.get('/api/performance', (req, res) => {
+  const report = getPerformanceReport();
+  res.json({ success: true, report });
+});
+
+app.get('/api/performance/export', (req, res) => {
+  const format = req.query.format as 'json' | 'csv' || 'json';
+  const data = exportPerformanceData(format);
+  
+  if (format === 'csv') {
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="performance-data.csv"');
+  } else {
+    res.setHeader('Content-Type', 'application/json');
+  }
+  
+  res.send(data);
+});
 
 // Export the configured Express application
 export default app;
