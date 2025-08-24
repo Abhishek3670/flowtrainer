@@ -22,6 +22,7 @@ import checkpointRoutes from "./routes/checkpoints";
 import cleanupRoutes from "./routes/cleanup";
 import projectRoutes from './routes/projectRoutes';
 import { performanceMiddleware, getPerformanceReport, exportPerformanceData } from './middleware/performance-middleware';
+import { performanceOptimization, getCacheStats, clearCache } from './middleware/performance-optimization';
 import { SystemMetricsCollector } from './monitoring/system-metrics';
 // Create Express application instance
 const app: Application = express();
@@ -56,6 +57,7 @@ app.use('/api/projects', projectRoutes);
 
 // Add performance middleware early in the middleware stack
 app.use(performanceMiddleware);
+app.use(performanceOptimization);
 
 // Start system monitoring
 const systemMetrics = new SystemMetricsCollector();
@@ -79,6 +81,34 @@ app.get('/api/performance/export', (req, res) => {
   }
   
   res.send(data);
+});
+
+// Cache management endpoints
+app.get('/api/performance/cache', (req, res) => {
+  res.json({ success: true, stats: getCacheStats() });
+});
+
+app.post('/api/performance/cache/clear', (req, res) => {
+  clearCache();
+  res.json({ success: true, message: 'Cache cleared successfully' });
+});
+
+// Performance optimization status
+app.get('/api/performance/optimization', (req, res) => {
+  const report = getPerformanceReport();
+  const cacheStats = getCacheStats();
+  
+  res.json({
+    success: true,
+    performance: report,
+    cache: cacheStats,
+    recommendations: [
+      'Use worker threads for CPU-intensive tasks',
+      'Implement database connection pooling',
+      'Enable response compression',
+      'Monitor memory usage and implement cleanup'
+    ]
+  });
 });
 
 // Export the configured Express application

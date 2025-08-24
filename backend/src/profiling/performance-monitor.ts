@@ -41,13 +41,21 @@ export class PerformanceMonitor extends EventEmitter {
   private gcData: PerformanceMetrics['gc'] = [];
   private monitoringInterval: NodeJS.Timeout | null = null;
   private startTime = Date.now();
+  private isHighLoad = false;
+  private lastMemoryCheck = Date.now();
 
   constructor(
     private options: {
       collectInterval: number;
       maxHistorySize: number;
       enableGCMonitoring: boolean;
-    } = { collectInterval: 5000, maxHistorySize: 500, enableGCMonitoring: true }
+      adaptiveCapping: boolean;
+    } = { 
+      collectInterval: 5000, 
+      maxHistorySize: 50, // Reduced from 500 to 50
+      enableGCMonitoring: true,
+      adaptiveCapping: true
+    }
   ) {
     super();
     if (this.options.enableGCMonitoring) this.setupGCMonitoring();
@@ -65,8 +73,8 @@ export class PerformanceMonitor extends EventEmitter {
           });
         }
       }
-      // Cap GC data history
-      if (this.gcData.length > 100) this.gcData.shift();
+      // Reduced GC data history from 100 to 20 entries
+      if (this.gcData.length > 20) this.gcData.shift();
     });
     obs.observe({ entryTypes: ['gc'] });
   }
@@ -97,11 +105,70 @@ export class PerformanceMonitor extends EventEmitter {
 
   private async collectAndEmit() {
     const metrics = await this.collectMetrics();
-    this.metricsHistory.push(metrics);
-    // Cap metrics history
-    if (this.metricsHistory.length > 100) this.metricsHistory.shift();
+    
+    // Adaptive capping based on system load
+    if (this.options.adaptiveCapping) {
+      this.adaptiveCapHistory(metrics);
+    } else {
+      this.metricsHistory.push(metrics);
+      if (this.metricsHistory.length > this.options.maxHistorySize) {
+        this.metricsHistory.shift();
+      }
+    }
+    
     this.emit('metrics', metrics);
     this.checkThresholds(metrics);
+    
+    // Memory leak detection
+    this.detectMemoryLeaks(metrics);
+  }
+
+  private adaptiveCapHistory(metrics: PerformanceMetrics) {
+    const currentHeap = metrics.memory.heapUsed;
+    const currentTime = Date.now();
+    
+    // Check if we're under high load
+    this.isHighLoad = currentHeap > 400 || metrics.cpu.usage > 70;
+    
+    if (this.isHighLoad) {
+      // Under high load, keep only recent data
+      this.metricsHistory.push(metrics);
+      if (this.metricsHistory.length > 25) { // Reduced from 50 to 25 under high load
+        this.metricsHistory = this.metricsHistory.slice(-25);
+      }
+    } else {
+      // Normal load, use standard capping
+      this.metricsHistory.push(metrics);
+      if (this.metricsHistory.length > this.options.maxHistorySize) {
+        this.metricsHistory.shift();
+      }
+    }
+  }
+
+  private detectMemoryLeaks(metrics: PerformanceMetrics) {
+    const now = Date.now();
+    const timeSinceLastCheck = now - this.lastMemoryCheck;
+    
+    // Check for memory leaks every 30 seconds
+    if (timeSinceLastCheck > 30000) {
+      this.lastMemoryCheck = now;
+      
+      // If heap usage increased by more than 100MB in 30 seconds, potential leak
+      if (this.metricsHistory.length > 1) {
+        const previous = this.metricsHistory[this.metricsHistory.length - 2];
+        const heapIncrease = metrics.memory.heapUsed - previous.memory.heapUsed;
+        
+        if (heapIncrease > 100) {
+          this.emit('memory-leak-detected', {
+            increase: heapIncrease,
+            current: metrics.memory.heapUsed,
+            previous: previous.memory.heapUsed,
+            timestamp: new Date()
+          });
+          console.warn(`⚠️ Potential memory leak detected: +${heapIncrease}MB in 30s`);
+        }
+      }
+    }
   }
 
   private async collectMetrics(): Promise<PerformanceMetrics> {
@@ -123,7 +190,7 @@ export class PerformanceMonitor extends EventEmitter {
       },
       cpu: { usage: Math.round(cpuPercent * 100) / 100, userTime: cpuUsage.user, systemTime: cpuUsage.system },
       eventLoop: { lag, utilization: this.calculateEventLoopUtilization() },
-      gc: this.gcData.filter(d => d.timestamp.getTime() > Date.now() - 5 * 60 * 1000).slice(-10),
+      gc: this.gcData.filter(d => d.timestamp.getTime() > Date.now() - 5 * 60 * 1000).slice(-5), // Reduced from 10 to 5
       uptime: Math.round((Date.now() - this.startTime) / 1000)
     };
   }
@@ -147,8 +214,18 @@ export class PerformanceMonitor extends EventEmitter {
 
   public recordRequest(r: RequestMetrics) {
     this.requestHistory.push(r);
-    // Cap request history
-    if (this.requestHistory.length > 100) this.requestHistory.shift();
+    
+    // Adaptive capping for request history
+    if (this.isHighLoad) {
+      if (this.requestHistory.length > 25) { // Reduced from 100 to 25 under high load
+        this.requestHistory = this.requestHistory.slice(-25);
+      }
+    } else {
+      if (this.requestHistory.length > 50) { // Reduced from 100 to 50 under normal load
+        this.requestHistory.shift();
+      }
+    }
+    
     if (r.duration > 1000) this.emit('slow-request', r);
   }
 
@@ -165,7 +242,13 @@ export class PerformanceMonitor extends EventEmitter {
       averages: this.calculateAverages(),
       peaks: this.calculatePeaks(),
       requestStats: this.calculateRequestStats(),
-      recommendations: this.generateRecommendations(current)
+      recommendations: this.generateRecommendations(current),
+      systemLoad: this.isHighLoad ? 'high' : 'normal',
+      historySize: {
+        metrics: this.metricsHistory.length,
+        requests: this.requestHistory.length,
+        gc: this.gcData.length
+      }
     };
   }
 
@@ -213,10 +296,16 @@ export class PerformanceMonitor extends EventEmitter {
   private generateRecommendations(current: PerformanceMetrics | null) {
     const recs: string[] = [];
     if (current) {
-      if (current.memory.heapUsed > 400) recs.push('Optimize memory usage.');
-      if (current.cpu.usage > 60) recs.push('Optimize CPU-heavy tasks.');
-      if (current.eventLoop.lag > 50) recs.push('Investigate event loop blockers.');
+      if (current.memory.heapUsed > 400) recs.push('Optimize memory usage - consider reducing history arrays.');
+      if (current.cpu.usage > 60) recs.push('Optimize CPU-heavy tasks - consider worker threads.');
+      if (current.eventLoop.lag > 50) recs.push('Investigate event loop blockers - check for sync operations.');
     }
+    
+    // Add adaptive recommendations
+    if (this.isHighLoad) {
+      recs.push('System under high load - monitoring arrays have been reduced for performance.');
+    }
+    
     return recs.length ? recs : ['Performance within acceptable limits.'];
   }
 
@@ -228,7 +317,38 @@ export class PerformanceMonitor extends EventEmitter {
         .join('\n');
       return hdr + rows;
     }
-    return JSON.stringify({ metrics: this.metricsHistory, requests: this.requestHistory }, null, 2);
+    return JSON.stringify({ 
+      metrics: this.metricsHistory, 
+      requests: this.requestHistory,
+      systemLoad: this.isHighLoad,
+      historySizes: {
+        metrics: this.metricsHistory.length,
+        requests: this.requestHistory.length,
+        gc: this.gcData.length
+      }
+    }, null, 2);
+  }
+
+  // Method to manually clear history arrays to free memory
+  public clearHistory() {
+    this.metricsHistory = [];
+    this.requestHistory = [];
+    this.gcData = [];
+    console.log('🧹 Performance monitor history cleared');
+  }
+
+  // Method to get current memory usage of the monitor itself
+  public getMonitorMemoryUsage() {
+    return {
+      metricsHistorySize: this.metricsHistory.length,
+      requestHistorySize: this.requestHistory.length,
+      gcDataSize: this.gcData.length,
+      estimatedMemoryMB: Math.round(
+        (this.metricsHistory.length * 0.5 + 
+         this.requestHistory.length * 0.3 + 
+         this.gcData.length * 0.2) / 1024
+      )
+    };
   }
 }
 
