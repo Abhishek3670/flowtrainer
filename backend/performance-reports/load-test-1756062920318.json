@@ -1,0 +1,1188 @@
+{
+  "summary": {
+    "totalTests": 4,
+    "averageThroughput": 411.0525,
+    "averageLatency": 210.3975,
+    "maxMemoryIncrease": 3,
+    "maxCPUIncrease": 9.2,
+    "maxEventLoopLag": 0.042785
+  },
+  "results": [
+    {
+      "scenario": "Light Load",
+      "autocannon": {
+        "url": "http://localhost:4000/api/health",
+        "connections": 5,
+        "sampleInt": 1000,
+        "pipelining": 1,
+        "duration": 30.04,
+        "samples": 30,
+        "start": "2025-08-24T19:12:50.099Z",
+        "finish": "2025-08-24T19:13:20.137Z",
+        "errors": 0,
+        "timeouts": 0,
+        "mismatches": 0,
+        "non2xx": 0,
+        "resets": 0,
+        "1xx": 0,
+        "2xx": 9236,
+        "3xx": 0,
+        "4xx": 0,
+        "5xx": 0,
+        "statusCodeStats": {
+          "200": {
+            "count": 9236
+          }
+        },
+        "latency": {
+          "average": 15.72,
+          "mean": 15.72,
+          "stddev": 53.87,
+          "min": 7,
+          "max": 1409,
+          "p0_001": 7,
+          "p0_01": 7,
+          "p0_1": 8,
+          "p1": 8,
+          "p2_5": 9,
+          "p10": 9,
+          "p25": 10,
+          "p50": 11,
+          "p75": 11,
+          "p90": 14,
+          "p97_5": 21,
+          "p99": 63,
+          "p99_9": 805,
+          "p99_99": 1409,
+          "p99_999": 1409,
+          "totalCount": 9236
+        },
+        "requests": {
+          "average": 307.87,
+          "mean": 307.87,
+          "stddev": 181.45,
+          "min": 5,
+          "max": 462,
+          "total": 9236,
+          "p0_001": 5,
+          "p0_01": 5,
+          "p0_1": 5,
+          "p1": 5,
+          "p2_5": 5,
+          "p10": 6,
+          "p25": 109,
+          "p50": 421,
+          "p75": 441,
+          "p90": 451,
+          "p97_5": 462,
+          "p99": 462,
+          "p99_9": 462,
+          "p99_99": 462,
+          "p99_999": 462,
+          "sent": 9241
+        },
+        "throughput": {
+          "average": 173542.84,
+          "mean": 173542.84,
+          "stddev": 102278.31,
+          "min": 2820,
+          "max": 260123,
+          "total": 5206265,
+          "p0_001": 2821,
+          "p0_01": 2821,
+          "p0_1": 2821,
+          "p1": 2821,
+          "p2_5": 2821,
+          "p10": 3383,
+          "p25": 61471,
+          "p50": 237439,
+          "p75": 248703,
+          "p90": 254335,
+          "p97_5": 260223,
+          "p99": 260223,
+          "p99_9": 260223,
+          "p99_99": 260223,
+          "p99_999": 260223
+        }
+      },
+      "performance": {
+        "baseline": {
+          "current": null,
+          "averages": {},
+          "peaks": {},
+          "requestStats": {
+            "total": 0,
+            "avg": 0,
+            "slow": 0,
+            "errors": 0
+          },
+          "recommendations": [
+            "Performance within acceptable limits."
+          ]
+        },
+        "final": {
+          "current": {
+            "timestamp": "2025-08-24T19:13:20.093Z",
+            "memory": {
+              "heapUsed": 8,
+              "heapTotal": 10,
+              "external": 7,
+              "rss": 64,
+              "arrayBuffers": 0
+            },
+            "cpu": {
+              "usage": 7.4,
+              "userTime": 2651446,
+              "systemTime": 524169
+            },
+            "eventLoop": {
+              "lag": 0.042785,
+              "utilization": 7.17
+            },
+            "gc": [
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:17.078Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:17.412Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:17.740Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:18.058Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:18.384Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:18.698Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:19.020Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:19.331Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:19.656Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:19.986Z"
+              }
+            ],
+            "uptime": 30
+          },
+          "averages": {
+            "memory": {
+              "heapUsed": 9
+            },
+            "cpu": {
+              "usage": 6.47
+            },
+            "eventLoop": {
+              "lag": 0
+            }
+          },
+          "peaks": {
+            "memory": {
+              "heapUsed": 10
+            },
+            "cpu": {
+              "usage": 12.8
+            },
+            "eventLoop": {
+              "lag": 0.336613
+            }
+          },
+          "requestStats": {
+            "total": 0,
+            "avg": 0,
+            "slow": 0,
+            "errors": 0
+          },
+          "recommendations": [
+            "Performance within acceptable limits."
+          ]
+        },
+        "impact": {
+          "memoryIncrease": 0,
+          "cpuIncrease": 0,
+          "eventLoopLag": 0.042785
+        }
+      },
+      "timestamp": "2025-08-24T19:13:20.167Z"
+    },
+    {
+      "scenario": "Medium Load",
+      "autocannon": {
+        "url": "http://localhost:4000/api/health",
+        "connections": 15,
+        "sampleInt": 1000,
+        "pipelining": 2,
+        "duration": 30.03,
+        "samples": 30,
+        "start": "2025-08-24T19:13:30.174Z",
+        "finish": "2025-08-24T19:14:00.201Z",
+        "errors": 0,
+        "timeouts": 0,
+        "mismatches": 0,
+        "non2xx": 0,
+        "resets": 0,
+        "1xx": 0,
+        "2xx": 13448,
+        "3xx": 0,
+        "4xx": 0,
+        "5xx": 0,
+        "statusCodeStats": {
+          "200": {
+            "count": 13448
+          }
+        },
+        "latency": {
+          "average": 66.36,
+          "mean": 66.36,
+          "stddev": 5.4,
+          "min": 54,
+          "max": 114,
+          "p0_001": 54,
+          "p0_01": 55,
+          "p0_1": 57,
+          "p1": 59,
+          "p2_5": 60,
+          "p10": 61,
+          "p25": 63,
+          "p50": 65,
+          "p75": 69,
+          "p90": 72,
+          "p97_5": 78,
+          "p99": 83,
+          "p99_9": 111,
+          "p99_99": 113,
+          "p99_999": 114,
+          "totalCount": 13448
+        },
+        "requests": {
+          "average": 448.27,
+          "mean": 448.27,
+          "stddev": 9.76,
+          "min": 420,
+          "max": 465,
+          "total": 13448,
+          "p0_001": 420,
+          "p0_01": 420,
+          "p0_1": 420,
+          "p1": 420,
+          "p2_5": 420,
+          "p10": 435,
+          "p25": 442,
+          "p50": 448,
+          "p75": 455,
+          "p90": 459,
+          "p97_5": 465,
+          "p99": 465,
+          "p99_9": 465,
+          "p99_99": 465,
+          "p99_999": 465,
+          "sent": 13478
+        },
+        "throughput": {
+          "average": 252782.94,
+          "mean": 252782.94,
+          "stddev": 5498.07,
+          "min": 236831,
+          "max": 262210,
+          "total": 7583169,
+          "p0_001": 236927,
+          "p0_01": 236927,
+          "p0_1": 236927,
+          "p1": 236927,
+          "p2_5": 236927,
+          "p10": 245375,
+          "p25": 249343,
+          "p50": 252671,
+          "p75": 256639,
+          "p90": 258943,
+          "p97_5": 262399,
+          "p99": 262399,
+          "p99_9": 262399,
+          "p99_99": 262399,
+          "p99_999": 262399
+        }
+      },
+      "performance": {
+        "baseline": {
+          "current": {
+            "timestamp": "2025-08-24T19:13:30.100Z",
+            "memory": {
+              "heapUsed": 9,
+              "heapTotal": 11,
+              "external": 8,
+              "rss": 65,
+              "arrayBuffers": 2
+            },
+            "cpu": {
+              "usage": 0,
+              "userTime": 2743286,
+              "systemTime": 531049
+            },
+            "eventLoop": {
+              "lag": 0.053839,
+              "utilization": 5.49
+            },
+            "gc": [
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:17.078Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:17.412Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:17.740Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:18.058Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:18.384Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:18.698Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:19.020Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:19.331Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:19.656Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:19.986Z"
+              }
+            ],
+            "uptime": 40
+          },
+          "averages": {
+            "memory": {
+              "heapUsed": 9
+            },
+            "cpu": {
+              "usage": 5.1
+            },
+            "eventLoop": {
+              "lag": 0
+            }
+          },
+          "peaks": {
+            "memory": {
+              "heapUsed": 10
+            },
+            "cpu": {
+              "usage": 12.8
+            },
+            "eventLoop": {
+              "lag": 0.336613
+            }
+          },
+          "requestStats": {
+            "total": 0,
+            "avg": 0,
+            "slow": 0,
+            "errors": 0
+          },
+          "recommendations": [
+            "Performance within acceptable limits."
+          ]
+        },
+        "final": {
+          "current": {
+            "timestamp": "2025-08-24T19:14:00.101Z",
+            "memory": {
+              "heapUsed": 10,
+              "heapTotal": 14,
+              "external": 7,
+              "rss": 56,
+              "arrayBuffers": 0
+            },
+            "cpu": {
+              "usage": 8.6,
+              "userTime": 5066030,
+              "systemTime": 1166442
+            },
+            "eventLoop": {
+              "lag": 0.03846,
+              "utilization": 6.83
+            },
+            "gc": [
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:53.658Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:54.305Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:54.960Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:55.613Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:56.250Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:56.922Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:57.584Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:58.244Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:58.907Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:59.574Z"
+              }
+            ],
+            "uptime": 70
+          },
+          "averages": {
+            "memory": {
+              "heapUsed": 9
+            },
+            "cpu": {
+              "usage": 7.13
+            },
+            "eventLoop": {
+              "lag": 0
+            }
+          },
+          "peaks": {
+            "memory": {
+              "heapUsed": 10
+            },
+            "cpu": {
+              "usage": 14.8
+            },
+            "eventLoop": {
+              "lag": 0.336613
+            }
+          },
+          "requestStats": {
+            "total": 0,
+            "avg": 0,
+            "slow": 0,
+            "errors": 0
+          },
+          "recommendations": [
+            "Performance within acceptable limits."
+          ]
+        },
+        "impact": {
+          "memoryIncrease": 1,
+          "cpuIncrease": 8.6,
+          "eventLoopLag": 0.03846
+        }
+      },
+      "timestamp": "2025-08-24T19:14:00.211Z"
+    },
+    {
+      "scenario": "Heavy Load",
+      "autocannon": {
+        "url": "http://localhost:4000/api/health",
+        "connections": 30,
+        "sampleInt": 1000,
+        "pipelining": 3,
+        "duration": 30.04,
+        "samples": 30,
+        "start": "2025-08-24T19:14:10.217Z",
+        "finish": "2025-08-24T19:14:40.252Z",
+        "errors": 0,
+        "timeouts": 0,
+        "mismatches": 0,
+        "non2xx": 0,
+        "resets": 0,
+        "1xx": 0,
+        "2xx": 13368,
+        "3xx": 0,
+        "4xx": 0,
+        "5xx": 0,
+        "statusCodeStats": {
+          "200": {
+            "count": 13368
+          }
+        },
+        "latency": {
+          "average": 200.9,
+          "mean": 200.9,
+          "stddev": 42.87,
+          "min": 120,
+          "max": 844,
+          "p0_001": 120,
+          "p0_01": 121,
+          "p0_1": 138,
+          "p1": 184,
+          "p2_5": 187,
+          "p10": 190,
+          "p25": 193,
+          "p50": 195,
+          "p75": 199,
+          "p90": 205,
+          "p97_5": 230,
+          "p99": 370,
+          "p99_9": 802,
+          "p99_99": 843,
+          "p99_999": 844,
+          "totalCount": 13368
+        },
+        "requests": {
+          "average": 445.6,
+          "mean": 445.6,
+          "stddev": 41.98,
+          "min": 244,
+          "max": 473,
+          "total": 13368,
+          "p0_001": 244,
+          "p0_01": 244,
+          "p0_1": 244,
+          "p1": 244,
+          "p2_5": 244,
+          "p10": 408,
+          "p25": 448,
+          "p50": 456,
+          "p75": 463,
+          "p90": 469,
+          "p97_5": 473,
+          "p99": 473,
+          "p99_9": 473,
+          "p99_99": 473,
+          "p99_999": 473,
+          "sent": 13458
+        },
+        "throughput": {
+          "average": 251236.27,
+          "mean": 251236.27,
+          "stddev": 23691.33,
+          "min": 137597,
+          "max": 266719,
+          "total": 7537281,
+          "p0_001": 137599,
+          "p0_01": 137599,
+          "p0_1": 137599,
+          "p1": 137599,
+          "p2_5": 137599,
+          "p10": 230143,
+          "p25": 252671,
+          "p50": 257151,
+          "p75": 261119,
+          "p90": 264703,
+          "p97_5": 266751,
+          "p99": 266751,
+          "p99_9": 266751,
+          "p99_99": 266751,
+          "p99_999": 266751
+        }
+      },
+      "performance": {
+        "baseline": {
+          "current": {
+            "timestamp": "2025-08-24T19:14:10.112Z",
+            "memory": {
+              "heapUsed": 11,
+              "heapTotal": 14,
+              "external": 8,
+              "rss": 56,
+              "arrayBuffers": 2
+            },
+            "cpu": {
+              "usage": 0.2,
+              "userTime": 5099486,
+              "systemTime": 1171821
+            },
+            "eventLoop": {
+              "lag": 0.046313,
+              "utilization": 6.01
+            },
+            "gc": [
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:53.658Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:54.305Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:54.960Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:55.613Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:56.250Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:56.922Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:57.584Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:58.244Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:58.907Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:13:59.574Z"
+              }
+            ],
+            "uptime": 80
+          },
+          "averages": {
+            "memory": {
+              "heapUsed": 9
+            },
+            "cpu": {
+              "usage": 6.3
+            },
+            "eventLoop": {
+              "lag": 0
+            }
+          },
+          "peaks": {
+            "memory": {
+              "heapUsed": 11
+            },
+            "cpu": {
+              "usage": 14.8
+            },
+            "eventLoop": {
+              "lag": 0.336613
+            }
+          },
+          "requestStats": {
+            "total": 0,
+            "avg": 0,
+            "slow": 0,
+            "errors": 0
+          },
+          "recommendations": [
+            "Performance within acceptable limits."
+          ]
+        },
+        "final": {
+          "current": {
+            "timestamp": "2025-08-24T19:14:40.113Z",
+            "memory": {
+              "heapUsed": 10,
+              "heapTotal": 14,
+              "external": 11,
+              "rss": 58,
+              "arrayBuffers": 0
+            },
+            "cpu": {
+              "usage": 9,
+              "userTime": 7171876,
+              "systemTime": 1824493
+            },
+            "eventLoop": {
+              "lag": 0.023666,
+              "utilization": 6.59
+            },
+            "gc": [
+              {
+                "type": "Scavenge",
+                "duration": 1,
+                "timestamp": "2025-08-24T19:14:33.951Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:34.675Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:35.318Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:35.940Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:36.575Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:37.236Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:37.856Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:38.491Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:39.168Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:39.807Z"
+              }
+            ],
+            "uptime": 110
+          },
+          "averages": {
+            "memory": {
+              "heapUsed": 9
+            },
+            "cpu": {
+              "usage": 7.06
+            },
+            "eventLoop": {
+              "lag": 0
+            }
+          },
+          "peaks": {
+            "memory": {
+              "heapUsed": 11
+            },
+            "cpu": {
+              "usage": 14.8
+            },
+            "eventLoop": {
+              "lag": 0.336613
+            }
+          },
+          "requestStats": {
+            "total": 0,
+            "avg": 0,
+            "slow": 0,
+            "errors": 0
+          },
+          "recommendations": [
+            "Performance within acceptable limits."
+          ]
+        },
+        "impact": {
+          "memoryIncrease": -1,
+          "cpuIncrease": 8.8,
+          "eventLoopLag": 0.023666
+        }
+      },
+      "timestamp": "2025-08-24T19:14:40.266Z"
+    },
+    {
+      "scenario": "Stress Test",
+      "autocannon": {
+        "url": "http://localhost:4000/api/health",
+        "connections": 50,
+        "sampleInt": 1000,
+        "pipelining": 5,
+        "duration": 30.04,
+        "samples": 30,
+        "start": "2025-08-24T19:14:50.272Z",
+        "finish": "2025-08-24T19:15:20.311Z",
+        "errors": 0,
+        "timeouts": 0,
+        "mismatches": 0,
+        "non2xx": 0,
+        "resets": 0,
+        "1xx": 0,
+        "2xx": 13274,
+        "3xx": 0,
+        "4xx": 0,
+        "5xx": 0,
+        "statusCodeStats": {
+          "200": {
+            "count": 13274
+          }
+        },
+        "latency": {
+          "average": 558.61,
+          "mean": 558.61,
+          "stddev": 90.32,
+          "min": 237,
+          "max": 1276,
+          "p0_001": 237,
+          "p0_01": 238,
+          "p0_1": 268,
+          "p1": 448,
+          "p2_5": 526,
+          "p10": 533,
+          "p25": 538,
+          "p50": 543,
+          "p75": 552,
+          "p90": 575,
+          "p97_5": 645,
+          "p99": 1199,
+          "p99_9": 1265,
+          "p99_99": 1276,
+          "p99_999": 1276,
+          "totalCount": 13274
+        },
+        "requests": {
+          "average": 442.47,
+          "mean": 442.47,
+          "stddev": 53.57,
+          "min": 222,
+          "max": 494,
+          "total": 13274,
+          "p0_001": 222,
+          "p0_01": 222,
+          "p0_1": 222,
+          "p1": 222,
+          "p2_5": 222,
+          "p10": 380,
+          "p25": 441,
+          "p50": 453,
+          "p75": 470,
+          "p90": 485,
+          "p97_5": 494,
+          "p99": 494,
+          "p99_9": 494,
+          "p99_99": 494,
+          "p99_999": 494,
+          "sent": 13524
+        },
+        "throughput": {
+          "average": 249500.8,
+          "mean": 249500.8,
+          "stddev": 30219.77,
+          "min": 124993,
+          "max": 278556,
+          "total": 7484528,
+          "p0_001": 125055,
+          "p0_01": 125055,
+          "p0_1": 125055,
+          "p1": 125055,
+          "p2_5": 125055,
+          "p10": 214399,
+          "p25": 248703,
+          "p50": 255487,
+          "p75": 265215,
+          "p90": 273663,
+          "p97_5": 278783,
+          "p99": 278783,
+          "p99_9": 278783,
+          "p99_99": 278783,
+          "p99_999": 278783
+        }
+      },
+      "performance": {
+        "baseline": {
+          "current": {
+            "timestamp": "2025-08-24T19:14:50.122Z",
+            "memory": {
+              "heapUsed": 11,
+              "heapTotal": 14,
+              "external": 13,
+              "rss": 59,
+              "arrayBuffers": 2
+            },
+            "cpu": {
+              "usage": 0,
+              "userTime": 7226747,
+              "systemTime": 1827860
+            },
+            "eventLoop": {
+              "lag": 0.046269,
+              "utilization": 6.08
+            },
+            "gc": [
+              {
+                "type": "Scavenge",
+                "duration": 1,
+                "timestamp": "2025-08-24T19:14:33.951Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:34.675Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:35.318Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:35.940Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:36.575Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:37.236Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:37.856Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:38.491Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:39.168Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:14:39.807Z"
+              }
+            ],
+            "uptime": 120
+          },
+          "averages": {
+            "memory": {
+              "heapUsed": 9
+            },
+            "cpu": {
+              "usage": 6.51
+            },
+            "eventLoop": {
+              "lag": 0
+            }
+          },
+          "peaks": {
+            "memory": {
+              "heapUsed": 11
+            },
+            "cpu": {
+              "usage": 14.8
+            },
+            "eventLoop": {
+              "lag": 0.336613
+            }
+          },
+          "requestStats": {
+            "total": 0,
+            "avg": 0,
+            "slow": 0,
+            "errors": 0
+          },
+          "recommendations": [
+            "Performance within acceptable limits."
+          ]
+        },
+        "final": {
+          "current": {
+            "timestamp": "2025-08-24T19:15:20.125Z",
+            "memory": {
+              "heapUsed": 14,
+              "heapTotal": 21,
+              "external": 11,
+              "rss": 67,
+              "arrayBuffers": 0
+            },
+            "cpu": {
+              "usage": 9.2,
+              "userTime": 9249785,
+              "systemTime": 2523385
+            },
+            "eventLoop": {
+              "lag": 0.025745,
+              "utilization": 6.51
+            },
+            "gc": [
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:15:07.992Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:15:09.240Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 1,
+                "timestamp": "2025-08-24T19:15:10.594Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 1,
+                "timestamp": "2025-08-24T19:15:11.819Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:15:13.060Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 1,
+                "timestamp": "2025-08-24T19:15:14.425Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:15:15.658Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 1,
+                "timestamp": "2025-08-24T19:15:17.018Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:15:18.268Z"
+              },
+              {
+                "type": "Scavenge",
+                "duration": 0,
+                "timestamp": "2025-08-24T19:15:19.507Z"
+              }
+            ],
+            "uptime": 150
+          },
+          "averages": {
+            "memory": {
+              "heapUsed": 10
+            },
+            "cpu": {
+              "usage": 7.03
+            },
+            "eventLoop": {
+              "lag": 0
+            }
+          },
+          "peaks": {
+            "memory": {
+              "heapUsed": 14
+            },
+            "cpu": {
+              "usage": 14.8
+            },
+            "eventLoop": {
+              "lag": 0.336613
+            }
+          },
+          "requestStats": {
+            "total": 0,
+            "avg": 0,
+            "slow": 0,
+            "errors": 0
+          },
+          "recommendations": [
+            "Performance within acceptable limits."
+          ]
+        },
+        "impact": {
+          "memoryIncrease": 3,
+          "cpuIncrease": 9.2,
+          "eventLoopLag": 0.025745
+        }
+      },
+      "timestamp": "2025-08-24T19:15:20.316Z"
+    }
+  ],
+  "recommendations": [
+    "Performance within acceptable limits."
+  ]
+}
