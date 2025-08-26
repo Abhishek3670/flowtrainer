@@ -1,0 +1,103 @@
+{
+  "timestamp": "2025-08-24T19:21:36.267Z",
+  "testResults": {
+    "baseline": {
+      "health": {
+        "name": "Health Check",
+        "endpoint": "/health",
+        "iterations": 10,
+        "avgDuration": 14,
+        "minDuration": 10,
+        "maxDuration": 25,
+        "avgMemory": 0,
+        "successRate": "0.00"
+      },
+      "performance": {
+        "name": "Performance Metrics",
+        "endpoint": "/performance",
+        "iterations": 10,
+        "avgDuration": 12,
+        "minDuration": 10,
+        "maxDuration": 14,
+        "avgMemory": 0,
+        "successRate": "0.00"
+      },
+      "cache": {
+        "name": "Cache Statistics",
+        "endpoint": "/performance/cache",
+        "iterations": 10,
+        "avgDuration": 11,
+        "minDuration": 9,
+        "maxDuration": 15,
+        "avgMemory": 0,
+        "successRate": "0.00"
+      },
+      "optimization": {
+        "name": "Performance Optimization",
+        "endpoint": "/performance/optimization",
+        "iterations": 10,
+        "avgDuration": 11,
+        "minDuration": 8,
+        "maxDuration": 13,
+        "avgMemory": 0,
+        "successRate": "0.00"
+      }
+    },
+    "optimized": {
+      "cacheHit": {
+        "name": "Cache Hit Test",
+        "endpoint": "/performance/cache",
+        "iterations": 20,
+        "avgDuration": 10,
+        "minDuration": 8,
+        "maxDuration": 14,
+        "avgMemory": 0,
+        "successRate": "0.00"
+      },
+      "heavyLoad": {
+        "name": "Heavy Load Test",
+        "endpoint": "/performance",
+        "iterations": 15,
+        "avgDuration": 10,
+        "minDuration": 8,
+        "maxDuration": 12,
+        "avgMemory": 0,
+        "successRate": "0.00"
+      }
+    },
+    "improvements": {}
+  },
+  "performanceReport": {
+    "current": null,
+    "averages": {},
+    "peaks": {},
+    "requestStats": {
+      "total": 0,
+      "avg": 0,
+      "slow": 0,
+      "errors": 0
+    },
+    "recommendations": [
+      "Performance within acceptable limits."
+    ],
+    "systemLoad": "normal",
+    "historySize": {
+      "metrics": 0,
+      "requests": 0,
+      "gc": 9
+    }
+  },
+  "summary": {
+    "totalTests": 6,
+    "baselineTests": [
+      "health",
+      "performance",
+      "cache",
+      "optimization"
+    ],
+    "optimizedTests": [
+      "cacheHit",
+      "heavyLoad"
+    ]
+  }
+}
