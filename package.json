@@ -1,5 +1,8 @@
 {
   "dependencies": {
+    "@types/bull": "^3.15.9",
+    "bull": "^4.16.5",
+    "ioredis": "^5.7.0",
     "lodash": "^4.17.21",
     "proper-lockfile": "^4.1.2",
     "react-hot-toast": "^2.5.2",
@@ -10,7 +13,11 @@
     "@types/jest": "^30.0.0",
     "@types/lodash": "^4.17.20",
     "@types/node": "^24.2.1",
+    "@types/node-memwatch": "^1.0.4",
     "@types/proper-lockfile": "^4.1.4",
+    "0x": "^6.0.0",
+    "autocannon": "^8.0.0",
+    "clinic": "^13.0.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2"
   }
