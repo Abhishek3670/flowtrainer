@@ -22,8 +22,9 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: flowtrainer_backend_dev
-    env_file:
-      - ./backend/.env.example
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/flowcraft
+      - REDIS_URL=redis://redis:6379
     ports:
       - "4000:4000"
     volumes:
