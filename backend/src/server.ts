@@ -138,6 +138,15 @@ app.get('/api/worker/status', (req, res) => {
 // ===== ENHANCED HEALTH CHECK =====
 // (Extends your existing health check with WebSocket and Worker metrics)
 
+// Basic health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // Enhanced health check endpoint that includes all Phase 3 services
 app.get('/api/health/extended', async (req, res) => {
   try {
