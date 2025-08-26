@@ -93,3 +93,5 @@ backend/workflows/
 test_workflow/
 *.backup
 .github/workflows/ci.yml
+0x-profile/
+backend/performance-reports/*.json
