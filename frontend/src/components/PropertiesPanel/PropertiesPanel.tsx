@@ -1,7 +1,7 @@
 // frontend/src/components/PropertiesPanel/PropertiesPanel.tsx
 
 import React, { useState, useEffect } from 'react';
-import { ChevronRight, Video, Upload, Loader2, CheckCircle, AlertCircle, X, ExternalLink } from 'lucide-react';
+import { ChevronRight, Video, CheckCircle, AlertCircle, X, ExternalLink } from 'lucide-react';
 import { Node } from 'reactflow';
 import { NodeData, FileData, UploadProgress } from '../../types';
 import { fileAPI } from '../../services/fileApi';
@@ -13,6 +13,9 @@ interface PropertiesPanelProps {
   selectedNode: Node<NodeData> | null;
   collapsed?: boolean;
   onNodeUpdate: (nodeId: string, newData: Partial<NodeData>) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
+  onToggle?: () => void;
 }
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({

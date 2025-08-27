@@ -59,7 +59,7 @@ const ValidationPanel: FC<ValidationPanelProps> = ({
             <div
               key={i}
               className="p-3 bg-white dark:bg-gray-800 border border-red-200 dark:border-red-700 rounded-lg cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-              onClick={() => error.nodeId !== 'workflow' && onFocusNode(error.nodeId)}
+              onClick={() => (error as any).nodeId && (error as any).nodeId !== 'workflow' && onFocusNode((error as any).nodeId)}
             >
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0 mt-0.5">
@@ -69,11 +69,11 @@ const ValidationPanel: FC<ValidationPanelProps> = ({
                   <p className="text-sm font-medium text-gray-900 dark:text-white">
                     {error.message}
                   </p>
-                  {error.nodeId !== 'workflow' && (
+                  {(error as any).nodeId && (error as any).nodeId !== 'workflow' && (
                     <div className="flex items-center mt-2 space-x-2">
                       <MapPin className="w-4 h-4 text-gray-400" />
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        Node: {error.nodeId}
+                        Node: {(error as any).nodeId}
                       </span>
                       <button className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400">
                         Focus Node →

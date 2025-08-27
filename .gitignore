@@ -95,3 +95,4 @@ test_workflow/
 .github/workflows/ci.yml
 0x-profile/
 backend/performance-reports/*.json
+results

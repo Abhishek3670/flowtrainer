@@ -269,6 +269,7 @@ export default function StackEdgeDrawer({
                   collapsed={false}
                   isOpen={true}
                   onClose={closeDrawer}
+                  onToggle={() => {}}
                 />
               )}
 

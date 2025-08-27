@@ -31,7 +31,16 @@ export function useSystemStatus() {
   const fetchSystemStatus = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await projectApi.getSystemStatus();
+      // Resolve projectId from URL/localStorage if available
+      const projectId =
+        (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('projectId')) ||
+        (typeof window !== 'undefined' && localStorage.getItem('projectId')) ||
+        '';
+
+      let response: any = {};
+      if (projectId && projectApi.getProjectStatus) {
+        response = await projectApi.getProjectStatus(projectId);
+      }
       // Handle both direct response and wrapped response from backend
       const statusData = response.system || response;
       

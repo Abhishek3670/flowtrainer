@@ -41,6 +41,8 @@ import {
 import { useTheme } from '../../contexts/ThemeContext';
 import { useSystemStatus } from '../../hooks/useSystemStatus';
 import SystemDashboard from '../SystemDashboard/SystemDashboard';
+import { HealthIndicator } from '../Health';
+import ConnectionStatus from '../Health/ConnectionStatus';
 
 /**
  * Header component props interface
@@ -285,6 +287,12 @@ const Header: React.FC<HeaderProps> = ({
               Saved at {lastSaved.toLocaleTimeString()}
             </div>
           )}
+
+          {/* Health indicators */}
+          <div className="hidden md:flex items-center space-x-3">
+            <HealthIndicator size="sm" />
+            <ConnectionStatus />
+          </div>
 
           {/* System Status with Dashboard Button */}
           <button

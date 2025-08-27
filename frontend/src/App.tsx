@@ -55,6 +55,9 @@ import { useWorkflowPersistence } from './hooks/useWorkflowPersistence';
 import { useProjectExecution } from './hooks/useProjectExecution';
 import { CheckpointAPI } from './services/checkpointApi';
 
+import { useHealthMonitoring } from './hooks/useHealthMonitoring';
+import { socketService } from './services/socketService';
+
 // Register custom node types for React Flow
 const nodeTypes = { customNode: CustomNode };
 
@@ -79,6 +82,16 @@ interface StateSnapshot {
  * Manages nodes, edges, viewport, and provides undo/redo functionality.
  */
 function FlowCanvas() {
+  useHealthMonitoring();
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      socketService.connect(token);
+    }
+    return () => {
+      socketService.disconnect();
+    };
+  }, []);
   // ===== CORE STATE MANAGEMENT =====
 
   // Canvas state - nodes and edges that make up the workflow
@@ -124,7 +137,10 @@ function FlowCanvas() {
   // ===== PROJECT EXECUTION =====
 
   // Project execution state and controls
-  const projectId = 'default-project';
+  const projectId =
+    (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('projectId')) ||
+    (typeof window !== 'undefined' && localStorage.getItem('projectId')) ||
+    '';
   const workflowId = 'default-workflow';
   const {
     running,
@@ -461,6 +477,10 @@ function FlowCanvas() {
       toast.error('Cannot execute: workflow is empty or already running');
       return;
     }
+    if (!projectId) {
+      toast.error('No project selected. Provide projectId via URL or localStorage.');
+      return;
+    }
 
     try {
       console.log('🚀 Executing workflow with nodes:', nodes);
@@ -478,7 +498,7 @@ function FlowCanvas() {
       console.error('Failed to execute workflow:', error);
       toast.error('Failed to execute workflow');
     }
-  }, [running, nodes, edges, executeProject, workflowId]);
+  }, [running, nodes, edges, executeProject, workflowId, projectId]);
 
   /**
    * Open checkpoint modal for workflow management
@@ -620,7 +640,7 @@ function FlowCanvas() {
         autoSaveEnabled={autoSaveEnabled}
         onToggleAutoSave={handleAutoSaveToggle}
         onRun={handleRunPipeline}
-        disableRun={nodes.length === 0}
+        disableRun={nodes.length === 0 || !projectId}
         onUndo={handleUndo}
         onRedo={handleRedo}
         disableUndo={history.past.length === 0}
