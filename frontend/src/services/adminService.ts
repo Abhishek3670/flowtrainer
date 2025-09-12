@@ -64,9 +64,9 @@ const client = axios.create({
 
 // Add request interceptor for authentication
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
+  const token = localStorage.getItem('token'); // align with app usage
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    (config.headers as any).Authorization = `Bearer ${token}`;
   }
   return config;
 });
@@ -77,7 +77,7 @@ client.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Handle authentication errors
-      localStorage.removeItem('authToken');
+      localStorage.removeItem('token');
       window.location.href = '/login';
     }
     return Promise.reject(error);

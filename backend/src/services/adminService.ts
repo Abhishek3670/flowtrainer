@@ -4,6 +4,8 @@ import { User } from '../models/User';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const Workflow = require('../models/Workflow');
 import { systemHealthService } from './systemHealthService';
+import { DbConnection } from '../models/DbConnection';
+import { ModelConfig } from '../models/ModelConfig';
 import os from 'os';
 
 export const adminService = {
@@ -17,8 +19,8 @@ export const adminService = {
     ] = await Promise.all([
       User.countDocuments(),
       Workflow.countDocuments?.() ?? 0,
-      Promise.resolve(0),
-      Promise.resolve(0),
+      DbConnection.countDocuments(),
+      ModelConfig.countDocuments(),
       systemHealthService.checkSystemHealth(),
     ]);
 

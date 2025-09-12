@@ -4,6 +4,7 @@ import { adminService } from '../services/adminService';
 import { systemHealthService } from '../services/systemHealthService';
 import { dbConnectionService } from '../services/dbConnectionService';
 import { modelService } from '../services/modelService';
+import { userService } from '../services/userService';
 import { asyncHandler } from '../utils/asyncHandler';
 import { AppError } from '../utils/AppError';
 
@@ -17,6 +18,36 @@ export const adminController = {
   getHealthStatus: asyncHandler(async (req: Request, res: Response) => {
     const health = await systemHealthService.checkSystemHealth();
     res.json(health);
+  }),
+
+  // Users
+  listUsers: asyncHandler(async (req: Request, res: Response) => {
+    const { page = 1, limit = 20, q, role } = req.query as any;
+    const result = await userService.listUsers({ page: Number(page), limit: Number(limit), q, role });
+    res.json({ ...result, totalPages: Math.ceil(result.totalCount / result.limit) });
+  }),
+  createUser: asyncHandler(async (req: Request, res: Response) => {
+    const user = await userService.createUser(req.body);
+    res.status(201).json(user);
+  }),
+  updateUser: asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const user = await userService.updateUser(id, req.body);
+    if (!user) throw new AppError('User not found', 404);
+    res.json(user);
+  }),
+  deleteUser: asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    await userService.deleteUser(id);
+    res.status(204).send();
+  }),
+  updateUserRole: asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { role } = req.body || {};
+    if (!role) throw new AppError('role is required', 400);
+    const user = await userService.updateUserRole(id, role);
+    if (!user) throw new AppError('User not found', 404);
+    res.json(user);
   }),
 
   // Database Connections

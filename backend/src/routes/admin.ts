@@ -15,6 +15,13 @@ router.use(requireRole('admin'));
 router.get('/system/stats', adminController.getSystemStats);
 router.get('/health', adminController.getHealthStatus);
 
+// Users
+router.get('/users', adminController.listUsers);
+router.post('/users', adminController.createUser);
+router.put('/users/:id', adminController.updateUser);
+router.delete('/users/:id', adminController.deleteUser);
+router.patch('/users/:id/role', adminController.updateUserRole);
+
 // Database Connections
 router.get('/db-connections', adminController.getDbConnections);
 router.post('/db-connections', 
