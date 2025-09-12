@@ -1,5 +1,5 @@
 // src/pages/admin/DbConnections.tsx
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchDbConnections } from '../../store/slices/adminSlice';
 import { AppDispatch, RootState } from '../../store';

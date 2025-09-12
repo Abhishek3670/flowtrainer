@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Node } from 'reactflow';
-import { Upload, Loader2, CheckCircle, AlertCircle, X, Video, ExternalLink } from 'lucide-react';
+import { CheckCircle, AlertCircle, X, Video, ExternalLink } from 'lucide-react';
 import { UploadProgress, FileData } from '../../../../types';
 import { fileAPI } from '../../../../services/fileApi';
 import FileUploadSection from '../../../Shared/FileUploadSection';

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Node } from 'reactflow';
-import { Database, TestTube, CheckCircle, AlertCircle } from 'lucide-react';
+import { Database } from 'lucide-react';
 import TextInput from '../../../Shared/TextInput';
 import SelectInput from '../../../Shared/SelectInput';
 import CheckboxInput from '../../../Shared/CheckboxInput';

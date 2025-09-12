@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Node } from 'reactflow';
 import { ML_NODE_TYPES } from '../../types/nodeTypes';
-import { Settings, Play, AlertCircle } from 'lucide-react';
+import { Settings, AlertCircle } from 'lucide-react';
 
 interface NodeConfigPanelProps {
   node: Node | null;

@@ -1,5 +1,5 @@
 // src/pages/admin/AdminDashboard.tsx
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchSystemStats } from '../../store/slices/adminSlice';
 import type { RootState, AppDispatch } from '../../store';

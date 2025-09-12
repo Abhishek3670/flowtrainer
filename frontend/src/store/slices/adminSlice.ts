@@ -1,15 +1,20 @@
-// src/store/slices/adminSlice.ts
-import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
+// frontend/src/store/slices/adminSlice.ts - COMPLETE IMPLEMENTATION
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { adminService, DbConnection, ModelConfig, SystemMetrics } from '../../services/adminService';
 
-export type AdminState = {
+export interface AdminState {
   dbConnections: DbConnection[];
   models: ModelConfig[];
   systemStats: SystemMetrics | null;
   loading: boolean;
   error: string | null;
   totalCount: number;
-};
+  pagination: {
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
 
 const initialState: AdminState = {
   dbConnections: [],
@@ -17,98 +22,109 @@ const initialState: AdminState = {
   systemStats: null,
   loading: false,
   error: null,
-  totalCount: 0, 
+  totalCount: 0,
+  pagination: {
+    page: 1,
+    limit: 20,
+    totalPages: 0,
+  },
 };
+
+// Async Thunks
+export const fetchSystemStats = createAsyncThunk(
+  'admin/fetchSystemStats',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await adminService.getSystemStats();
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch system stats');
+    }
+  }
+);
 
 export const fetchDbConnections = createAsyncThunk(
   'admin/fetchDbConnections',
-  async ({ page, limit, q }: { page: number; limit: number; q?: string }) => {
-    return await adminService.getDbConnections({ page, limit, q });
+  async (params: { page: number; limit: number; q?: string }, { rejectWithValue }) => {
+    try {
+      return await adminService.getDbConnections(params);
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch connections');
+    }
   }
 );
-export const createDbConnection = createAsyncThunk('admin/createDbConnection', async (payload: Partial<DbConnection>) => {
-  return await adminService.createDbConnection(payload);
-});
-export const updateDbConnection = createAsyncThunk('admin/updateDbConnection', async ({ id, payload }: { id: string; payload: Partial<DbConnection> }) => {
-  return await adminService.updateDbConnection(id, payload);
-});
-export const deleteDbConnection = createAsyncThunk('admin/deleteDbConnection', async (id: string) => {
-  await adminService.deleteDbConnection(id);
-  return id;
-});
 
-export const fetchModels = createAsyncThunk('admin/fetchModels', async () => {
-  return await adminService.getModels();
-});
-export const createModel = createAsyncThunk('admin/createModel', async (payload: Partial<ModelConfig>) => {
-  return await adminService.createModel(payload);
-});
-export const updateModel = createAsyncThunk('admin/updateModel', async ({ id, payload }: { id: string; payload: Partial<ModelConfig> }) => {
-  return await adminService.updateModel(id, payload);
-});
-export const deleteModel = createAsyncThunk('admin/deleteModel', async (id: string) => {
-  await adminService.deleteModel(id);
-  return id;
-});
+export const fetchModels = createAsyncThunk(
+  'admin/fetchModels',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await adminService.getModels();
+    } catch (error: any) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch models');
+    }
+  }
+);
 
-export const fetchSystemStats = createAsyncThunk('admin/fetchSystemStats', async () => {
-  return await adminService.getSystemStats();
-});
-
+// Slice
 const adminSlice = createSlice({
   name: 'admin',
   initialState,
-  reducers: {},
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+    setPagination: (state, action) => {
+      state.pagination = { ...state.pagination, ...action.payload };
+    },
+  },
   extraReducers: (builder) => {
+    // System Stats
+    builder
+      .addCase(fetchSystemStats.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchSystemStats.fulfilled, (state, action) => {
+        state.loading = false;
+        state.systemStats = action.payload;
+      })
+      .addCase(fetchSystemStats.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+    
+    // DB Connections
     builder
       .addCase(fetchDbConnections.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchDbConnections.fulfilled, (state, action: PayloadAction<DbConnection[]>) => {
+      .addCase(fetchDbConnections.fulfilled, (state, action) => {
         state.loading = false;
-        state.dbConnections = action.payload;
+        state.dbConnections = action.payload.connections;
+        state.totalCount = action.payload.totalCount;
+        state.pagination.totalPages = Math.ceil(action.payload.totalCount / state.pagination.limit);
       })
       .addCase(fetchDbConnections.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch DB connections';
+        state.error = action.payload as string;
       })
-      .addCase(createDbConnection.fulfilled, (state, action: PayloadAction<DbConnection>) => {
-        state.dbConnections.push(action.payload);
-      })
-      .addCase(updateDbConnection.fulfilled, (state, action: PayloadAction<DbConnection>) => {
-        state.dbConnections = state.dbConnections.map((c) => (c.id === action.payload.id ? action.payload : c));
-      })
-      .addCase(deleteDbConnection.fulfilled, (state, action: PayloadAction<string>) => {
-        state.dbConnections = state.dbConnections.filter((c) => c.id !== action.payload);
-      })
+    
+    // Models
+    builder
       .addCase(fetchModels.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
-      .addCase(fetchModels.fulfilled, (state, action: PayloadAction<ModelConfig[]>) => {
+      .addCase(fetchModels.fulfilled, (state, action) => {
         state.loading = false;
         state.models = action.payload;
       })
       .addCase(fetchModels.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.error.message || 'Failed to fetch models';
-      })
-      .addCase(createModel.fulfilled, (state, action: PayloadAction<ModelConfig>) => {
-        state.models.push(action.payload);
-      })
-      .addCase(updateModel.fulfilled, (state, action: PayloadAction<ModelConfig>) => {
-        state.models = state.models.map((m) => (m.id === action.payload.id ? action.payload : m));
-      })
-      .addCase(deleteModel.fulfilled, (state, action: PayloadAction<string>) => {
-        state.models = state.models.filter((m) => m.id !== action.payload);
-      })
-      .addCase(fetchSystemStats.fulfilled, (state, action: PayloadAction<SystemMetrics>) => {
-        state.systemStats = action.payload;
+        state.error = action.payload as string;
       });
   },
 });
 
+export const { clearError, setPagination } = adminSlice.actions;
 export default adminSlice.reducer;
-
-

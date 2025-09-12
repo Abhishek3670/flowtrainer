@@ -45,7 +45,7 @@ import FloatingComponentsPanel from './components/FloatingComponentsPanel/Floati
 import CustomNode from './components/CustomNode/CustomNode';
 import { ThemeProvider } from './contexts/ThemeContext';
 import StackEdgeDrawer from './components/StackEdgeDrawer/StackEdgeDrawer';
-import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
+import { ErrorBoundary } from './components/Shared/ErrorBoundary';
 
 // Types and interfaces
 import { NodeData, WorkflowData, ValidationError } from './types';

@@ -1,68 +1,163 @@
-// src/services/adminService.ts
+// frontend/src/services/adminService.ts - ENHANCED VERSION
 import axios from 'axios';
 import qs from 'qs';
 
-export type DbConnection = {
+export interface DbConnection {
+  id: string;
+  name: string;
+  type: 'mongodb' | 'postgresql' | 'mysql' | 'redis';
+  host: string;
+  port: number;
+  status: 'connected' | 'disconnected' | 'error';
+  lastChecked: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ModelConfig {
   id: string;
   name: string;
   type: string;
-  host: string;
-  port?: number;
-  username?: string;
-};
-
-export type ModelConfig = {
-  id: string;
-  name: string;
   version?: string;
-  updatedAt?: string;
-};
+  status: 'active' | 'inactive' | 'training' | 'failed';
+  accuracy?: number;
+  updatedAt: string;
+  createdAt: string;
+}
 
-export type SystemMetrics = {
-  status: string;
-  cpu?: any;
-  memory?: any;
-  [key: string]: any;
-};
+export interface SystemMetrics {
+  userCount: number;
+  workflowCount: number;
+  dbConnectionCount: number;
+  modelCount: number;
+  systemHealth: 'healthy' | 'warning' | 'critical';
+  memoryUsage: {
+    used: number;
+    total: number;
+    percentage: number;
+  };
+  cpuUsage: number;
+  diskUsage: {
+    used: number;
+    total: number;
+    percentage: number;
+  };
+  uptime: number;
+  activeExecutions: number;
+}
 
-const client = axios.create({ baseURL: '/api/admin' });
+export interface PaginatedResponse<T> {
+  data: T[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+const client = axios.create({
+  baseURL: '/api/admin',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add request interceptor for authentication
+client.interceptors.request.use((config) => {
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Add response interceptor for error handling
+client.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Handle authentication errors
+      localStorage.removeItem('authToken');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const adminService = {
-  getDbConnections: async (params = {}) => {
-    const query = qs.stringify(params);
-    const { data } = await client.get(`/db-connections?${query}`);
+  // System Stats
+  getSystemStats: async (): Promise<SystemMetrics> => {
+    const { data } = await client.get('/system/stats');
     return data;
   },
-  createDbConnection: async (payload: Partial<DbConnection>): Promise<DbConnection> => {
+
+  // Database Connections
+  getDbConnections: async (params: { page?: number; limit?: number; q?: string } = {}): Promise<{
+    connections: DbConnection[];
+    totalCount: number;
+    page: number;
+    limit: number;
+  }> => {
+    const query = qs.stringify({
+      page: params.page || 1,
+      limit: params.limit || 20,
+      ...(params.q && { q: params.q }),
+    });
+    const { data } = await client.get(`/db-connections?${query}`);
+    return {
+      connections: data.connections || data.data || data,
+      totalCount: data.totalCount || data.total || 0,
+      page: data.page || params.page || 1,
+      limit: data.limit || params.limit || 20,
+    };
+  },
+
+  createDbConnection: async (payload: Omit<DbConnection, 'id' | 'status' | 'lastChecked' | 'createdAt' | 'updatedAt'>): Promise<DbConnection> => {
     const { data } = await client.post('/db-connections', payload);
     return data;
   },
+
   updateDbConnection: async (id: string, payload: Partial<DbConnection>): Promise<DbConnection> => {
     const { data } = await client.put(`/db-connections/${id}`, payload);
     return data;
   },
-  deleteDbConnection: async (id: string): Promise<{ id: string }> => {
-    const { data } = await client.delete(`/db-connections/${id}`);
+
+  deleteDbConnection: async (id: string): Promise<void> => {
+    await client.delete(`/db-connections/${id}`);
+  },
+
+  testDbConnection: async (id: string): Promise<{ status: 'connected' | 'disconnected' | 'error'; message?: string }> => {
+    const { data } = await client.post(`/db-connections/${id}/test`);
     return data;
   },
+
+  // Models
   getModels: async (): Promise<ModelConfig[]> => {
     const { data } = await client.get('/models');
-    return data;
+    return data.models || data.data || data;
   },
-  createModel: async (payload: Partial<ModelConfig>): Promise<ModelConfig> => {
+
+  createModel: async (payload: Omit<ModelConfig, 'id' | 'status' | 'createdAt' | 'updatedAt'>): Promise<ModelConfig> => {
     const { data } = await client.post('/models', payload);
     return data;
   },
+
   updateModel: async (id: string, payload: Partial<ModelConfig>): Promise<ModelConfig> => {
     const { data } = await client.put(`/models/${id}`, payload);
     return data;
   },
-  deleteModel: async (id: string): Promise<{ id: string }> => {
-    const { data } = await client.delete(`/models/${id}`);
-    return data;
+
+  deleteModel: async (id: string): Promise<void> => {
+    await client.delete(`/models/${id}`);
   },
-  getSystemStats: async (): Promise<SystemMetrics> => {
-    const { data } = await client.get('/stats');
+
+  // Health Monitoring
+  getHealthStatus: async (): Promise<{
+    status: 'healthy' | 'warning' | 'critical';
+    services: Record<string, 'up' | 'down' | 'degraded'>;
+    timestamp: string;
+  }> => {
+    const { data } = await client.get('/health');
     return data;
   },
 };

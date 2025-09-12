@@ -6,7 +6,6 @@ import { Settings } from 'lucide-react';
 import TextInput from '../../../Shared/TextInput';
 import SelectInput from '../../../Shared/SelectInput';
 import CheckboxInput from '../../../Shared/CheckboxInput';
-import NumberInput from '../../../Shared/NumberInput';
 
 interface ConfiguratorProps {
   node: Node;

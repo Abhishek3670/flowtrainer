@@ -21,6 +21,7 @@ import morgan from "morgan";
 import checkpointRoutes from "./routes/checkpoints";
 import cleanupRoutes from "./routes/cleanup";
 import projectRoutes from './routes/projectRoutes';
+import { adminRouter } from './routes/admin';
 import { performanceMiddleware, getPerformanceReport, exportPerformanceData } from './middleware/performance-middleware';
 import { performanceOptimization, getCacheStats, clearCache } from './middleware/performance-optimization';
 import { SystemMetricsCollector } from './monitoring/system-metrics';
@@ -54,6 +55,9 @@ app.use("/api/cleanup", cleanupRoutes);
 
 // Project management endpoints
 app.use('/api/projects', projectRoutes);
+
+// Admin routes
+app.use('/api/admin', adminRouter);
 
 // Add performance middleware early in the middleware stack
 app.use(performanceMiddleware);

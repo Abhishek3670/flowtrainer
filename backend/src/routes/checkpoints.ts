@@ -21,6 +21,15 @@ import { Router, Request, Response } from 'express';
 import { CheckpointService } from '../services/checkpoint.service';
 import { authenticate } from '../middleware/auth';
 
+// Allow req.user from auth middleware
+declare global {
+  namespace Express {
+    interface Request {
+      user?: { id?: string; role: string; roles?: string[] };
+    }
+  }
+}
+
 // Create router with mergeParams to access parent route parameters
 const router = Router({ mergeParams: true });
 const checkpointService = new CheckpointService();
@@ -51,7 +60,7 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<void
       workflowId: req.params.id,
       name,
       description,
-      createdBy: req.user!.id,
+      createdBy: req.user!.id || '' ,
       nodes,
       edges,
       viewport,
@@ -176,7 +185,7 @@ router.post('/auto', authenticate, async (req: Request, res: Response): Promise<
     
     const checkpoint = await checkpointService.createAutoCheckpoint(
       req.params.id,
-      req.user!.id,
+      req.user!.id || '',
       { nodes, edges, viewport }
     );
     

@@ -5,7 +5,7 @@ import { Node } from 'reactflow';
 import { BarChart3 } from 'lucide-react';
 import TextInput from '../../../Shared/TextInput';
 import CheckboxInput from '../../../Shared/CheckboxInput';
-import SelectInput from '../../../Shared/SelectInput';
+// import SelectInput from '../../../Shared/SelectInput';
 import NumberInput from '../../../Shared/NumberInput';
 
 interface ConfiguratorProps {

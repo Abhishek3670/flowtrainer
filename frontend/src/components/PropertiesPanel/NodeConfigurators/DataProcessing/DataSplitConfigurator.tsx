@@ -6,7 +6,6 @@ import { GitBranch } from 'lucide-react';
 import TextInput from '../../../Shared/TextInput';
 import NumberInput from '../../../Shared/NumberInput';
 import CheckboxInput from '../../../Shared/CheckboxInput';
-import SelectInput from '../../../Shared/SelectInput';
 
 interface ConfiguratorProps {
   node: Node;
