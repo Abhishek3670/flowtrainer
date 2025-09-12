@@ -1,4 +1,6 @@
+// src/services/adminService.ts
 import axios from 'axios';
+import qs from 'qs';
 
 export type DbConnection = {
   id: string;
@@ -26,8 +28,9 @@ export type SystemMetrics = {
 const client = axios.create({ baseURL: '/api/admin' });
 
 export const adminService = {
-  getDbConnections: async (): Promise<DbConnection[]> => {
-    const { data } = await client.get('/db-connections');
+  getDbConnections: async (params = {}) => {
+    const query = qs.stringify(params);
+    const { data } = await client.get(`/db-connections?${query}`);
     return data;
   },
   createDbConnection: async (payload: Partial<DbConnection>): Promise<DbConnection> => {
@@ -63,5 +66,3 @@ export const adminService = {
     return data;
   },
 };
-
-

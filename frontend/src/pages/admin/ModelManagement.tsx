@@ -1,38 +1,45 @@
+// src/pages/admin/ModelManagement.tsx
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchModels } from '../../store/slices/adminSlice';
+import { AppDispatch, RootState } from '../../store';
 
 export default function ModelManagement() {
+  const dispatch = useDispatch<AppDispatch>();
+  const { models, loading, error } = useSelector((state: RootState) => state.admin);
+
+  useEffect(() => {
+    dispatch(fetchModels());
+  }, [dispatch]);
+
+  if (loading) return <p>Loading models...</p>;
+  if (error) return <p className="text-red-600">Error loading models: {error}</p>;
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-600 dark:text-gray-300">Manage ML models</div>
-        <div className="flex gap-2">
-          <button className="text-sm px-3 py-2 border rounded">Upload Model</button>
-        </div>
-      </div>
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
+    <div className="p-6">
+      <h2 className="text-xl font-bold mb-4">Model Management</h2>
+      {models.length === 0 ? (
+        <p>No models configured</p>
+      ) : (
+        <table className="min-w-full table-auto border-collapse border border-gray-300">
+          <thead>
             <tr>
-              <th className="text-left p-2">Name</th>
-              <th className="text-left p-2">Version</th>
-              <th className="text-left p-2">Updated</th>
-              <th className="text-left p-2 w-24">Actions</th>
+              <th className="border border-gray-300 px-4 py-2">Name</th>
+              <th className="border border-gray-300 px-4 py-2">Version</th>
+              <th className="border border-gray-300 px-4 py-2">Updated</th>
             </tr>
           </thead>
-          <tbody className="bg-white dark:bg-gray-900">
-            <tr>
-              <td className="p-2">-</td>
-              <td className="p-2">-</td>
-              <td className="p-2">-</td>
-              <td className="p-2">
-                <div className="flex gap-2">
-                  <button className="text-blue-600">Edit</button>
-                  <button className="text-red-600">Delete</button>
-                </div>
-              </td>
-            </tr>
+          <tbody>
+            {models.map(model => (
+              <tr key={model.id}>
+                <td className="border border-gray-300 px-4 py-2">{model.name}</td>
+                <td className="border border-gray-300 px-4 py-2">{model.version || '-'}</td>
+                <td className="border border-gray-300 px-4 py-2">{model.updatedAt || '-'}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,62 +1,67 @@
-import { useState } from 'react';
+// src/pages/admin/DbConnections.tsx
+import React, { useEffect, useState } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchDbConnections } from '../../store/slices/adminSlice';
+import { AppDispatch, RootState } from '../../store';
+import Pagination from '../../components/Shared/Pagination';
+import SearchInput from '../../components/Shared/SearchInput';
 
 export default function DbConnections() {
-  const [isOpen, setIsOpen] = useState(false);
+  const dispatch = useDispatch<AppDispatch>();
+  // Extend state to include total count for pagination
+  const { dbConnections, loading, error, totalCount } = useSelector((state: RootState) => state.admin);
+
+  const [page, setPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const limit = 20; // Items per page
+
+  useEffect(() => {
+    dispatch(fetchDbConnections({ page, limit, q: searchQuery }));
+  }, [dispatch, page, searchQuery]);
+
+  const totalPages = Math.ceil((totalCount || 0) / limit);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-600 dark:text-gray-300">Manage database connections</div>
-        <button onClick={() => setIsOpen(true)} className="bg-blue-600 text-white text-sm px-3 py-2 rounded">Add Connection</button>
-      </div>
+    <div className="p-6">
+      <h2 className="text-xl font-bold mb-4">Database Connections</h2>
 
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300">
-            <tr>
-              <th className="text-left p-2">Name</th>
-              <th className="text-left p-2">Type</th>
-              <th className="text-left p-2">Host</th>
-              <th className="text-left p-2 w-24">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white dark:bg-gray-900">
-            <tr>
-              <td className="p-2">-</td>
-              <td className="p-2">-</td>
-              <td className="p-2">-</td>
-              <td className="p-2">
-                <div className="flex gap-2">
-                  <button className="text-blue-600">Edit</button>
-                  <button className="text-red-600">Delete</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <SearchInput onSearch={setSearchQuery} />
 
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center">
-          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-md p-4 space-y-3">
-            <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">Add Connection</div>
-            <div className="space-y-2">
-              <input className="border dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm w-full" placeholder="Name" />
-              <input className="border dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm w-full" placeholder="Type" />
-              <input className="border dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm w-full" placeholder="Host" />
-              <input className="border dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm w-full" placeholder="Port" />
-              <input className="border dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm w-full" placeholder="Username" />
-              <input className="border dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 rounded px-3 py-2 text-sm w-full" placeholder="Password" type="password" />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="px-3 py-2 text-sm" onClick={() => setIsOpen(false)}>Cancel</button>
-              <button className="bg-blue-600 text-white text-sm px-3 py-2 rounded">Save</button>
-            </div>
-          </div>
-        </div>
+      {loading && <p>Loading database connections...</p>}
+      {error && <p className="text-red-600">{error}</p>}
+
+      {!loading && !error && (
+        <>
+          {dbConnections.length === 0 ? (
+            <p>No database connections found</p>
+          ) : (
+            <table className="min-w-full table-auto border-collapse border border-gray-300">
+              <thead>
+                <tr>
+                  <th className="border border-gray-300 px-4 py-2">Name</th>
+                  <th className="border border-gray-300 px-4 py-2">Type</th>
+                  <th className="border border-gray-300 px-4 py-2">Host</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dbConnections.map(conn => (
+                  <tr key={conn.id}>
+                    <td className="border border-gray-300 px-4 py-2">{conn.name}</td>
+                    <td className="border border-gray-300 px-4 py-2">{conn.type}</td>
+                    <td className="border border-gray-300 px-4 py-2">{conn.host}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
+          <Pagination
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+        </>
       )}
     </div>
   );
 }
-
-

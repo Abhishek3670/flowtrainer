@@ -1,3 +1,4 @@
+// src/store/slices/adminSlice.ts
 import { createAsyncThunk, createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { adminService, DbConnection, ModelConfig, SystemMetrics } from '../../services/adminService';
 
@@ -7,6 +8,7 @@ export type AdminState = {
   systemStats: SystemMetrics | null;
   loading: boolean;
   error: string | null;
+  totalCount: number;
 };
 
 const initialState: AdminState = {
@@ -15,11 +17,15 @@ const initialState: AdminState = {
   systemStats: null,
   loading: false,
   error: null,
+  totalCount: 0, 
 };
 
-export const fetchDbConnections = createAsyncThunk('admin/fetchDbConnections', async () => {
-  return await adminService.getDbConnections();
-});
+export const fetchDbConnections = createAsyncThunk(
+  'admin/fetchDbConnections',
+  async ({ page, limit, q }: { page: number; limit: number; q?: string }) => {
+    return await adminService.getDbConnections({ page, limit, q });
+  }
+);
 export const createDbConnection = createAsyncThunk('admin/createDbConnection', async (payload: Partial<DbConnection>) => {
   return await adminService.createDbConnection(payload);
 });
