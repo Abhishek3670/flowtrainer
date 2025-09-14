@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { User, CreateUserDto, UpdateUserDto, UserFilters } from '../types';
 
 export type DbConnection = {
   id: string;
@@ -59,9 +60,47 @@ export const adminService = {
     return data;
   },
   getSystemStats: async (): Promise<SystemMetrics> => {
-    const { data } = await client.get('/stats');
+    const { data } = await client.get('/system/stats');
+    return data;
+  },
+
+  // User Management
+  getUsers: async (filters?: UserFilters): Promise<User[]> => {
+    const { data } = await client.get('/users', { params: filters });
+    return data;
+  },
+
+  searchUsers: async (query: string): Promise<User[]> => {
+    const { data } = await client.get('/users/search', { params: { q: query } });
+    return data;
+  },
+
+  getUserById: async (id: string): Promise<User> => {
+    const { data } = await client.get(`/users/${id}`);
+    return data;
+  },
+
+  createUser: async (userData: CreateUserDto): Promise<User> => {
+    const { data } = await client.post('/users', userData);
+    return data;
+  },
+
+  updateUser: async (id: string, userData: UpdateUserDto): Promise<User> => {
+    const { data } = await client.patch(`/users/${id}`, userData);
+    return data;
+  },
+
+  deleteUser: async (id: string): Promise<{ id: string }> => {
+    const { data } = await client.delete(`/users/${id}`);
+    return data;
+  },
+
+  resetUserPassword: async (id: string, newPassword: string): Promise<void> => {
+    await client.post(`/users/${id}/reset-password`, { newPassword });
+  },
+
+  updateUserStatus: async (id: string, isActive: boolean): Promise<User> => {
+    const { data } = await client.patch(`/users/${id}/status`, { isActive });
     return data;
   },
 };
-
-

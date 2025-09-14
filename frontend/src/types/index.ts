@@ -1,4 +1,5 @@
 import { Node as ReactFlowNode, Edge as ReactFlowEdge } from 'reactflow';
+import { User, UserRole, CreateUserDto, UpdateUserDto, UserFilters } from './user.types';
 
 // File-related types
 export interface FileData {
@@ -83,12 +84,21 @@ export interface UploadProgress {
 }
 
 // File API response
-export interface FileApiResponse<T> {
+export interface FileApiResponse<T = any> {
   success: boolean;
   message?: string;
   data?: T;
   error?: string;
 }
+
+// Re-export user-related types
+export type { 
+  User, 
+  UserRole, 
+  CreateUserDto, 
+  UpdateUserDto, 
+  UserFilters 
+};
 
 export interface DatasetPreview {
   headers: string[];
