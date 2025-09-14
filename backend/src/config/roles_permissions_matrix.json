@@ -1,0 +1,59 @@
+{
+  "roles": {
+    "user": {
+      "description": "Regular authenticated user",
+      "permissions": [
+        "read_own_profile",
+        "update_own_profile",
+        "read_own_workflows"
+      ]
+    },
+    "admin": {
+      "description": "Administrator with system management capabilities",
+      "inherits": ["user"],
+      "permissions": [
+        "read_users",
+        "manage_users",
+        "read_system_metrics",
+        "manage_system_config",
+        "read_audit_logs",
+        "manage_workflows"
+      ]
+    },
+    "super-admin": {
+      "description": "Super administrator with full system access",
+      "inherits": ["admin"],
+      "permissions": [
+        "manage_roles",
+        "manage_system",
+        "manage_database",
+        "view_sensitive_data",
+        "impersonate_users"
+      ]
+    }
+  },
+  "permissions": {
+    "read_own_profile": "View own user profile",
+    "update_own_profile": "Update own user profile",
+    "read_own_workflows": "View own workflow history",
+    "read_users": "View list of users",
+    "manage_users": "Create, update, or delete users",
+    "read_system_metrics": "View system metrics and health",
+    "manage_system_config": "Update system configuration",
+    "read_audit_logs": "View system audit logs",
+    "manage_workflows": "Manage all workflows",
+    "manage_roles": "Create, update, or delete roles",
+    "manage_system": "Perform system administration tasks",
+    "manage_database": "Perform database operations",
+    "view_sensitive_data": "View sensitive system information",
+    "impersonate_users": "Impersonate other users"
+  },
+  "validation_rules": {
+    "role_inheritance": "Child roles inherit all permissions from parent roles",
+    "permission_precedence": "Explicitly granted permissions take precedence over inherited ones",
+    "super_admin_restrictions": "Super-admin role cannot be modified or deleted",
+    "default_role": "New users are assigned the 'user' role by default"
+  },
+  "version": "1.0.0",
+  "last_updated": "2025-02-15T00:00:00Z"
+}

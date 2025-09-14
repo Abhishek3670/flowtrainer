@@ -1,0 +1,414 @@
+{
+  "api_version": "1.0.0",
+  "base_url": "/api/v1",
+  "authentication": {
+    "required": true,
+    "type": "Bearer Token",
+    "token_refresh": {
+      "endpoint": "/auth/refresh",
+      "method": "POST",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "refresh_token": "string (required)"
+      },
+      "response": {
+        "access_token": "string",
+        "expires_in": "number (seconds)"
+      }
+    }
+  },
+  "rate_limiting": {
+    "enabled": true,
+    "window": "15 minutes",
+    "max_requests": 100,
+    "headers": {
+      "X-RateLimit-Limit": "Total requests allowed",
+      "X-RateLimit-Remaining": "Remaining requests",
+      "X-RateLimit-Reset": "Timestamp when limit resets"
+    },
+    "response": {
+      "status": 429,
+      "body": {
+        "error": {
+          "code": "rate_limit_exceeded",
+          "message": "Too many requests, please try again later.",
+          "retry_after": "seconds until limit resets"
+        }
+      }
+    }
+  },
+  "error_handling": {
+    "standard_format": {
+      "error": {
+        "code": "error_code",
+        "message": "Human-readable error message",
+        "details": {}
+      }
+    },
+    "common_error_codes": [
+      {
+        "code": "invalid_request",
+        "status": 400,
+        "message": "The request is missing a required parameter or is otherwise malformed."
+      },
+      {
+        "code": "unauthorized",
+        "status": 401,
+        "message": "Authentication credentials were missing or incorrect."
+      },
+      {
+        "code": "forbidden",
+        "status": 403,
+        "message": "The request is understood, but it has been refused or access is not allowed."
+      },
+      {
+        "code": "not_found",
+        "status": 404,
+        "message": "The requested resource could not be found."
+      },
+      {
+        "code": "internal_server_error",
+        "status": 500,
+        "message": "An unexpected error occurred on the server."
+      }
+    ]
+  },
+  "pagination": {
+    "default_limit": 25,
+    "max_limit": 100,
+    "query_parameters": {
+      "page": "Page number (1-based)",
+      "limit": "Number of items per page",
+      "sort": "Field to sort by (prefix with - for descending)",
+      "fields": "Comma-separated list of fields to return"
+    },
+    "response_headers": {
+      "X-Total-Count": "Total number of items",
+      "X-Page": "Current page number",
+      "X-Total-Pages": "Total number of pages",
+      "Link": "Pagination links (first, prev, next, last)"
+    }
+  },
+  "filtering_and_search": {
+    "operators": {
+      "eq": "Equal to",
+      "ne": "Not equal to",
+      "gt": "Greater than",
+      "lt": "Less than",
+      "gte": "Greater than or equal to",
+      "lte": "Less than or equal to",
+      "in": "In array",
+      "nin": "Not in array",
+      "like": "Case-insensitive contains",
+      "ilike": "Case-insensitive exact match"
+    },
+    "query_parameter_format": "filter[field][operator]=value",
+    "example": "?filter[status][eq]=active&filter[created_at][gte]=2023-01-01"
+  },
+  "endpoints": {
+    "authentication": {
+      "login": {
+        "path": "/auth/login",
+        "method": "POST",
+        "description": "Authenticate a user and receive access and refresh tokens.",
+        "request": {
+          "email": "string (required, email format)",
+          "password": "string (required, min 8 characters)"
+        },
+        "responses": {
+          "200": {
+            "access_token": "string",
+            "refresh_token": "string",
+            "expires_in": 900,
+            "user": {
+              "id": "string",
+              "email": "string",
+              "role": "string",
+              "permissions": "string[]"
+            }
+          },
+          "400": "Invalid request parameters",
+          "401": "Invalid credentials",
+          "429": "Too many login attempts"
+        }
+      },
+      "refresh": {
+        "path": "/auth/refresh",
+        "method": "POST",
+        "description": "Refresh an access token using a refresh token.",
+        "request": {
+          "refresh_token": "string (required)"
+        },
+        "responses": {
+          "200": {
+            "access_token": "string",
+            "expires_in": 900
+          },
+          "400": "Invalid request",
+          "401": "Invalid refresh token",
+          "403": "Refresh token expired or revoked"
+        }
+      },
+      "logout": {
+        "path": "/auth/logout",
+        "method": "POST",
+        "description": "Invalidate the current refresh token.",
+        "responses": {
+          "204": "Successfully logged out",
+          "401": "Not authenticated"
+        }
+      }
+    },
+    "users": {
+      "list_users": {
+        "path": "/users",
+        "method": "GET",
+        "description": "List all users with pagination and filtering.",
+        "permissions": ["users:read"],
+        "query_parameters": {
+          "page": "number (default: 1)",
+          "limit": "number (default: 25, max: 100)",
+          "sort": "string (e.g., 'name,-created_at')",
+          "filter[status]": "string (e.g., 'active,inactive')",
+          "search": "string (searches in name and email)"
+        },
+        "responses": {
+          "200": {
+            "data": [
+              {
+                "id": "string",
+                "email": "string",
+                "name": "string",
+                "role": "string",
+                "status": "string",
+                "last_login_at": "string (ISO date)",
+                "created_at": "string (ISO date)"
+              }
+            ],
+            "meta": {
+              "total": "number",
+              "page": "number",
+              "limit": "number",
+              "total_pages": "number"
+            }
+          },
+          "401": "Unauthenticated",
+          "403": "Forbidden - Missing required permissions"
+        }
+      },
+      "get_user": {
+        "path": "/users/:id",
+        "method": "GET",
+        "description": "Get a single user by ID.",
+        "permissions": ["users:read"],
+        "responses": {
+          "200": {
+            "id": "string",
+            "email": "string",
+            "name": "string",
+            "role": "string",
+            "status": "string",
+            "last_login_at": "string (ISO date)",
+            "created_at": "string (ISO date)",
+            "updated_at": "string (ISO date)"
+          },
+          "401": "Unauthenticated",
+          "403": "Forbidden - Missing required permissions",
+          "404": "User not found"
+        }
+      },
+      "create_user": {
+        "path": "/users",
+        "method": "POST",
+        "description": "Create a new user.",
+        "permissions": ["users:create"],
+        "request": {
+          "email": "string (required, email format)",
+          "password": "string (required, min 8 characters)",
+          "name": "string (required)",
+          "role": "string (optional, default: 'user')"
+        },
+        "responses": {
+          "201": {
+            "id": "string",
+            "email": "string",
+            "name": "string",
+            "role": "string",
+            "status": "string",
+            "created_at": "string (ISO date)"
+          },
+          "400": "Invalid request data",
+          "401": "Unauthenticated",
+          "403": "Forbidden - Missing required permissions",
+          "409": "Email already in use"
+        }
+      },
+      "update_user": {
+        "path": "/users/:id",
+        "method": "PATCH",
+        "description": "Update an existing user.",
+        "permissions": ["users:update"],
+        "request": {
+          "email": "string (optional, email format)",
+          "name": "string (optional)",
+          "role": "string (optional)",
+          "status": "string (optional)"
+        },
+        "responses": {
+          "200": {
+            "id": "string",
+            "email": "string",
+            "name": "string",
+            "role": "string",
+            "status": "string",
+            "updated_at": "string (ISO date)"
+          },
+          "400": "Invalid request data",
+          "401": "Unauthenticated",
+          "403": "Forbidden - Missing required permissions",
+          "404": "User not found",
+          "409": "Email already in use"
+        }
+      },
+      "delete_user": {
+        "path": "/users/:id",
+        "method": "DELETE",
+        "description": "Delete a user (soft delete).",
+        "permissions": ["users:delete"],
+        "responses": {
+          "204": "User deleted successfully",
+          "401": "Unauthenticated",
+          "403": "Forbidden - Missing required permissions",
+          "404": "User not found"
+        }
+      }
+    },
+    "audit_logs": {
+      "list_logs": {
+        "path": "/audit-logs",
+        "method": "GET",
+        "description": "List audit logs with filtering and pagination.",
+        "permissions": ["audit_logs:read"],
+        "query_parameters": {
+          "action": "string (e.g., 'user.login', 'user.update')",
+          "user_id": "string (UUID)",
+          "start_date": "string (ISO date)",
+          "end_date": "string (ISO date)",
+          "page": "number (default: 1)",
+          "limit": "number (default: 25, max: 100)"
+        },
+        "responses": {
+          "200": {
+            "data": [
+              {
+                "id": "string",
+                "action": "string",
+                "user_id": "string",
+                "user_email": "string",
+                "ip_address": "string",
+                "user_agent": "string",
+                "metadata": {},
+                "created_at": "string (ISO date)"
+              }
+            ],
+            "meta": {
+              "total": "number",
+              "page": "number",
+              "limit": "number",
+              "total_pages": "number"
+            }
+          },
+          "401": "Unauthenticated",
+          "403": "Forbidden - Missing required permissions"
+        }
+      }
+    }
+  },
+  "webhooks": {
+    "enabled": true,
+    "events": [
+      "user.created",
+      "user.updated",
+      "user.deleted",
+      "user.logged_in",
+      "user.password_changed"
+    ],
+    "security": {
+      "signing_secret": "string (HMAC-SHA256)",
+      "headers": {
+        "X-Webhook-Event": "string (event type)",
+        "X-Webhook-Delivery": "string (unique ID)",
+        "X-Webhook-Signature": "string (HMAC signature)",
+        "X-Webhook-Timestamp": "number (Unix timestamp)"
+      }
+    },
+    "retry_policy": {
+      "max_attempts": 3,
+      "initial_delay": 1000,
+      "max_delay": 60000,
+      "factor": 2
+    }
+  },
+  "deprecation_policy": {
+    "sunset_period": 90,
+    "headers": {
+      "Deprecation": "boolean | date",
+      "Sunset": "date",
+      "Link": "<url>; rel=\"deprecation\"; type=\"text/html\""
+    }
+  },
+  "versioning": {
+    "strategy": "URL path versioning (/api/v1/...)",
+    "header": "Accept: application/vnd.company.v1+json",
+    "deprecation": {
+      "notice_period": 90,
+      "sunset_header": true
+    }
+  },
+  "documentation": {
+    "openapi": "3.0.0",
+    "ui": "/api-docs",
+    "spec": "/api-docs.json"
+  },
+  "monitoring": {
+    "health_check": "/health",
+    "metrics": "/metrics",
+    "status": "/status"
+  },
+  "security": {
+    "cors": {
+      "allowed_origins": "string[]",
+      "allowed_methods": "string[]",
+      "allowed_headers": "string[]",
+      "exposed_headers": "string[]",
+      "max_age": "number",
+      "credentials": "boolean"
+    },
+    "rate_limiting": {
+      "enabled": true,
+      "store": "memory | redis",
+      "window": "15 minutes",
+      "max": 100
+    },
+    "https": true,
+    "hsts": {
+      "enabled": true,
+      "max_age": 31536000,
+      "include_subdomains": true,
+      "preload": true
+    },
+    "csp": {
+      "default_src": ["'self'"],
+      "script_src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      "style_src": ["'self'", "'unsafe-inline'"],
+      "img_src": ["'self'", "data:"],
+      "connect_src": ["'self'"],
+      "font_src": ["'self'"],
+      "object_src": ["'none'"],
+      "media_src": ["'self'"],
+      "frame_src": ["'none'"]
+    }
+  }
+}

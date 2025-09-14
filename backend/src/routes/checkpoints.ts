@@ -18,6 +18,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import { AuthenticatedRequest } from '../types/express/index';
 import { CheckpointService } from '../services/checkpoint.service';
 import { authenticate } from '../middleware/auth';
 
@@ -51,7 +52,7 @@ router.post('/', authenticate, async (req: Request, res: Response): Promise<void
       workflowId: req.params.id,
       name,
       description,
-      createdBy: req.user!.id,
+      createdBy: req.user?.id || '',
       nodes,
       edges,
       viewport,

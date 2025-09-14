@@ -174,6 +174,23 @@ export class DatabaseConnection extends EventEmitter {
 export const dbConnection = DatabaseConnection.getInstance();
 
 // Helper function for easy use
-export const connectDB = () => dbConnection.connect();
-export const disconnectDB = () => dbConnection.disconnect();
-export const getDBHealth = () => dbConnection.healthCheck();
+export async function connectDB() {
+  return dbConnection.connect();
+}
+
+export async function disconnectDB() {
+  return dbConnection.disconnect();
+}
+
+export function getDBHealth() {
+  return dbConnection.healthCheck();
+}
+
+/**
+ * Get the MongoDB database instance
+ * @returns {Promise<import('mongodb').Db>} MongoDB database instance
+ */
+export async function getDb() {
+  const connection = await connectDB();
+  return connection.db;
+}

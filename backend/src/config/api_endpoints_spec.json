@@ -1,0 +1,229 @@
+{
+  "version": "1.0.0",
+  "basePath": "/api/admin",
+  "authentication": {
+    "type": "JWT",
+    "header": "Authorization: Bearer <token>",
+    "token_expiry": "15m",
+    "refresh_token_expiry": "7d"
+  },
+  "endpoints": {
+    "users": {
+      "GET /users": {
+        "description": "List all users (paginated)",
+        "required_roles": ["admin"],
+        "query_params": {
+          "page": "number",
+          "limit": "number",
+          "role": "string",
+          "search": "string",
+          "sort": "field:asc|desc"
+        },
+        "response": {
+          "success": "boolean",
+          "data": "User[]",
+          "pagination": {
+            "total": "number",
+            "page": "number",
+            "limit": "number",
+            "totalPages": "number"
+          }
+        }
+      },
+      "GET /users/:id": {
+        "description": "Get user by ID",
+        "required_roles": ["admin"],
+        "response": {
+          "success": "boolean",
+          "data": "User"
+        }
+      },
+      "PUT /users/:id/role": {
+        "description": "Update user role",
+        "required_roles": ["super-admin"],
+        "body": {
+          "role": "string"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string"
+        }
+      },
+      "DELETE /users/:id": {
+        "description": "Delete a user",
+        "required_roles": ["super-admin"],
+        "response": {
+          "success": "boolean",
+          "message": "string"
+        }
+      }
+    },
+    "system": {
+      "GET /system/metrics": {
+        "description": "Get system metrics",
+        "required_roles": ["admin"],
+        "query_params": {
+          "timeframe": "string (e.g., 1h, 24h, 7d, 30d)",
+          "metric": "string (cpu|memory|disk|network)"
+        },
+        "response": {
+          "success": "boolean",
+          "data": "MetricData[]"
+        }
+      },
+      "GET /system/health": {
+        "description": "Get system health status",
+        "required_roles": ["admin"],
+        "response": {
+          "status": "string (healthy|degraded|unhealthy)",
+          "timestamp": "ISO8601",
+          "components": {
+            "database": {
+              "status": "string",
+              "latency": "number"
+            },
+            "cache": {
+              "status": "string",
+              "latency": "number"
+            },
+            "storage": {
+              "status": "string",
+              "free_space": "string"
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "GET /config": {
+        "description": "Get system configuration",
+        "required_roles": ["admin"],
+        "query_params": {
+          "key": "string (optional, to get specific config)"
+        },
+        "response": {
+          "success": "boolean",
+          "data": "object | ConfigItem[]"
+        }
+      },
+      "PUT /config": {
+        "description": "Update system configuration",
+        "required_roles": ["admin"],
+        "body": {
+          "key": "string",
+          "value": "any",
+          "description": "string (optional)"
+        },
+        "response": {
+          "success": "boolean",
+          "message": "string",
+          "data": "ConfigItem"
+        }
+      },
+      "GET /config/history": {
+        "description": "Get configuration change history",
+        "required_roles": ["admin"],
+        "query_params": {
+          "key": "string (optional)",
+          "startDate": "ISO8601",
+          "endDate": "ISO8601",
+          "limit": "number"
+        },
+        "response": {
+          "success": "boolean",
+          "data": "ConfigChange[]"
+        }
+      }
+    },
+    "audit": {
+      "GET /audit/logs": {
+        "description": "Get audit logs",
+        "required_roles": ["admin"],
+        "query_params": {
+          "action": "string (optional)",
+          "userId": "string (optional)",
+          "startDate": "ISO8601 (optional)",
+          "endDate": "ISO8601 (optional)",
+          "page": "number",
+          "limit": "number"
+        },
+        "response": {
+          "success": "boolean",
+          "data": "AuditLog[]",
+          "pagination": {
+            "total": "number",
+            "page": "number",
+            "limit": "number"
+          }
+        }
+      }
+    }
+  },
+  "error_responses": {
+    "400": {
+      "code": "BAD_REQUEST",
+      "message": "Invalid request parameters"
+    },
+    "401": {
+      "code": "UNAUTHORIZED",
+      "message": "Authentication required"
+    },
+    "403": {
+      "code": "FORBIDDEN",
+      "message": "Insufficient permissions"
+    },
+    "404": {
+      "code": "NOT_FOUND",
+      "message": "Resource not found"
+    },
+    "429": {
+      "code": "TOO_MANY_REQUESTS",
+      "message": "Rate limit exceeded"
+    },
+    "500": {
+      "code": "INTERNAL_SERVER_ERROR",
+      "message": "An unexpected error occurred"
+    }
+  },
+  "rate_limiting": {
+    "global": {
+      "windowMs": 60000,
+      "max": 1000
+    },
+    "admin_endpoints": {
+      "windowMs": 60000,
+      "max": 300
+    },
+    "sensitive_operations": {
+      "windowMs": 3600000,
+      "max": 100
+    }
+  },
+  "security": {
+    "cors": {
+      "origin": "Array<string> | string",
+      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "allowedHeaders": ["Content-Type", "Authorization"],
+      "credentials": true
+    },
+    "helmet": {
+      "enabled": true,
+      "options": {
+        "contentSecurityPolicy": true,
+        "crossOriginEmbedderPolicy": true,
+        "crossOriginOpenerPolicy": true,
+        "crossOriginResourcePolicy": true,
+        "dnsPrefetchControl": true,
+        "expectCt": true,
+        "frameguard": true,
+        "hidePoweredBy": true,
+        "hsts": true,
+        "ieNoOpen": true,
+        "noSniff": true,
+        "permittedCrossDomainPolicies": true,
+        "referrerPolicy": true,
+        "xssFilter": true
+      }
+    }
+  }
+}

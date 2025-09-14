@@ -28,6 +28,8 @@
     
     "declaration": true,                   // Generate corresponding .d.ts declaration files
     "declarationMap": true,                // Generate source maps for declaration files
+    "types": ["jest", "node"],             // Include type definitions for Jest and Node.js
+    "typeRoots": ["./node_modules/@types", "./src/types"], // Include custom type definitions
     "sourceMap": true,                     // Generate source maps for debugging
     
     // ===== CODE QUALITY =====
@@ -40,16 +42,13 @@
     
     "experimentalDecorators": true,       // Enable experimental decorator support
     "emitDecoratorMetadata": true,        // Emit decorator metadata for reflection
-    
-    // ===== TYPE DEFINITIONS =====
-    
-    "types": ["node"]                      // Include Node.js type definitions
   },
   
   // ===== PROJECT STRUCTURE =====
   
   "include": [
-    "src/**/*"                             // Include all files in src directory and subdirectories
+    "src/**/*", 
+    "src/types/**/*"                             // Include all files in src directory and subdirectories
   ],
   
   "exclude": [
