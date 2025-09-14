@@ -1,6 +1,7 @@
 // frontend/src/services/adminService.ts - ENHANCED VERSION
 import axios from 'axios';
 import qs from 'qs';
+import { User, CreateUserDto, UpdateUserDto, UserListResponse } from '../types/user';
 
 export interface DbConnection {
   id: string;
@@ -160,4 +161,46 @@ export const adminService = {
     const { data } = await client.get('/health');
     return data;
   },
+
+  // User Management
+  async getUsers(params: { page?: number; limit?: number; search?: string; role?: string } = {}) {
+    const response = await client.get<UserListResponse>('/users', { params });
+    return response.data;
+  },
+
+  async getUserById(id: string) {
+    const response = await client.get<User>(`/users/${id}`);
+    return response.data;
+  },
+
+  async createUser(userData: CreateUserDto) {
+    const response = await client.post<User>('/users', userData);
+    return response.data;
+  },
+
+  async updateUser(id: string, userData: UpdateUserDto) {
+    const response = await client.patch<User>(`/users/${id}`, userData);
+    return response.data;
+  },
+
+  async deleteUser(id: string) {
+    await client.delete(`/users/${id}`);
+  },
+
+  async updateUserRole(id: string, role: 'admin' | 'user' | 'viewer') {
+    const response = await client.patch<User>(`/users/${id}/role`, { role });
+    return response.data;
+  },
+
+  async updateUserStatus(id: string, status: 'active' | 'inactive' | 'suspended') {
+    const response = await client.patch<User>(`/users/${id}/status`, { status });
+    return response.data;
+  },
+
+  async resetUserPassword(id: string, newPassword: string) {
+    const response = await client.post(`/users/${id}/reset-password`, { newPassword });
+    return response.data;
+  },
 };
+
+export default adminService;
