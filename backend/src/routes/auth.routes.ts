@@ -8,7 +8,7 @@ const router = Router();
 
 // Create individual validation middleware functions
 const validateEmail = body('email').isEmail().normalizeEmail();
-const validatePassword = body('password').isString().isLength({ min: 8 });
+const validatePassword = body('password').isString().notEmpty();
 const validateFirstName = body('firstName').isString().trim().notEmpty();
 const validateLastName = body('lastName').isString().trim().notEmpty();
 
@@ -42,12 +42,33 @@ const validateLastName = body('lastName').isString().trim().notEmpty();
  */
 router.post(
   '/login',
-  [
-    loginLimiter,
-    body('email').isEmail().normalizeEmail(),
-    body('password').isString().notEmpty(),
-  ],
-  validate,
+  validateEmail,
+  validatePassword,
+  (req: Request, res: Response, next: NextFunction): void => {
+    const errors = validationResult(req);
+    
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        error: {
+          code: 'validation_error',
+          message: 'Validation failed',
+          details: errors.array().map((err: any) => {
+            // Type assertion to any to access the properties
+            const error = err as any;
+            return {
+              param: error.param,
+              message: typeof error.msg === 'string' ? error.msg : 'Invalid value',
+              location: error.location,
+              value: error.value,
+            };
+          }),
+        },
+      });
+      return;
+    }
+    
+    next();
+  },
   AuthController.login
 );
 
