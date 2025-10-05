@@ -4,9 +4,9 @@ import logger from '../utils/logger';
 
 // Rate limit configuration for auth endpoints
 const AUTH_RATE_LIMIT = {
-  points: 5, // 5 requests
+  points: 50, // Increased from 5 to 50 requests for testing
   duration: 15 * 60, // per 15 minutes per IP per endpoint
-  blockDuration: 60 * 60, // Block for 1 hour if limit exceeded
+  blockDuration: 60, // Reduced from 1 hour to 1 minute for testing
 };
 
 // Create rate limiter for login attempts
@@ -20,7 +20,7 @@ const loginRateLimiter = new RateLimiterMemory({
 // Create rate limiter for registration
 const registerRateLimiter = new RateLimiterMemory({
   keyPrefix: 'register',
-  points: 3, // Stricter limit for registration
+  points: 20, // Increased from 3 to 20 for testing
   duration: AUTH_RATE_LIMIT.duration,
   blockDuration: AUTH_RATE_LIMIT.blockDuration,
 });

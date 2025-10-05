@@ -214,7 +214,8 @@ connectDB()
     console.log('⚡ Worker pool: ACTIVE');
     
     // Start HTTP server after successful database connection
-    server.listen(PORT, () => {
+    // Explicitly bind to all interfaces to ensure accessibility
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 FlowCraft backend listening on port ${PORT}`);
       console.log('');
       console.log('📍 API ENDPOINTS:');
