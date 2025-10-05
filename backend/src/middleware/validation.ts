@@ -9,33 +9,37 @@ type ValidationChainType = ReturnType<typeof body>;
  */
 export const validate = (validations: ValidationChainType[]): RequestHandler => {
   return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    // Run all validations
-    await Promise.all(validations.map(validation => validation.run(req)));
+    try {
+      // Run all validations
+      await Promise.all(validations.map(validation => validation.run(req)));
 
-    const errors = validationResult(req);
-    if (errors.isEmpty()) {
-      next();
-      return;
+      const errors = validationResult(req);
+      
+      if (errors.isEmpty()) {
+        next();
+        return;
+      }
+
+      res.status(400).json({
+        error: {
+          code: 'validation_error',
+          message: 'Validation failed',
+          details: errors.array().map((err: any) => {
+            // Type assertion to any to access the properties
+            const error = err as any;
+            return {
+              param: error.param,
+              message: typeof error.msg === 'string' ? error.msg : 'Invalid value',
+              location: error.location,
+              value: error.value,
+            };
+          }),
+        },
+      });
+    } catch (error) {
+      logger.error('Validation middleware error:', error);
+      next(error);
     }
-
-    logger.warn('Validation failed', { errors: errors.array() });
-
-    res.status(400).json({
-      error: {
-        code: 'validation_error',
-        message: 'Validation failed',
-        details: errors.array().map((err: any) => {
-          // Type assertion to any to access the properties
-          const error = err as any;
-          return {
-            param: error.param,
-            message: typeof error.msg === 'string' ? error.msg : 'Invalid value',
-            location: error.location,
-            value: error.value,
-          };
-        }),
-      },
-    });
   };
 };
 

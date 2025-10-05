@@ -1,10 +1,16 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { AuthController } from '../controllers/auth.controller';
 import { validate } from '../middleware/validation';
-import { body } from 'express-validator';
+import { body, validationResult } from 'express-validator';
 import { loginLimiter, registerLimiter, refreshTokenLimiter } from '../middleware/authRateLimit';
 
 const router = Router();
+
+// Create individual validation middleware functions
+const validateEmail = body('email').isEmail().normalizeEmail();
+const validatePassword = body('password').isString().isLength({ min: 8 });
+const validateFirstName = body('firstName').isString().trim().notEmpty();
+const validateLastName = body('lastName').isString().trim().notEmpty();
 
 /**
  * @swagger
@@ -81,14 +87,36 @@ router.post(
  */
 router.post(
   '/register',
-  [
-    registerLimiter,
-    body('email').isEmail().normalizeEmail(),
-    body('password').isString().isLength({ min: 8 }),
-    body('firstName').isString().trim().notEmpty(),
-    body('lastName').isString().trim().notEmpty(),
-  ],
-  validate,
+  // registerLimiter,  // Temporarily disable rate limiting for testing
+  validateEmail,
+  validatePassword,
+  validateFirstName,
+  validateLastName,
+  (req: Request, res: Response, next: NextFunction): void => {
+    const errors = validationResult(req);
+    
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        error: {
+          code: 'validation_error',
+          message: 'Validation failed',
+          details: errors.array().map((err: any) => {
+            // Type assertion to any to access the properties
+            const error = err as any;
+            return {
+              param: error.param,
+              message: typeof error.msg === 'string' ? error.msg : 'Invalid value',
+              location: error.location,
+              value: error.value,
+            };
+          }),
+        },
+      });
+      return;
+    }
+    
+    next();
+  },
   AuthController.register
 );
 

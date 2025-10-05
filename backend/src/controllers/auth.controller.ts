@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { generateTokens, verifyRefreshToken } from '../utils/jwt';
 import { User } from '../models/User';
 import bcrypt from 'bcrypt';
+import logger from '../utils/logger';
 
 export class AuthController {
   /**
@@ -28,8 +29,8 @@ export class AuthController {
         password,
         firstName,
         lastName,
-        role: 'user', // Default role
-        permissions: [], // Default permissions
+        role: 'user', 
+        permissions: [], 
       });
 
       await user.save();
@@ -57,7 +58,11 @@ export class AuthController {
         accessToken: tokens.accessToken,
       });
     } catch (error) {
-      console.error('Registration error:', error);
+      logger.error('Registration error:', { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        email: req.body.email
+      });
       return res.status(500).json({
         error: {
           code: 'registration_failed',
