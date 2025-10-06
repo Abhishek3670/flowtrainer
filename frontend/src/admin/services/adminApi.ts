@@ -75,7 +75,7 @@ authApi.interceptors.response.use(
 export const userApi = {
   // Get all users with pagination
   getUsers: (params?: { page?: number; limit?: number; search?: string; role?: string }) => 
-    api.get<ApiResponse<{ users: User[]; total: number }>>('/users', { params }),
+    api.get<ApiResponse<User[]>>('/users', { params }),
   
   // Get a single user by ID
   getUser: (id: string) => 

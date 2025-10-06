@@ -63,9 +63,9 @@ const DashboardPage: React.FC = () => {
         // Fetch users
         const usersResponse = await userApi.getUsers({ limit: 100 });
         if (usersResponse.data.success) {
-          setUsers(usersResponse.data.data?.users || []);
+          setUsers(usersResponse.data.data || []);
           // For demo purposes, we'll assume half of the users are active
-          setActiveUsers(Math.floor((usersResponse.data.data?.users?.length || 0) / 2));
+          setActiveUsers(Math.floor((usersResponse.data.data?.length || 0) / 2));
         }
         
         // Fetch recent activities (audit logs)

@@ -62,7 +62,7 @@ const UserManagementPage: React.FC = () => {
       setLoading(true);
       const response = await userApi.getUsers();
       if (response.data.success) {
-        setUsers(response.data.data?.users || []);
+        setUsers(response.data.data || []);
       }
     } catch (err) {
       setError('Failed to fetch users');

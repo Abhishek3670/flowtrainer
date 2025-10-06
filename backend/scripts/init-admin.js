@@ -15,7 +15,7 @@ async function initAdmin() {
     logger.info('Connected to MongoDB');
 
     // Check if admin user already exists
-    const existingAdmin = await db.collection('users').findOne({ email: 'admin@flowtrainer.com' });
+    const existingAdmin = await db.collection('users').findOne({ email: 'admin@example.com' });
     
     if (existingAdmin) {
       logger.info('Admin user already exists');
@@ -24,12 +24,12 @@ async function initAdmin() {
 
     // Create admin user
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('admin123', salt);
+    const hashedPassword = await bcrypt.hash('Admin@123', salt);
 
     const adminUser = {
-      _id: new ObjectId('000000000000000000000001'),
-      name: 'System Administrator',
-      email: 'admin@flowtrainer.com',
+      firstName: 'Admin',
+      lastName: 'User',
+      email: 'admin@example.com',
       password: hashedPassword,
       role: 'super-admin',
       permissions: [
@@ -45,15 +45,14 @@ async function initAdmin() {
       loginAttempts: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
-      lastLogin: null,
-      __v: 0
+      lastLogin: null
     };
 
     await db.collection('users').insertOne(adminUser);
     
     console.log('\n=== Admin User Created ===');
-    console.log('Email: admin@flowtrainer.com');
-    console.log('Password: admin123');
+    console.log('Email: admin@example.com');
+    console.log('Password: Admin@123');
     console.log('\x1b[33m%s\x1b[0m', 'IMPORTANT: Change this password after first login!\n');
     
   } catch (error) {
