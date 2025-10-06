@@ -13,16 +13,11 @@
  * - Theme switching (light/dark mode)
  * - System status monitoring
  * - Keyboard shortcut support
+ * - User profile and logout
  * 
  * Keyboard Shortcuts:
  * - Ctrl+Z / Cmd+Z: Undo
  * - Ctrl+Y / Cmd+Shift+Z: Redo
- * 
- * Props:
- * - Workflow state management (save, undo, redo)
- * - Execution controls (run, status)
- * - System configuration (auto-save, theme)
- * - Checkpoint management
  */
 
 import React, { useEffect, useState } from 'react';
@@ -37,8 +32,11 @@ import {
   Moon,
   Play,
   Activity,
+  User,
+  LogOut,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuthContext } from '../../hooks/useAuthContext';
 import { useSystemStatus } from '../../hooks/useSystemStatus';
 import SystemDashboard from '../SystemDashboard/SystemDashboard';
 
@@ -98,6 +96,10 @@ const Header: React.FC<HeaderProps> = ({
   
   // Theme context for light/dark mode switching
   const { theme, toggleTheme } = useTheme();
+  
+  // Auth context (either unified or admin)
+  const authContext = useAuthContext();
+  const { user, isAuthenticated, logout } = authContext || { user: null, isAuthenticated: false, logout: () => {} };
   
   // System status monitoring for resource utilization
   const { systemStatus } = useSystemStatus();
@@ -354,9 +356,34 @@ const Header: React.FC<HeaderProps> = ({
             )}
           </button>
 
-          <div className="flex -space-x-2">
-            <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">DS</div>
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">ML</div>
+          {/* User Profile and Logout */}
+          <div className="flex items-center space-x-2">
+            {isAuthenticated ? (
+              <>
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    {user?.firstName} {user?.lastName}
+                  </span>
+                </div>
+                <button
+                  onClick={logout}
+                  className="btn btn-outline p-2 text-gray-700 dark:text-gray-300"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => window.location.href = '/login'}
+                className="btn btn-primary text-sm"
+              >
+                Login
+              </button>
+            )}
           </div>
         </div>
       </header>

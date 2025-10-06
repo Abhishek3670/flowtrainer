@@ -1,7 +1,53 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { User } from '../types';
-import { authApi } from '../services/adminApi';
+import axios from 'axios';
+
+// Create an axios instance for authentication
+const authApi = axios.create({
+  baseURL: '/api/auth',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add a request interceptor to include the auth token
+authApi.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for error handling
+authApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Handle 401 Unauthorized
+    if (error.response?.status === 401) {
+      // Redirect to login
+      window.location.href = '/admin/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'admin' | 'user' | 'super-admin';
+  permissions: string[];
+  isActive: boolean;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -9,7 +55,6 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
-  hasPermission: (permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,7 +74,6 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
 
   // Check if user is already logged in
   useEffect(() => {
@@ -61,9 +105,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       localStorage.setItem('token', accessToken);
       setUser(user);
-      // For admin, we keep the existing navigation behavior
-      // Navigate to the main admin dashboard after login
-      navigate('/admin/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -75,23 +116,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
-    navigate('/admin/login');
-  };
-
-  const hasPermission = (permission: string): boolean => {
-    if (!user) return false;
-    
-    // Admin has all permissions
-    if (user.role === 'admin' || user.role === 'super-admin') {
-      return true;
-    }
-    
-    // Check user's permissions array if it exists
-    if ('permissions' in user && Array.isArray(user.permissions)) {
-      return user.permissions.includes(permission);
-    }
-    
-    return false;
+    window.location.href = '/admin/login';
   };
 
   const value = {
@@ -100,7 +125,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isLoading,
     login,
     logout,
-    hasPermission,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

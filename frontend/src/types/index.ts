@@ -1,5 +1,19 @@
 import { Node as ReactFlowNode, Edge as ReactFlowEdge } from 'reactflow';
 
+// User type
+export interface User {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'admin' | 'user' | 'super-admin';
+  permissions: string[];
+  isActive: boolean;
+  lastLogin?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // File-related types
 export interface FileData {
   _id: string;

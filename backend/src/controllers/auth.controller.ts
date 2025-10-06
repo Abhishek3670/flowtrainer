@@ -3,6 +3,8 @@ import { generateTokens, verifyRefreshToken } from '../utils/jwt';
 import { User } from '../models/User';
 import bcrypt from 'bcrypt';
 import logger from '../utils/logger';
+import crypto from 'crypto';
+import { sendPasswordResetEmail, sendWelcomeEmail } from '../utils/email';
 
 export class AuthController {
   /**
@@ -23,10 +25,14 @@ export class AuthController {
         });
       }
 
+      // Hash password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
       // Create new user
       const user = new User({
         email,
-        password,
+        password: hashedPassword,
         firstName,
         lastName,
         role: 'user', 
@@ -34,6 +40,13 @@ export class AuthController {
       });
 
       await user.save();
+
+      // Send welcome email
+      try {
+        await sendWelcomeEmail(user.email, user.firstName);
+      } catch (emailError) {
+        logger.error('Failed to send welcome email:', emailError);
+      }
 
       // Generate tokens
       const tokens = generateTokens({
@@ -101,6 +114,10 @@ export class AuthController {
         });
       }
 
+      // Update last login timestamp
+      user.lastLogin = new Date();
+      await user.save();
+
       // Generate tokens
       const tokens = generateTokens({
         id: user._id.toString(),
@@ -116,14 +133,17 @@ export class AuthController {
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       });
 
-      // Return access token and user data
+      // Return access token and user data with role information
       return res.json({
         accessToken: tokens.accessToken,
         user: {
           id: user._id,
           email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
           role: user.role,
           permissions: user.permissions,
+          lastLogin: user.lastLogin,
         },
       });
     } catch (error) {
@@ -253,8 +273,11 @@ export class AuthController {
       return res.json({
         id: userData._id,
         email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
         role: userData.role,
         permissions: userData.permissions,
+        lastLogin: userData.lastLogin,
       });
     } catch (error) {
       logger.error('Get current user error:', error);
@@ -262,6 +285,107 @@ export class AuthController {
         error: {
           code: 'internal_server_error',
           message: 'An error occurred while fetching user data',
+        },
+      });
+    }
+  }
+
+  /**
+   * Initiate password reset process
+   */
+  static async forgotPassword(req: Request, res: Response) {
+    try {
+      const { email } = req.body;
+
+      // Find user by email
+      const user = await User.findOne({ email });
+      if (!user) {
+        // For security reasons, we don't reveal if the email exists
+        return res.status(200).json({
+          message: 'If the email exists in our system, a password reset link has been sent',
+        });
+      }
+
+      // Generate reset token
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
+
+      // Save reset token and expiry to user
+      user.resetPasswordToken = resetToken;
+      user.resetPasswordExpires = resetTokenExpiry;
+      await user.save();
+
+      // Send reset email
+      try {
+        await sendPasswordResetEmail(user.email, user.firstName, resetToken);
+        logger.info('Password reset email sent', { email: user.email });
+      } catch (emailError) {
+        logger.error('Failed to send password reset email:', emailError);
+        return res.status(500).json({
+          error: {
+            code: 'email_send_failed',
+            message: 'Failed to send password reset email',
+          },
+        });
+      }
+
+      return res.status(200).json({
+        message: 'If the email exists in our system, a password reset link has been sent',
+      });
+    } catch (error) {
+      logger.error('Forgot password error:', error);
+      return res.status(500).json({
+        error: {
+          code: 'internal_server_error',
+          message: 'An error occurred while processing your request',
+        },
+      });
+    }
+  }
+
+  /**
+   * Reset user password with token
+   */
+  static async resetPassword(req: Request, res: Response) {
+    try {
+      const { token, newPassword } = req.body;
+
+      // Find user by reset token and check if it's not expired
+      const user = await User.findOne({
+        resetPasswordToken: token,
+        resetPasswordExpires: { $gt: Date.now() },
+      });
+
+      if (!user) {
+        return res.status(400).json({
+          error: {
+            code: 'invalid_token',
+            message: 'Password reset token is invalid or has expired',
+          },
+        });
+      }
+
+      // Hash new password
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+
+      // Update user password and clear reset token
+      user.password = hashedPassword;
+      user.resetPasswordToken = undefined;
+      user.resetPasswordExpires = undefined;
+      await user.save();
+
+      logger.info('Password reset successful', { userId: user._id });
+
+      return res.status(200).json({
+        message: 'Password has been reset successfully',
+      });
+    } catch (error) {
+      logger.error('Reset password error:', error);
+      return res.status(500).json({
+        error: {
+          code: 'internal_server_error',
+          message: 'An error occurred while resetting your password',
         },
       });
     }

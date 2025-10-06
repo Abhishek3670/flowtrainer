@@ -10,6 +10,8 @@ export interface IUser extends Document {
   permissions: string[];
   isActive: boolean;
   lastLogin?: Date;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -56,6 +58,14 @@ const userSchema = new Schema<IUser>(
     lastLogin: {
       type: Date,
     },
+    resetPasswordToken: {
+      type: String,
+      select: false,
+    },
+    resetPasswordExpires: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -89,5 +99,8 @@ userSchema.methods.comparePassword = async function (candidatePassword: string):
 
 // Index for faster querying
 userSchema.index({ email: 1 }, { unique: true });
+
+// Index for password reset token
+userSchema.index({ resetPasswordToken: 1 });
 
 export const User = model<IUser>('User', userSchema);

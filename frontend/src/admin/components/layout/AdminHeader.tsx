@@ -3,7 +3,7 @@ import { AppBar, Box, IconButton, Toolbar, Typography, useTheme } from '@mui/mat
 import MenuIcon from '@mui/icons-material/Menu';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-import { useThemeContext } from '../../../theme/ThemeContextProvider';
+import { useThemeContext } from '../../context/ThemeContext';
 
 interface AdminHeaderProps {
   onMenuClick: () => void;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { SnackbarProvider } from 'notistack';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
@@ -37,11 +37,10 @@ const queryClient = new QueryClient({
 // Protected route component
 interface ProtectedRouteProps {
   children: React.ReactElement;
-  requiredRole?: string;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole = 'admin' }) => {
-  const { isAuthenticated, isLoading, user } = useAuth();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     // You can replace this with a loading spinner or skeleton screen
@@ -49,16 +48,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole 
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/admin/login" replace />;
   }
 
-  // Check if user has the required role
-  if (user && (user.role === requiredRole || user.role === 'super-admin')) {
-    return children;
-  }
-
-  // If user doesn't have the required role, redirect to dashboard or show unauthorized
-  return <Navigate to="/unauthorized" replace />;
+  return children;
 };
 
 // Main App component
@@ -75,33 +68,34 @@ const AdminApp: React.FC = () => {
         >
           <AuthProvider>
             <CssBaseline />
-            <Router>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/login" element={<LoginPage />} />
-                
-                {/* Protected admin routes */}
-                <Route
-                  path="/"
-                  element={
-                    <ProtectedRoute>
-                      <AdminLayoutContainer />
-                    </ProtectedRoute>
-                  }
-                >
-                  <Route index element={<Navigate to="dashboard" replace />} />
-                  <Route path="dashboard" element={<DashboardPage />} />
-                  <Route path="users" element={<UserManagementPage />} />
-                  <Route path="system" element={<SystemConfigPage />} />
-                  <Route path="database" element={<DatabaseManagementPage />} />
-                  <Route path="models" element={<ModelsConfigPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
-                </Route>
-                
-                {/* Catch-all route */}
-                <Route path="*" element={<NotFoundPage />} />
-              </Routes>
-            </Router>
+            <Routes>
+              {/* Public routes */}
+              <Route path="/login" element={<LoginPage />} />
+              
+              {/* Protected admin routes */}
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <AdminLayoutContainer>
+                      <Routes>
+                        <Route index element={<Navigate to="dashboard" replace />} />
+                        <Route path="dashboard" element={<DashboardPage />} />
+                        <Route path="users" element={<UserManagementPage />} />
+                        <Route path="system" element={<SystemConfigPage />} />
+                        <Route path="database" element={<DatabaseManagementPage />} />
+                        <Route path="models" element={<ModelsConfigPage />} />
+                        <Route path="settings" element={<SettingsPage />} />
+                        <Route path="*" element={<NotFoundPage />} />
+                      </Routes>
+                    </AdminLayoutContainer>
+                  </ProtectedRoute>
+                }
+              />
+              
+              {/* Catch-all route */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
           </AuthProvider>
         </SnackbarProvider>
       </ThemeContextProvider>

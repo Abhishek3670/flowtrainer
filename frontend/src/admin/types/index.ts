@@ -1,9 +1,11 @@
 // User related types
 export interface User {
   id: string;
-  name: string;
   email: string;
+  firstName: string;
+  lastName: string;
   role: 'user' | 'admin' | 'super-admin';
+  permissions: string[];
   isActive: boolean;
   lastLogin?: string;
   createdAt: string;
@@ -100,7 +102,8 @@ export interface ApiResponse<T> {
 
 // Form data types
 export interface UserFormData {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: 'user' | 'admin' | 'super-admin';
   password?: string;

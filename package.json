@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "@types/bull": "^3.15.9",
+    "axios": "^1.12.2",
     "bull": "^4.16.5",
     "ioredis": "^5.7.0",
     "lodash": "^4.17.21",

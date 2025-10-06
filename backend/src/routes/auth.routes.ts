@@ -12,6 +12,8 @@ const validateEmail = body('email').isEmail().normalizeEmail();
 const validatePassword = body('password').isString().notEmpty();
 const validateFirstName = body('firstName').isString().trim().notEmpty();
 const validateLastName = body('lastName').isString().trim().notEmpty();
+const validateResetToken = body('token').isString().notEmpty();
+const validateNewPassword = body('newPassword').isString().isLength({ min: 8 });
 
 /**
  * @swagger
@@ -187,5 +189,117 @@ router.post('/logout', AuthController.logout);
  *         description: Not authenticated
  */
 router.get('/me', authenticate, AuthController.getCurrentUser);
+
+/**
+ * @swagger
+ * /api/auth/forgot-password:
+ *   post:
+ *     summary: Initiate password reset process
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *     responses:
+ *       200:
+ *         description: Password reset email sent (if email exists)
+ *       400:
+ *         description: Validation error
+ */
+router.post(
+  '/forgot-password',
+  validateEmail,
+  (req: Request, res: Response, next: NextFunction): void => {
+    const errors = validationResult(req);
+    
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        error: {
+          code: 'validation_error',
+          message: 'Validation failed',
+          details: errors.array().map((err: any) => {
+            const error = err as any;
+            return {
+              param: error.param,
+              message: typeof error.msg === 'string' ? error.msg : 'Invalid value',
+              location: error.location,
+              value: error.value,
+            };
+          }),
+        },
+      });
+      return;
+    }
+    
+    next();
+  },
+  AuthController.forgotPassword
+);
+
+/**
+ * @swagger
+ * /api/auth/reset-password:
+ *   post:
+ *     summary: Reset user password with token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - newPassword
+ *             properties:
+ *               token:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid token or validation error
+ */
+router.post(
+  '/reset-password',
+  validateResetToken,
+  validateNewPassword,
+  (req: Request, res: Response, next: NextFunction): void => {
+    const errors = validationResult(req);
+    
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        error: {
+          code: 'validation_error',
+          message: 'Validation failed',
+          details: errors.array().map((err: any) => {
+            const error = err as any;
+            return {
+              param: error.param,
+              message: typeof error.msg === 'string' ? error.msg : 'Invalid value',
+              location: error.location,
+              value: error.value,
+            };
+          }),
+        },
+      });
+      return;
+    }
+    
+    next();
+  },
+  AuthController.resetPassword
+);
 
 export default router;

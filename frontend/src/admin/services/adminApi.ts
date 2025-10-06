@@ -9,8 +9,30 @@ const api = axios.create({
   },
 });
 
+// Create a separate axios instance for authentication (without /admin prefix)
+export const authApi = axios.create({
+  baseURL: '/api/auth',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 // Add a request interceptor to include the auth token
 api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Add a request interceptor to include the auth token for auth API as well
+authApi.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
@@ -30,7 +52,20 @@ api.interceptors.response.use(
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
       // Redirect to login or refresh token
-      window.location.href = '/login';
+      window.location.href = '/admin/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Response interceptor for auth API error handling
+authApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    // Handle 401 Unauthorized
+    if (error.response?.status === 401) {
+      // Redirect to login
+      window.location.href = '/admin/login';
     }
     return Promise.reject(error);
   }
@@ -180,4 +215,6 @@ export default {
   model: modelApi,
   activity: activityApi,
   settings: settingsApi,
+  api, // Export the base api instance
+  authApi, // Export the auth api instance
 };
