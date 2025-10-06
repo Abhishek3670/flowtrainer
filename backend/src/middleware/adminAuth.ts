@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { ObjectId } from 'mongodb';
-import { getDb } from '../database/connection';
+import { User } from '../models/User';
 import logger from '../utils/logger';
 
 /**
@@ -20,16 +19,11 @@ export const authenticateJWT = async (req: Request, res: Response, next: NextFun
   const token = authHeader.split(' ')[1];
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as { userId: string };
-    const db = await getDb();
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as { sub: string };
     
-    // Find user in database
-    const userId = new ObjectId(decoded.userId);
-    const user = await db.collection('users').findOne(
-      { _id: { $eq: userId } } as any,
-      { projection: { password: 0 } } // Exclude password
-    );
-
+    // Find user in database using Mongoose model
+    const user = await User.findById(decoded.sub).select('-password');
+    
     if (!user) {
       return res.status(401).json({ 
         success: false, 
@@ -134,8 +128,8 @@ export const logAdminAction = async (req: Request, res: Response, next: NextFunc
           createdAt: new Date()
         };
         
-        const db = await getDb();
-        await db.collection('user_activities').insertOne(action);
+        // For now, we'll just log the action without persisting it
+        logger.info('Admin action logged', action);
       } catch (error) {
         logger.error('Failed to log admin action:', error);
       }

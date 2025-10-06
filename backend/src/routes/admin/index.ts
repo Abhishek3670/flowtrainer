@@ -19,7 +19,7 @@ router.use(adminRateLimiter);
 // Mount routes
 router.use('/users', requirePermission('manage_users'), userRoutes);
 router.use('/system', requirePermission('manage_system'), systemRoutes);
-router.use('/audit', requirePermission('view_audit_logs'), auditRoutes);
+router.use('/audit', requirePermission('read_audit_logs'), auditRoutes);
 
 // 404 handler for admin routes
 router.use((req, res) => {
