@@ -51,8 +51,8 @@ api.interceptors.response.use(
   (error) => {
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
-      // Redirect to login or refresh token
-      window.location.href = '/admin/login';
+      // Redirect to unified login
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
@@ -64,8 +64,8 @@ authApi.interceptors.response.use(
   (error) => {
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
-      // Redirect to login
-      window.location.href = '/admin/login';
+      // Redirect to unified login
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

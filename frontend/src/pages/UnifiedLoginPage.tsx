@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUnifiedAuth } from '../contexts/UnifiedAuthContext';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -9,8 +9,22 @@ const UnifiedLoginPage: React.FC = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login } = useUnifiedAuth();
+  const { login, user, isAuthenticated } = useUnifiedAuth();
   const navigate = useNavigate();
+
+  // Handle redirection after successful authentication
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      // Redirect based on user role
+      if (user.role === 'admin' || user.role === 'super-admin') {
+        // Admin users go to admin dashboard
+        navigate('/admin/dashboard');
+      } else {
+        // Regular users go to main workflow page
+        navigate('/');
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,8 +33,7 @@ const UnifiedLoginPage: React.FC = () => {
     
     try {
       await login(email, password);
-      // Redirect ALL users to main workflow page after login
-      navigate('/');
+      // Redirection will be handled by the useEffect above
     } catch (err: any) {
       console.error('Login error:', err);
       if (err.response?.status === 401) {

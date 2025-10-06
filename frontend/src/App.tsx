@@ -700,7 +700,7 @@ export default function App() {
           <ReactFlowProvider>
             <Router>
               <Routes>
-                {/* Public routes */}
+                {/* Public routes - using unified login for both regular and admin users */}
                 <Route path="/login" element={<UnifiedLoginPage />} />
                 <Route path="/register" element={<UnifiedRegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -710,8 +710,8 @@ export default function App() {
                 <Route path="/" element={<ProtectedRoute><FlowCanvas /></ProtectedRoute>} />
                 <Route path="/workflow/*" element={<ProtectedRoute><FlowCanvas /></ProtectedRoute>} />
                 
-                {/* Admin routes - still protected by admin auth */}
-                <Route path="/admin/*" element={<AdminApp />} />
+                {/* Admin routes - handles its own authentication */}
+                <Route path="/admin/*" element={<ProtectedRoute><AdminApp /></ProtectedRoute>} />
                 
                 {/* Redirect all other routes to login if not authenticated */}
                 <Route path="*" element={<Navigate to="/login" replace />} />

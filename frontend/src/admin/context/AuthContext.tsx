@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useUnifiedAuth } from '../../contexts/UnifiedAuthContext';
 import { User } from '../types';
-import { authApi } from '../services/adminApi';
 
 interface AuthContextType {
   user: User | null;
@@ -27,76 +26,46 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const navigate = useNavigate();
+  const { user: unifiedUser, isAuthenticated, isLoading, login, logout } = useUnifiedAuth();
+  const [adminUser, setAdminUser] = useState<User | null>(null);
 
-  // Check if user is already logged in
+  // Map unified user to admin user type
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (token) {
-          // Verify token and get user data
-          const response = await authApi.get('/me');
-          setUser(response.data);
-        }
-      } catch (error) {
-        console.error('Authentication check failed:', error);
-        localStorage.removeItem('token');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    try {
-      setIsLoading(true);
-      // Call the actual API
-      const response = await authApi.post('/login', { email, password });
-      const { accessToken, user } = response.data;
-      
-      localStorage.setItem('token', accessToken);
-      setUser(user);
-      // For admin, we keep the existing navigation behavior
-      // Navigate to the main admin dashboard after login
-      navigate('/admin/dashboard');
-    } catch (error) {
-      console.error('Login failed:', error);
-      throw error;
-    } finally {
-      setIsLoading(false);
+    if (unifiedUser) {
+      // Convert the unified user to admin user format
+      const mappedUser: User = {
+        id: unifiedUser.id,
+        email: unifiedUser.email,
+        firstName: unifiedUser.firstName,
+        lastName: unifiedUser.lastName,
+        role: unifiedUser.role,
+        permissions: unifiedUser.permissions || [],
+        isActive: unifiedUser.isActive,
+        lastLogin: unifiedUser.lastLogin,
+        createdAt: unifiedUser.createdAt,
+        updatedAt: unifiedUser.updatedAt
+      };
+      setAdminUser(mappedUser);
+    } else {
+      setAdminUser(null);
     }
-  };
-
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-    navigate('/admin/login');
-  };
+  }, [unifiedUser]);
 
   const hasPermission = (permission: string): boolean => {
-    if (!user) return false;
+    if (!adminUser) return false;
     
     // Admin has all permissions
-    if (user.role === 'admin' || user.role === 'super-admin') {
+    if (adminUser.role === 'admin' || adminUser.role === 'super-admin') {
       return true;
     }
     
     // Check user's permissions array if it exists
-    if ('permissions' in user && Array.isArray(user.permissions)) {
-      return user.permissions.includes(permission);
-    }
-    
-    return false;
+    return adminUser.permissions.includes(permission);
   };
 
   const value = {
-    user,
-    isAuthenticated: !!user,
+    user: adminUser,
+    isAuthenticated: isAuthenticated && !!adminUser && (adminUser.role === 'admin' || adminUser.role === 'super-admin'),
     isLoading,
     login,
     logout,

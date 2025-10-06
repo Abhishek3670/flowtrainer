@@ -15,6 +15,20 @@ const adminTheme = createTheme({
     },
     background: {
       default: '#f5f5f5',
+      paper: '#ffffff',
+    },
+    text: {
+      primary: 'rgba(0, 0, 0, 0.87)',
+      secondary: 'rgba(0, 0, 0, 0.6)',
+    },
+  },
+  breakpoints: {
+    values: {
+      xs: 0,
+      sm: 600,
+      md: 960,
+      lg: 1280,
+      xl: 1920,
     },
   },
   typography: {
@@ -32,27 +46,46 @@ const adminTheme = createTheme({
     ].join(','),
     h1: {
       fontSize: '2.5rem',
-      fontWeight: 500,
+      fontWeight: 600,
+      lineHeight: 1.2,
     },
     h2: {
       fontSize: '2rem',
-      fontWeight: 500,
+      fontWeight: 600,
+      lineHeight: 1.2,
     },
     h3: {
       fontSize: '1.75rem',
-      fontWeight: 500,
+      fontWeight: 600,
+      lineHeight: 1.2,
     },
     h4: {
       fontSize: '1.5rem',
-      fontWeight: 500,
+      fontWeight: 600,
+      lineHeight: 1.2,
     },
     h5: {
       fontSize: '1.25rem',
-      fontWeight: 500,
+      fontWeight: 600,
+      lineHeight: 1.2,
     },
     h6: {
+      fontSize: '1.1rem',
+      fontWeight: 600,
+      lineHeight: 1.2,
+    },
+    body1: {
       fontSize: '1rem',
-      fontWeight: 500,
+      lineHeight: 1.5,
+    },
+    body2: {
+      fontSize: '0.875rem',
+      lineHeight: 1.5,
+    },
+  },
+  mixins: {
+    toolbar: {
+      minHeight: 64,
     },
   },
   components: {
@@ -118,6 +151,34 @@ const adminTheme = createTheme({
       styleOverrides: {
         root: {
           borderRadius: 8,
+        },
+      },
+    },
+    MuiTableContainer: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+        },
+      },
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        head: {
+          fontWeight: 600,
+          backgroundColor: 'rgba(0, 0, 0, 0.03)',
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+        },
+        elevation1: {
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        },
+        elevation2: {
+          boxShadow: '0 2px 6px rgba(0,0,0,0.1)',
         },
       },
     },

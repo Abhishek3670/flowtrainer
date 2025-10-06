@@ -1,5 +1,5 @@
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useUnifiedAuth } from '../contexts/UnifiedAuthContext';
 
 interface ProtectedRouteProps {
@@ -7,7 +7,11 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading } = useUnifiedAuth();
+  const { isAuthenticated, isLoading, user } = useUnifiedAuth();
+  const location = useLocation();
+
+  // Debug logging
+  console.log('ProtectedRoute checking access for:', location.pathname, { isAuthenticated, isLoading, user });
 
   if (isLoading) {
     // You can replace this with a loading spinner or skeleton screen
@@ -19,9 +23,21 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (!isAuthenticated) {
+    console.log('ProtectedRoute: Not authenticated, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
+  // Check if trying to access admin routes
+  if (location.pathname.startsWith('/admin')) {
+    // Check if user has admin role
+    if (user && user.role !== 'admin' && user.role !== 'super-admin') {
+      // If not an admin, redirect to main app
+      console.log('ProtectedRoute: Not admin, redirecting to main app');
+      return <Navigate to="/" replace />;
+    }
+  }
+
+  console.log('ProtectedRoute: Allowing access to', location.pathname);
   return children;
 };
 

@@ -34,11 +34,13 @@ import {
   Activity,
   User,
   LogOut,
+  ChevronDown,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuthContext } from '../../hooks/useAuthContext';
 import { useSystemStatus } from '../../hooks/useSystemStatus';
 import SystemDashboard from '../SystemDashboard/SystemDashboard';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * Header component props interface
@@ -106,6 +108,12 @@ const Header: React.FC<HeaderProps> = ({
   
   // Local state for system dashboard visibility
   const [showSystemDashboard, setShowSystemDashboard] = useState(false);
+  
+  // Navigation hook
+  const navigate = useNavigate();
+  
+  // State for admin dropdown menu
+  const [showAdminMenu, setShowAdminMenu] = useState(false);
 
   // ===== KEYBOARD SHORTCUTS =====
   
@@ -140,6 +148,25 @@ const Header: React.FC<HeaderProps> = ({
     // Clean up event listener on component unmount
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onUndo, onRedo, disableUndo, disableRedo]);
+
+  // Close admin menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const adminMenu = document.getElementById('admin-menu');
+      const adminButton = document.getElementById('admin-button');
+      
+      if (adminMenu && adminButton && 
+          !adminMenu.contains(event.target as Node) && 
+          !adminButton.contains(event.target as Node)) {
+        setShowAdminMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // ===== SYSTEM STATUS UTILITIES =====
   
@@ -187,6 +214,13 @@ const Header: React.FC<HeaderProps> = ({
   };
 
   const systemStatusInfo = getSystemStatusInfo();
+
+  // ===== NAVIGATION FUNCTIONS =====
+  
+  const handleAdminDashboardClick = () => {
+    navigate('/admin/dashboard');
+    setShowAdminMenu(false);
+  };
 
   return (
     <>
@@ -360,13 +394,39 @@ const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center space-x-2">
             {isAuthenticated ? (
               <>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-2 relative">
                   <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">
                     <User className="w-4 h-4" />
                   </div>
                   <span className="text-sm text-gray-700 dark:text-gray-300">
                     {user?.firstName} {user?.lastName}
                   </span>
+                  {/* Admin dropdown menu for admin users */}
+                  {user && (user.role === 'admin' || user.role === 'super-admin') && (
+                    <div className="relative">
+                      <button
+                        id="admin-button"
+                        onClick={() => setShowAdminMenu(!showAdminMenu)}
+                        className="flex items-center text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400"
+                      >
+                        <ChevronDown className="w-4 h-4 ml-1" />
+                      </button>
+                      
+                      {showAdminMenu && (
+                        <div 
+                          id="admin-menu"
+                          className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700"
+                        >
+                          <button
+                            onClick={handleAdminDashboardClick}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            Admin Dashboard
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <button
                   onClick={logout}
