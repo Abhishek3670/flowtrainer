@@ -21,8 +21,6 @@ type TokenPayload = {
 
 export const generateTokens = (user: UserData) => {
   try {
-    logger.info('Generating tokens for user', { userId: user.id });
-    
     const payload: TokenPayload = {
       sub: user.id,
       role: user.role,
@@ -41,8 +39,6 @@ export const generateTokens = (user: UserData) => {
       { expiresIn: REFRESH_TOKEN_EXPIRY }
     );
 
-    logger.info('Tokens generated successfully', { userId: user.id });
-    
     return { accessToken, refreshToken };
   } catch (error) {
     logger.error('Token generation failed', {
@@ -55,7 +51,6 @@ export const generateTokens = (user: UserData) => {
 
 export const verifyAccessToken = (token: string): TokenPayload => {
   try {
-    logger.info('Verifying access token');
     return jwt.verify(token, JWT_SECRET, {
       audience: 'flowtrainer-web',
       issuer: 'flowtrainer-api',
@@ -74,7 +69,6 @@ export const verifyAccessToken = (token: string): TokenPayload => {
 
 export const verifyRefreshToken = (token: string): { sub: string } => {
   try {
-    logger.info('Verifying refresh token');
     return jwt.verify(token, JWT_SECRET) as { sub: string };
   } catch (error) {
     logger.error('Refresh token verification failed', {

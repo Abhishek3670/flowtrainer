@@ -187,7 +187,7 @@ export class AuthController {
         accessToken: tokens.accessToken,
       });
     } catch (error) {
-      console.error('Refresh token error:', error);
+      logger.error('Refresh token error:', error);
       return res.status(401).json({
         error: {
           code: 'invalid_token',
@@ -211,7 +211,7 @@ export class AuthController {
 
       return res.status(204).send();
     } catch (error) {
-      console.error('Logout error:', error);
+      logger.error('Logout error:', error);
       return res.status(500).json({
         error: {
           code: 'internal_server_error',
@@ -257,7 +257,7 @@ export class AuthController {
         permissions: userData.permissions,
       });
     } catch (error) {
-      console.error('Get current user error:', error);
+      logger.error('Get current user error:', error);
       return res.status(500).json({
         error: {
           code: 'internal_server_error',

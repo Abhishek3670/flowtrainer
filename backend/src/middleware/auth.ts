@@ -22,6 +22,7 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
     }
 
     const token = authHeader.split(' ')[1];
+    
     const payload = verifyAccessToken(token);
 
     // Attach user data to the request object

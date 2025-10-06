@@ -3,6 +3,7 @@ import { AuthController } from '../controllers/auth.controller';
 import { validate } from '../middleware/validation';
 import { body, validationResult } from 'express-validator';
 import { loginLimiter, registerLimiter, refreshTokenLimiter } from '../middleware/authRateLimit';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
@@ -108,7 +109,7 @@ router.post(
  */
 router.post(
   '/register',
-  // registerLimiter,  // Temporarily disable rate limiting for testing
+  registerLimiter,
   validateEmail,
   validatePassword,
   validateFirstName,
@@ -185,6 +186,6 @@ router.post('/logout', AuthController.logout);
  *       401:
  *         description: Not authenticated
  */
-router.get('/me', AuthController.getCurrentUser);
+router.get('/me', authenticate, AuthController.getCurrentUser);
 
 export default router;
