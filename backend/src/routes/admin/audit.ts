@@ -1,5 +1,4 @@
-import { Router } from 'express';
-import { ObjectId } from 'mongodb';
+import { Router, Request, Response } from 'express';
 import { authenticateJWT, requirePermission, logAdminAction } from '../../middleware/adminAuth';
 import { adminRateLimiter } from '../../middleware/rateLimit';
 import { User } from '../../models/User';
@@ -15,28 +14,16 @@ router.use(authenticateJWT, requirePermission('read_audit_logs'), logAdminAction
  * @description Get audit logs with filtering and pagination
  * @access Private/Admin
  */
-router.get('/logs', async (req, res) => {
+router.get('/logs', async (req: Request, res: Response) => {
   try {
-    const { 
-      page = 1, 
-      limit = 20, 
-      userId, 
-      action, 
-      entityType, 
-      entityId, 
-      status, 
-      startDate, 
-      endDate 
-    } = req.query;
-    
     // For now, return an empty response since we don't have audit logs implemented
     res.json({
       success: true,
       data: [],
       pagination: {
         total: 0,
-        page: Number(page),
-        limit: Number(limit),
+        page: 1,
+        limit: 20,
         totalPages: 0
       }
     });
@@ -51,7 +38,7 @@ router.get('/logs', async (req, res) => {
  * @description Get audit log details by ID
  * @access Private/Admin
  */
-router.get('/logs/:id', async (req, res) => {
+router.get('/logs/:id', async (req: Request, res: Response) => {
   try {
     // For now, return a not found response since we don't have audit logs implemented
     return res.status(404).json({ success: false, error: 'Log not found' });
@@ -66,7 +53,7 @@ router.get('/logs/:id', async (req, res) => {
  * @description Get user activities summary
  * @access Private/Admin
  */
-router.get('/activities', async (req, res) => {
+router.get('/activities', async (req: Request, res: Response) => {
   try {
     // For now, return an empty response since we don't have audit logs implemented
     res.json({
@@ -74,7 +61,7 @@ router.get('/activities', async (req, res) => {
       data: {
         totalActivities: 0,
         recentActivities: [],
-        userActivityStats: {}
+        userActivityStats: []
       }
     });
   } catch (error) {
