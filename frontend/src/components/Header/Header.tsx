@@ -28,8 +28,6 @@ import {
   Redo,
   Brain,
   ChevronRight,
-  Sun,
-  Moon,
   Play,
   Activity,
   User,
@@ -41,6 +39,8 @@ import { useAuthContext } from '../../hooks/useAuthContext';
 import { useSystemStatus } from '../../hooks/useSystemStatus';
 import SystemDashboard from '../SystemDashboard/SystemDashboard';
 import { useNavigate } from 'react-router-dom';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 
 /**
  * Header component props interface
@@ -382,14 +382,15 @@ const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
+          {/* Theme toggle button with Material-UI icons */}
           <button
             onClick={toggleTheme}
             className="btn btn-outline p-2"
           >
             {theme === 'light' ? (
-              <Moon className="w-4 h-4" />
+              <Brightness4Icon className="w-4 h-4" />
             ) : (
-              <Sun className="w-4 h-4" />
+              <Brightness7Icon className="w-4 h-4" />
             )}
           </button>
 
