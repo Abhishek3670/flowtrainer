@@ -118,6 +118,17 @@ export class AuthController {
       user.lastLogin = new Date();
       await user.save();
 
+      // Check if user needs to reset password
+      if (user.needsPasswordReset) {
+        return res.status(403).json({
+          error: {
+            code: 'password_reset_required',
+            message: 'Password reset required',
+            needsPasswordReset: true
+          },
+        });
+      }
+
       // Generate tokens
       const tokens = generateTokens({
         id: user._id.toString(),
@@ -365,14 +376,12 @@ export class AuthController {
         });
       }
 
-      // Hash new password
-      const saltRounds = 10;
-      const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
-
       // Update user password and clear reset token
-      user.password = hashedPassword;
+      // The pre-save hook will automatically hash the password
+      user.password = newPassword;
       user.resetPasswordToken = undefined;
       user.resetPasswordExpires = undefined;
+      user.needsPasswordReset = false;
       await user.save();
 
       logger.info('Password reset successful', { userId: user._id });
@@ -382,6 +391,57 @@ export class AuthController {
       });
     } catch (error) {
       logger.error('Reset password error:', error);
+      return res.status(500).json({
+        error: {
+          code: 'internal_server_error',
+          message: 'An error occurred while resetting your password',
+        },
+      });
+    }
+  }
+
+  /**
+   * Reset user password with current password (for first-time users)
+   */
+  static async resetPasswordWithCurrent(req: Request, res: Response) {
+    try {
+      const { email, currentPassword, newPassword } = req.body;
+
+      // Find user by email and explicitly select the password field
+      const user = await User.findOne({ email }).select('+password');
+      if (!user) {
+        return res.status(401).json({
+          error: {
+            code: 'invalid_credentials',
+            message: 'Invalid email or password',
+          },
+        });
+      }
+
+      // Verify current password
+      const isPasswordValid = await user.comparePassword(currentPassword);
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          error: {
+            code: 'invalid_password',
+            message: 'Current password is incorrect',
+          },
+        });
+      }
+
+      // Update user password and clear needsPasswordReset flag
+      // The pre-save hook will automatically hash the password
+      user.password = newPassword;
+      user.needsPasswordReset = false;
+      await user.save();
+
+      logger.info('Password reset with current password successful', { userId: user._id });
+
+      return res.status(200).json({
+        message: 'Password has been reset successfully',
+      });
+    } catch (error) {
+      logger.error('Reset password with current error:', error);
       return res.status(500).json({
         error: {
           code: 'internal_server_error',

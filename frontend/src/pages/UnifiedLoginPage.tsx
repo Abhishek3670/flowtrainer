@@ -38,6 +38,9 @@ const UnifiedLoginPage: React.FC = () => {
       console.error('Login error:', err);
       if (err.response?.status === 401) {
         setError('Invalid email or password');
+      } else if (err.response?.status === 403 && err.response?.data?.error?.needsPasswordReset) {
+        // User needs to reset their password
+        navigate(`/reset-first-time-password?email=${encodeURIComponent(email)}`);
       } else {
         setError('An error occurred during login. Please try again.');
       }

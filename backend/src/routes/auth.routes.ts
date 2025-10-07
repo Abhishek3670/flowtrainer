@@ -10,6 +10,7 @@ const router = Router();
 // Create individual validation middleware functions
 const validateEmail = body('email').isEmail().normalizeEmail();
 const validatePassword = body('password').isString().notEmpty();
+const validateCurrentPassword = body('currentPassword').isString().notEmpty();
 const validateFirstName = body('firstName').isString().trim().notEmpty();
 const validateLastName = body('lastName').isString().trim().notEmpty();
 const validateResetToken = body('token').isString().notEmpty();
@@ -300,6 +301,72 @@ router.post(
     next();
   },
   AuthController.resetPassword
+);
+
+/**
+ * @swagger
+ * /api/auth/reset-password-current:
+ *   post:
+ *     summary: Reset user password with current password (for first-time users)
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - currentPassword
+ *               - newPassword
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *               currentPassword:
+ *                 type: string
+ *                 format: password
+ *               newPassword:
+ *                 type: string
+ *                 format: password
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid current password or validation error
+ *       401:
+ *         description: Invalid credentials
+ */
+router.post(
+  '/reset-password-current',
+  validateEmail,
+  validateCurrentPassword,
+  validateNewPassword,
+  (req: Request, res: Response, next: NextFunction): void => {
+    const errors = validationResult(req);
+    
+    if (!errors.isEmpty()) {
+      res.status(400).json({
+        error: {
+          code: 'validation_error',
+          message: 'Validation failed',
+          details: errors.array().map((err: any) => {
+            const error = err as any;
+            return {
+              param: error.param,
+              message: typeof error.msg === 'string' ? error.msg : 'Invalid value',
+              location: error.location,
+              value: error.value,
+            };
+          }),
+        },
+      });
+      return;
+    }
+    
+    next();
+  },
+  AuthController.resetPasswordWithCurrent
 );
 
 export default router;

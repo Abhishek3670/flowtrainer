@@ -198,7 +198,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // ===== DATABASE CONNECTION =====
 
 const MONGO_URI: string = process.env.MONGO_URI || 'mongodb://localhost:27017/flowcraft';
-const PORT: number = parseInt(process.env.PORT || '4000', 10);
+const PORT: number = parseInt(process.env.PORT || '4000', 10); // Ensure it's using port 4000
 
 // Connect to MongoDB and start the server
 connectDB()

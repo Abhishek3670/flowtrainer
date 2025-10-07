@@ -144,7 +144,8 @@ router.post('/', validate(userValidation), async (req, res) => {
     const newUser = new User({
       ...req.body,
       firstName: req.body.name.split(' ')[0],
-      lastName: req.body.name.split(' ').slice(1).join(' ') || req.body.name
+      lastName: req.body.name.split(' ').slice(1).join(' ') || req.body.name,
+      needsPasswordReset: true
     });
     
     await newUser.save();
@@ -173,10 +174,9 @@ router.put('/:id', validate(updateUserValidation), async (req, res) => {
     const { password, ...updateData } = req.body;
     const updates: any = { ...updateData };
 
-    // Hash password if provided
+    // Set password if provided (pre-save hook will hash it)
     if (password) {
-      const salt = await bcrypt.genSalt(10);
-      updates.password = await bcrypt.hash(password, salt);
+      updates.password = password;
     }
 
     const user = await User.findByIdAndUpdate(

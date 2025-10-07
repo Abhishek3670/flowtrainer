@@ -37,6 +37,7 @@ import UnifiedLoginPage from './pages/UnifiedLoginPage';
 import UnifiedRegisterPage from './pages/UnifiedRegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import FirstTimeResetPasswordPage from './pages/FirstTimeResetPasswordPage';
 
 // Types and interfaces
 import { NodeData, WorkflowData, ValidationError } from './types';
@@ -705,6 +706,7 @@ export default function App() {
                 <Route path="/register" element={<UnifiedRegisterPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                 <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/reset-first-time-password" element={<FirstTimeResetPasswordPage />} />
                 
                 {/* Protected routes */}
                 <Route path="/" element={<ProtectedRoute><FlowCanvas /></ProtectedRoute>} />

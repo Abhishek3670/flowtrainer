@@ -40,7 +40,7 @@ export default defineConfig({
     proxy: {
       // Proxy all /api requests to the backend server
       '/api': {
-        target: 'http://localhost:4000',  // Backend server address
+        target: 'http://localhost:4000',  // Revert to port 4000
         changeOrigin: true,               // Change origin header for CORS
         ws: true,                         // Enable WebSocket proxy support
         secure: false,                    // Allow HTTP connections (development)

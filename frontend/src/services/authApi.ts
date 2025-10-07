@@ -115,6 +115,13 @@ export const authApiService = {
   },
 
   /**
+   * Reset password with current password (for first-time users)
+   */
+  resetPasswordWithCurrent: async (email: string, currentPassword: string, newPassword: string): Promise<void> => {
+    await authApi.post('/reset-password-current', { email, currentPassword, newPassword });
+  },
+
+  /**
    * Refresh access token
    */
   refreshToken: async (): Promise<string> => {

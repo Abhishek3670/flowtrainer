@@ -10,6 +10,7 @@ interface UnifiedAuthContextType {
   logout: () => void;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
+  resetPasswordWithCurrent: (email: string, currentPassword: string, newPassword: string) => Promise<void>; // Updated this line
 }
 
 const UnifiedAuthContext = createContext<UnifiedAuthContextType | undefined>(undefined);
@@ -109,6 +110,16 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
     }
   };
 
+  // Add this new method
+  const resetPasswordWithCurrent = async (email: string, currentPassword: string, newPassword: string) => {
+    try {
+      await authApiService.resetPasswordWithCurrent(email, currentPassword, newPassword);
+    } catch (error) {
+      console.error('Reset password with current failed:', error);
+      throw error;
+    }
+  };
+
   const value = {
     user,
     isAuthenticated: !!user,
@@ -118,6 +129,7 @@ export const UnifiedAuthProvider: React.FC<UnifiedAuthProviderProps> = ({ childr
     logout,
     forgotPassword,
     resetPassword,
+    resetPasswordWithCurrent, // Add this line
   };
 
   return <UnifiedAuthContext.Provider value={value}>{children}</UnifiedAuthContext.Provider>;

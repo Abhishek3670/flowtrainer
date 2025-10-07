@@ -26,7 +26,7 @@ export interface IConfig {
 // Default configuration
 const defaultConfig: IConfig = {
   env: process.env.NODE_ENV || 'development',
-  port: parseInt(process.env.PORT || '5000', 10),
+  port: parseInt(process.env.PORT || '4000', 10),
   mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/flowtrainer',
   jwt: {
     secret: process.env.JWT_SECRET || 'your-secret-key-here',
