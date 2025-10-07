@@ -33,7 +33,6 @@ router.use((req, res) => {
 // Error handler for admin routes
 router.use((err: any, req: any, res: any, next: any) => {
   // Log the error
-  console.error('Admin route error:', err);
   
   // Handle Joi validation errors
   if (err && err.error && err.error.isJoi) {

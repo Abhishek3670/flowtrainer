@@ -73,9 +73,15 @@ router.get('/', async (req, res) => {
       User.countDocuments(query)
     ]);
     
+    // Ensure each user has an 'id' field mapped from '_id'
+    const usersWithId = users.map(user => ({
+      ...user,
+      id: user._id
+    }));
+    
     res.json({
       success: true,
-      data: users,
+      data: usersWithId,
       pagination: {
         total,
         page: Number(page),
@@ -102,7 +108,13 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
 
-    return res.json({ success: true, data: user });
+    // Ensure the user has an 'id' field mapped from '_id'
+    const userWithId = {
+      ...user.toObject(),
+      id: user._id
+    };
+
+    return res.json({ success: true, data: userWithId });
   } catch (error) {
     logger.error('Error fetching user:', error);
     return res.status(500).json({ success: false, error: 'Server error' });

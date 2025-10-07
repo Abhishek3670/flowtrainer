@@ -31,6 +31,7 @@ import {
 import { Edit as EditIcon, Delete as DeleteIcon, Add as AddIcon } from '@mui/icons-material';
 import { userApi } from '../services/adminApi';
 import { User, UserFormData } from '../types';
+import { authApiService } from '../../services/authApi';
 
 const UserManagementPage: React.FC = () => {
   const theme = useTheme();
@@ -52,10 +53,21 @@ const UserManagementPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   useEffect(() => {
     fetchUsers();
+    fetchCurrentUser();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const user = await authApiService.getCurrentUser();
+      setCurrentUser(user);
+    } catch (err) {
+
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -66,7 +78,7 @@ const UserManagementPage: React.FC = () => {
       }
     } catch (err) {
       setError('Failed to fetch users');
-      console.error('Error fetching users:', err);
+
     } finally {
       setLoading(false);
     }
@@ -192,12 +204,21 @@ const UserManagementPage: React.FC = () => {
         }
       }
     } catch (err) {
-      console.error('Error saving user:', err);
       setSnackbar({ open: true, message: 'Failed to save user', severity: 'error' });
     }
   };
 
   const handleDeleteClick = (user: User) => {
+    // Prevent users from deleting their own accounts
+    if (currentUser && user.id === currentUser.id) {
+      setSnackbar({ 
+        open: true, 
+        message: 'You cannot delete your own account', 
+        severity: 'error' 
+      });
+      return;
+    }
+    
     setUserToDelete(user);
     setDeleteDialogOpen(true);
   };
@@ -217,7 +238,6 @@ const UserManagementPage: React.FC = () => {
         setSnackbar({ open: true, message: response.data.error || 'Failed to delete user', severity: 'error' });
       }
     } catch (err) {
-      console.error('Error deleting user:', err);
       setSnackbar({ open: true, message: 'Failed to delete user', severity: 'error' });
     }
   };
@@ -310,14 +330,17 @@ const UserManagementPage: React.FC = () => {
                         <EditIcon />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="Delete">
-                      <IconButton 
-                        size="small" 
-                        color="error" 
-                        onClick={() => handleDeleteClick(user)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                    <Tooltip title={currentUser && user.id === currentUser.id ? "Cannot delete own account" : "Delete"}>
+                      <span>
+                        <IconButton 
+                          size="small" 
+                          color="error" 
+                          onClick={() => handleDeleteClick(user)}
+                          disabled={currentUser && user.id === currentUser.id ? true : false} // Disable delete for current user
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </span>
                     </Tooltip>
                   </TableCell>
                 </TableRow>

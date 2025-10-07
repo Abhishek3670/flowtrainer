@@ -92,9 +92,6 @@ export const requirePermission = (permission: string) => {
     }
 
     const userPermissions = req.user.permissions || [];
-    console.log('User permissions:', userPermissions);
-    console.log('Required permission:', permission);
-    console.log('Has permission:', userPermissions.includes(permission));
     
     if (!userPermissions.includes(permission)) {
       return res.status(403).json({ 
