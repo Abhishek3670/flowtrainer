@@ -138,6 +138,15 @@ app.get('/api/worker/status', (req, res) => {
 // ===== ENHANCED HEALTH CHECK =====
 // (Extends your existing health check with WebSocket and Worker metrics)
 
+// Basic health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
 // Enhanced health check endpoint that includes all Phase 3 services
 app.get('/api/health/extended', async (req, res) => {
   try {
@@ -189,7 +198,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // ===== DATABASE CONNECTION =====
 
 const MONGO_URI: string = process.env.MONGO_URI || 'mongodb://localhost:27017/flowcraft';
-const PORT: number = parseInt(process.env.PORT || '4000', 10);
+const PORT: number = parseInt(process.env.PORT || '4000', 10); // Ensure it's using port 4000
 
 // Connect to MongoDB and start the server
 connectDB()
@@ -205,7 +214,8 @@ connectDB()
     console.log('⚡ Worker pool: ACTIVE');
     
     // Start HTTP server after successful database connection
-    server.listen(PORT, () => {
+    // Explicitly bind to all interfaces to ensure accessibility
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 FlowCraft backend listening on port ${PORT}`);
       console.log('');
       console.log('📍 API ENDPOINTS:');

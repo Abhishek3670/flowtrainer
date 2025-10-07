@@ -2,6 +2,7 @@ import { Worker, isMainThread, workerData } from 'worker_threads';
 import { EventEmitter } from 'events';
 import path from 'path';
 import fs from 'fs';
+import logger from '../utils/logger';
 
 export interface WorkerTask {
   id: string;
@@ -32,6 +33,8 @@ export class WorkerPool extends EventEmitter {
     super();
     this.maxWorkers = maxWorkers;
     
+    logger.info('🔧 Initializing WorkerPool', { maxWorkers });
+    
     // FIXED: Correct path resolution
     if (workerScript) {
       this.workerScript = workerScript;
@@ -48,13 +51,12 @@ export class WorkerPool extends EventEmitter {
       this.workerScript = this.findWorkerScript(possiblePaths);
     }
     
-    console.log(`🔧 WorkerPool initializing with ${maxWorkers} workers`);
-    console.log(`📁 Worker script path: ${this.workerScript}`);
+    logger.info(`📁 Worker script path: ${this.workerScript}`);
     
     // Verify worker script exists before creating workers
     if (!fs.existsSync(this.workerScript)) {
-      console.error(`❌ Worker script not found at: ${this.workerScript}`);
-      console.log('🔍 Creating worker script at expected location...');
+      logger.warn(`❌ Worker script not found at: ${this.workerScript}`);
+      logger.info('🔍 Creating worker script at expected location...');
       this.createWorkerScript();
     }
     
@@ -64,14 +66,14 @@ export class WorkerPool extends EventEmitter {
   private findWorkerScript(possiblePaths: string[]): string {
     for (const scriptPath of possiblePaths) {
       if (fs.existsSync(scriptPath)) {
-        console.log(`✅ Found worker script at: ${scriptPath}`);
+        logger.info(`✅ Found worker script at: ${scriptPath}`);
         return scriptPath;
       }
     }
     
     // Default to the most likely location
     const defaultPath = path.join(process.cwd(), 'worker.js');
-    console.log(`⚠️ Worker script not found, using default: ${defaultPath}`);
+    logger.warn(`⚠️ Worker script not found, using default: ${defaultPath}`);
     return defaultPath;
   }
 
@@ -187,31 +189,38 @@ console.log(\`✅ Worker \${workerId} ready for tasks\`);
 
     try {
       fs.writeFileSync(this.workerScript, workerCode);
-      console.log(`✅ Created worker script at: ${this.workerScript}`);
+      logger.info(`✅ Created worker script at: ${this.workerScript}`);
     } catch (error) {
-      console.error(`❌ Failed to create worker script:`, error);
+      logger.error(`❌ Failed to create worker script:`, {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   }
 
   private initializeWorkers() {
+    logger.info('🔧 Initializing workers');
     for (let i = 0; i < this.maxWorkers; i++) {
       try {
         this.createWorker(i);
       } catch (error) {
-        console.error(`❌ Failed to create worker ${i}:`, error);
+        logger.error(`❌ Failed to create worker ${i}:`, {
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
       }
     }
+    logger.info(`✅ Worker initialization complete. Created ${this.workers.length} workers`);
   }
 
   private createWorker(workerId: number) {
     // FIXED: Prevent infinite worker replacement loop
     const attempts = this.failedWorkerAttempts.get(workerId) || 0;
     if (attempts >= 3) {
-      console.error(`❌ Worker ${workerId} failed too many times (${attempts}), skipping creation`);
+      logger.error(`❌ Worker ${workerId} failed too many times (${attempts}), skipping creation`);
       return;
     }
 
     try {
+      logger.info(`🔧 Creating worker ${workerId}`);
       const worker = new Worker(this.workerScript, {
         workerData: { workerId: `worker-${workerId}` }
       });
@@ -221,7 +230,10 @@ console.log(\`✅ Worker \${workerId} ready for tasks\`);
       });
 
       worker.on('error', (error) => {
-        console.error(`🚨 Worker ${workerId} error:`, error.message);
+        logger.error(`🚨 Worker ${workerId} error:`, {
+          error: error.message,
+          stack: error.stack
+        });
         this.emit('worker-error', error);
         
         // FIXED: Track failed attempts and prevent infinite loops
@@ -231,13 +243,13 @@ console.log(\`✅ Worker \${workerId} ready for tasks\`);
         if (currentAttempts < 2 && !this.isShuttingDown) {
           this.replaceWorker(worker, workerId);
         } else {
-          console.error(`❌ Worker ${workerId} permanently failed after ${currentAttempts + 1} attempts`);
+          logger.error(`❌ Worker ${workerId} permanently failed after ${currentAttempts + 1} attempts`);
         }
       });
 
       worker.on('exit', (code) => {
         if (code !== 0 && !this.isShuttingDown) {
-          console.warn(`⚠️ Worker ${workerId} stopped with exit code ${code}`);
+          logger.warn(`⚠️ Worker ${workerId} stopped with exit code ${code}`);
           
           const currentAttempts = this.failedWorkerAttempts.get(workerId) || 0;
           if (currentAttempts < 2) {
@@ -248,13 +260,15 @@ console.log(\`✅ Worker \${workerId} ready for tasks\`);
 
       this.workers.push(worker);
       this.activeWorkers++;
-      console.log(`✅ Worker ${workerId} created successfully`);
+      logger.info(`✅ Worker ${workerId} created successfully`);
       
       // Reset failed attempts on successful creation
       this.failedWorkerAttempts.delete(workerId);
       
     } catch (error) {
-      console.error(`❌ Failed to create worker ${workerId}:`, error);
+      logger.error(`❌ Failed to create worker ${workerId}:`, {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       
       // Track failed attempts
       const currentAttempts = this.failedWorkerAttempts.get(workerId) || 0;
@@ -277,9 +291,11 @@ console.log(\`✅ Worker \${workerId} ready for tasks\`);
         if (!this.isShuttingDown) {
           try {
             this.createWorker(workerId);
-            console.log(`🔄 Replaced failed worker ${workerId}`);
+            logger.info(`🔄 Replaced failed worker ${workerId}`);
           } catch (error) {
-            console.error(`❌ Failed to replace worker ${workerId}:`, error);
+            logger.error(`❌ Failed to replace worker ${workerId}:`, {
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
           }
         }
       }, 5000); // Wait 5 seconds before replacing
@@ -331,13 +347,16 @@ console.log(\`✅ Worker \${workerId} ready for tasks\`);
     const worker = this.workers[Math.floor(Math.random() * this.workers.length)];
     
     if (worker) {
-      console.log(`📤 Assigning task ${task.id} to worker`);
+      logger.info(`📤 Assigning task ${task.id} to worker`);
       worker.postMessage(task);
     }
   }
 
   private handleWorkerResult(result: WorkerResult) {
-    console.log(`📥 Received result for task ${result.id}: ${result.success ? 'SUCCESS' : 'FAILED'}`);
+    logger.info(`📥 Received result for task ${result.id}: ${result.success ? 'SUCCESS' : 'FAILED'}`, {
+      duration: result.duration,
+      workerId: result.workerId
+    });
     
     this.emit(`task-complete-${result.id}`, result);
     this.emit('task-complete', result);
@@ -362,7 +381,7 @@ console.log(\`✅ Worker \${workerId} ready for tasks\`);
   public async testWorker(): Promise<boolean> {
     try {
       if (this.workers.length === 0) {
-        console.log('🧪 No workers available for testing');
+        logger.info('🧪 No workers available for testing');
         return false;
       }
 
@@ -373,21 +392,23 @@ console.log(\`✅ Worker \${workerId} ready for tasks\`);
         priority: 1
       });
       
-      console.log('🧪 Worker test completed successfully:', testResult.success);
+      logger.info('🧪 Worker test completed successfully:', { success: testResult.success });
       return testResult.success;
     } catch (error) {
-      console.error('🧪 Worker test failed:', error);
+      logger.error('🧪 Worker test failed:', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
       return false;
     }
   }
 
   public shutdown() {
-    console.log('🔄 Shutting down worker pool...');
+    logger.info('🔄 Shutting down worker pool...');
     this.isShuttingDown = true;
     
     // Terminate all workers
     this.workers.forEach((worker, index) => {
-      console.log(`🔄 Terminating worker ${index}...`);
+      logger.info(`🔄 Terminating worker ${index}...`);
       worker.terminate();
     });
     
@@ -396,7 +417,7 @@ console.log(\`✅ Worker \${workerId} ready for tasks\`);
     this.taskQueue = [];
     this.failedWorkerAttempts.clear();
     
-    console.log('✅ Worker pool shutdown complete');
+    logger.info('✅ Worker pool shutdown complete');
   }
 }
 

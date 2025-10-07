@@ -1,0 +1,1381 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2025-02-15",
+  "design_system": {
+    "name": "FlowTrainer Admin",
+    "base_font": "Inter, system-ui, sans-serif",
+    "color_palette": {
+      "primary": "#3f51b5",
+      "secondary": "#f50057",
+      "success": "#4caf50",
+      "warning": "#ff9800",
+      "error": "#f44336",
+      "background": "#f5f5f5",
+      "paper": "#ffffff",
+      "text": {
+        "primary": "rgba(0, 0, 0, 0.87)",
+        "secondary": "rgba(0, 0, 0, 0.6)",
+        "disabled": "rgba(0, 0, 0, 0.38)"
+      },
+      "grey": {
+        "50": "#fafafa",
+        "100": "#f5f5f5",
+        "200": "#eeeeee",
+        "300": "#e0e0e0",
+        "400": "#bdbdbd",
+        "500": "#9e9e9e",
+        "600": "#757575",
+        "700": "#616161",
+        "800": "#424242",
+        "900": "#212121"
+      }
+    },
+    "typography": {
+      "h1": { "size": "2.5rem", "weight": "600" },
+      "h2": { "size": "2rem", "weight": "600" },
+      "h3": { "size": "1.75rem", "weight": "600" },
+      "h4": { "size": "1.5rem", "weight": "500" },
+      "h5": { "size": "1.25rem", "weight": "500" },
+      "h6": { "size": "1rem", "weight": "500" },
+      "subtitle1": { "size": "1rem", "weight": "400" },
+      "subtitle2": { "size": "0.875rem", "weight": "500" },
+      "body1": { "size": "1rem", "weight": "400" },
+      "body2": { "size": "0.875rem", "weight": "400" },
+      "button": { "size": "0.875rem", "weight": "500", "transform": "uppercase" },
+      "caption": { "size": "0.75rem", "weight": "400" },
+      "overline": { "size": "0.75rem", "weight": "500", "transform": "uppercase" }
+    },
+    "spacing": {
+      "unit": 8,
+      "section": 24,
+      "container": 16
+    },
+    "shadows": [
+      "none",
+      "0 2px 1px -1px rgba(0,0,0,0.2),0 1px 1px 0 rgba(0,0,0,0.14),0 1px 3px 0 rgba(0,0,0,0.12)",
+      "0 3px 3px -2px rgba(0,0,0,0.2),0 3px 4px 0 rgba(0,0,0,0.14),0 1px 8px 0 rgba(0,0,0,0.12)",
+      "0 2px 4px -1px rgba(0,0,0,0.2),0 4px 5px 0 rgba(0,0,0,0.14),0 1px 10px 0 rgba(0,0,0,0.12)",
+      "0 3px 5px -1px rgba(0,0,0,0.2),0 6px 10px 0 rgba(0,0,0,0.14),0 1px 18px 0 rgba(0,0,0,0.12)",
+      "0 4px 5px -2px rgba(0,0,0,0.2),0 7px 10px 1px rgba(0,0,0,0.14),0 2px 16px 1px rgba(0,0,0,0.12)"
+    ],
+    "breakpoints": {
+      "xs": 0,
+      "sm": 600,
+      "md": 960,
+      "lg": 1280,
+      "xl": 1920
+    }
+  },
+  "pages": [
+    {
+      "id": "dashboard",
+      "name": "Dashboard",
+      "path": "/admin/dashboard",
+      "description": "Overview of system status and key metrics",
+      "components": [
+        {
+          "type": "Grid",
+          "props": {
+            "container": true,
+            "spacing": 3
+          },
+          "children": [
+            {
+              "type": "Grid",
+              "props": {
+                "item": true,
+                "xs": 12,
+                "md": 6,
+                "lg": 3"
+              },
+              "component": "MetricCard",
+              "props": {
+                "title": "Active Users",
+                "value": "1,248",
+                "change": 12.5,
+                "trend": "up",
+                "icon": "People"
+              }
+            },
+            {
+              "type": "Grid",
+              "props": {
+                "item": true,
+                "xs": 12,
+                "md": 6,
+                "lg": 3"
+              },
+              "component": "MetricCard",
+              "props": {
+                "title": "API Requests",
+                "value": "24.8K",
+                "change": 8.2,
+                "trend": "up",
+                "icon": "Api"
+              }
+            },
+            {
+              "type": "Grid",
+              "props": {
+                "item": true,
+                "xs": 12,
+                "md": 6,
+                "lg": 3"
+              },
+              "component": "MetricCard",
+              "props": {
+                "title": "Error Rate",
+                "value": "0.8%",
+                "change": -15.3,
+                "trend": "down",
+                "icon": "Error"
+              }
+            },
+            {
+              "type": "Grid",
+              "props": {
+                "item": true,
+                "xs": 12,
+                "md": 6,
+                "lg": 3"
+              },
+              "component": "MetricCard",
+              "props": {
+                "title": "Avg. Response Time",
+                "value": "128ms",
+                "change": -4.7,
+                "trend": "down",
+                "icon": "Speed"
+              }
+            }
+          ]
+        },
+        {
+          "type": "Grid",
+          "props": {
+            "container": true,
+            "spacing": 3,
+            "sx": { "mt": 1 }
+          },
+          "children": [
+            {
+              "type": "Grid",
+              "props": {
+                "item": true,
+                "xs": 12,
+                "lg": 8"
+              },
+              "component": "LineChart",
+              "props": {
+                "title": "API Performance",
+                "data": "apiPerformanceData",
+                "xAxisKey": "timestamp",
+                "lines": [
+                  { "dataKey": "responseTime", "name": "Response Time (ms)", "color": "#3f51b5" },
+                  { "dataKey": "requests", "name": "Requests", "color": "#4caf50", "yAxisId": "right" }
+                ],
+                "yAxes": [
+                  { "id": "left", "orientation": "left" },
+                  { "id": "right", "orientation": "right" }
+                ]
+              }
+            },
+            {
+              "type": "Grid",
+              "props": {
+                "item": true,
+                "xs": 12,
+                "lg": 4"
+              },
+              "component": "DoughnutChart",
+              "props": {
+                "title": "User Distribution",
+                "data": [
+                  { "name": "Free", "value": 65 },
+                  { "name": "Pro", "value": 25 },
+                  { "name": "Enterprise", "value": 10 }
+                ],
+                "colors": ["#3f51b5", "#4caf50", "#f50057"]
+              }
+            }
+          ]
+        },
+        {
+          "type": "Grid",
+          "props": {
+            "container": true,
+            "spacing": 3,
+            "sx": { "mt": 1 }
+          },
+          "children": [
+            {
+              "type": "Grid",
+              "props": {
+                "item": true,
+                "xs": 12,
+                "md": 6"
+              },
+              "component": "RecentActivity",
+              "props": {
+                "title": "Recent Activity",
+                "activities": "recentActivities",
+                "maxItems": 5
+              }
+            },
+            {
+              "type": "Grid",
+              "props": {
+                "item": true,
+                "xs": 12,
+                "md": 6"
+              },
+              "component": "SystemStatus",
+              "props": {
+                "title": "System Status",
+                "services": [
+                  { "name": "API Server", "status": "operational" },
+                  { "name": "Database", "status": "operational" },
+                  { "name": "Cache", "status": "degraded" },
+                  { "name": "Storage", "status": "operational" },
+                  { "name": "Authentication", "status": "operational" }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "users",
+      "name": "User Management",
+      "path": "/admin/users",
+      "description": "Manage system users and permissions",
+      "components": [
+        {
+          "type": "UserList",
+          "props": {
+            "title": "Users",
+            "columns": [
+              { "field": "id", "headerName": "ID", "width": 100 },
+              { "field": "name", "headerName": "Name", "width": 200 },
+              { "field": "email", "headerName": "Email", "width": 250 },
+              { 
+                "field": "role", 
+                "headerName": "Role", 
+                "width": 150,
+                "type": "singleSelect",
+                "valueOptions": ["user", "admin", "super-admin"]
+              },
+              { 
+                "field": "status", 
+                "headerName": "Status", 
+                "width": 120,
+                "type": "boolean",
+                "editable": true
+              },
+              { 
+                "field": "lastLogin", 
+                "headerName": "Last Login", 
+                "width": 180,
+                "type": "dateTime"
+              },
+              {
+                "field": "actions",
+                "headerName": "Actions",
+                "width": 150,
+                "type": "actions",
+                "getActions": ["edit", "delete", "impersonate"]
+              }
+            ],
+            "actions": [
+              {
+                "type": "button",
+                "variant": "contained",
+                "color": "primary",
+                "startIcon": "Add",
+                "text": "Add User",
+                "onClick": "openAddUserDialog"
+              },
+              {
+                "type": "button",
+                "variant": "outlined",
+                "startIcon": "Refresh",
+                "text": "Refresh",
+                "onClick": "refreshUsers"
+              }
+            ],
+            "filters": [
+              {
+                "field": "role",
+                "label": "Role",
+                "type": "select",
+                "options": [
+                  { "value": "", "label": "All Roles" },
+                  { "value": "user", "label": "User" },
+                  { "value": "admin", "label": "Admin" },
+                  { "value": "super-admin", "label": "Super Admin" }
+                ]
+              },
+              {
+                "field": "status",
+                "label": "Status",
+                "type": "select",
+                "options": [
+                  { "value": "", "label": "All Statuses" },
+                  { "value": "active", "label": "Active" },
+                  { "value": "inactive", "label": "Inactive" },
+                  { "value": "suspended", "label": "Suspended" }
+                ]
+              },
+              {
+                "field": "search",
+                "label": "Search",
+                "type": "text",
+                "placeholder": "Search users..."
+              }
+            ],
+            "pagination": {
+              "pageSize": 10,
+              "pageSizeOptions": [10, 25, 50, 100]
+            },
+            "rowSelection": true,
+            "bulkActions": [
+              {
+                "label": "Activate",
+                "icon": "CheckCircle",
+                "action": "activateUsers",
+                "requireConfirmation": true
+              },
+              {
+                "label": "Deactivate",
+                "icon": "Cancel",
+                "action": "deactivateUsers",
+                "requireConfirmation": true
+              },
+              {
+                "label": "Delete",
+                "icon": "Delete",
+                "action": "deleteUsers",
+                "requireConfirmation": true,
+                "color": "error"
+              }
+            ]
+          }
+        },
+        {
+          "type": "UserFormDialog",
+          "props": {
+            "open": "addUserDialogOpen",
+            "onClose": "closeAddUserDialog",
+            "title": "Add New User",
+            "fields": [
+              {
+                "name": "name",
+                "label": "Full Name",
+                "type": "text",
+                "required": true,
+                "fullWidth": true,
+                "margin": "normal"
+              },
+              {
+                "name": "email",
+                "label": "Email Address",
+                "type": "email",
+                "required": true,
+                "fullWidth": true,
+                "margin": "normal"
+              },
+              {
+                "name": "role",
+                "label": "Role",
+                "type": "select",
+                "required": true,
+                "options": [
+                  { "value": "user", "label": "User" },
+                  { "value": "admin", "label": "Admin" },
+                  { "value": "super-admin", "label": "Super Admin" }
+                ],
+                "fullWidth": true,
+                "margin": "normal"
+              },
+              {
+                "name": "sendInvitation",
+                "label": "Send invitation email",
+                "type": "checkbox",
+                "defaultValue": true
+              }
+            ],
+            "actions": [
+              {
+                "label": "Cancel",
+                "onClick": "closeAddUserDialog",
+                "color": "inherit"
+              },
+              {
+                "label": "Create User",
+                "type": "submit",
+                "color": "primary",
+                "variant": "contained"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "database",
+      "name": "Database Management",
+      "path": "/admin/database",
+      "description": "Manage database operations and maintenance",
+      "components": [
+        {
+          "type": "DatabaseOverview",
+          "props": {
+            "title": "Database Status",
+            "metrics": [
+              { "label": "Database Size", "value": "2.4 GB", "icon": "Storage" },
+              { "label": "Collections", "value": "24", "icon": "ListAlt" },
+              { "label": "Documents", "value": "124,856", "icon": "Description" },
+              { "label": "Indexes", "value": "42", "icon": "Search" }
+            ],
+            "charts": [
+              {
+                "type": "line",
+                "title": "Database Size Trend",
+                "data": "dbSizeData",
+                "xAxisKey": "date",
+                "lines": [
+                  { "dataKey": "size", "name": "Size (MB)", "color": "#3f51b5" }
+                ]
+              },
+              {
+                "type": "bar",
+                "title": "Collection Sizes",
+                "data": "collectionSizes",
+                "xAxisKey": "name",
+                "bars": [
+                  { "dataKey": "size", "name": "Size (MB)", "color": "#4caf50" }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "DatabaseActions",
+          "props": {
+            "title": "Database Actions",
+            "actions": [
+              {
+                "title": "Backup Database",
+                "description": "Create a complete backup of the database",
+                "icon": "Backup",
+                "color": "primary",
+                "onClick": "handleBackup",
+                "confirm": true,
+                "confirmTitle": "Create Database Backup?",
+                "confirmText": "This will create a backup of the entire database. This operation may take several minutes depending on the database size.",
+                "confirmButtonText": "Create Backup"
+              },
+              {
+                "title": "Optimize Database",
+                "description": "Run optimization tasks on the database",
+                "icon": "Build",
+                "color": "secondary",
+                "onClick": "handleOptimize",
+                "confirm": true,
+                "confirmTitle": "Optimize Database?",
+                "confirmText": "This will run optimization tasks which may temporarily impact performance.",
+                "confirmButtonText": "Run Optimization"
+              },
+              {
+                "title": "Reindex Database",
+                "description": "Rebuild all database indexes",
+                "icon": "Refresh",
+                "color": "warning",
+                "onClick": "handleReindex",
+                "confirm": true,
+                "confirmTitle": "Reindex Database?",
+                "confirmText": "This will rebuild all database indexes which may take some time and impact performance.",
+                "confirmButtonText": "Reindex"
+              },
+              {
+                "title": "Export Data",
+                "description": "Export database collections to JSON/CSV",
+                "icon": "GetApp",
+                "color": "info",
+                "onClick": "handleExportData"
+              },
+              {
+                "title": "Import Data",
+                "description": "Import data from backup or export",
+                "icon": "Publish",
+                "color": "success",
+                "onClick": "handleImportData"
+              },
+              {
+                "title": "Run Query",
+                "description": "Execute a custom database query",
+                "icon": "Code",
+                "color": "primary",
+                "onClick": "handleRunQuery"
+              }
+            ]
+          }
+        },
+        {
+          "type": "DatabaseTables",
+          "props": {
+            "title": "Database Collections",
+            "tables": [
+              { "name": "users", "count": 1243, "size": "245 MB", "indexes": 5 },
+              { "name": "workflows", "count": 5421, "size": "1.2 GB", "indexes": 8 },
+              { "name": "executions", "count": 24512, "size": "856 MB", "indexes": 6 },
+              { "name": "logs", "count": 124856, "size": "98 MB", "indexes": 3 },
+              { "name": "settings", "count": 42, "size": "1.2 MB", "indexes": 2 }
+            ],
+            "onView": "handleViewCollection",
+            "onEdit": "handleEditCollection"
+          }
+        },
+        {
+          "type": "DatabaseStats",
+          "props": {
+            "title": "Database Statistics",
+            "stats": [
+              { "label": "Uptime", "value": "14 days, 6 hours" },
+              { "label": "Version", "value": "MongoDB 6.0.5" },
+              { "label": "Storage Engine", "value": "WiredTiger" },
+              { "label": "Connections", "value": "24/1000" },
+              { "label": "Active Clients", "value": "18" },
+              { "label": "Queued Operations", "value": "0" },
+              { "label": "Current Queue", "value": "0" },
+              { "label": "Network In/Out", "value": "245 KB/s / 1.2 MB/s" },
+              { "label": "Page Faults", "value": "24/sec" },
+              { "label": "Flush Average", "value": "12ms" },
+              { "label": "Index Builds", "value": "0" },
+              { "label": "Background Flush Avg", "value": "8ms" }
+            ]
+          }
+        },
+        {
+          "type": "QueryPerformance",
+          "props": {
+            "title": "Slow Queries",
+            "queries": [
+              {
+                "query": "db.workflows.aggregate([...])",
+                "collection": "workflows",
+                "duration": 1245,
+                "scanned": 12456,
+                "returned": 10,
+                "timestamp": "2025-02-15T10:30:45Z"
+              },
+              {
+                "query": "db.users.find({ status: 'active' })",
+                "collection": "users",
+                "duration": 842,
+                "scanned": 1243,
+                "returned": 1243,
+                "timestamp": "2025-02-15T09:15:22Z"
+              },
+              {
+                "query": "db.executions.updateMany({...})",
+                "collection": "executions",
+                "duration": 623,
+                "scanned": 0,
+                "updated": 1245,
+                "timestamp": "2025-02-15T08:45:12Z"
+              }
+            ],
+            "onExplain": "handleExplainQuery",
+            "onKill": "handleKillOp"
+          }
+        },
+        {
+          "type": "IndexManager",
+          "props": {
+            "title": "Index Management",
+            "indexes": [
+              {
+                "name": "email_1",
+                "collection": "users",
+                "key": { "email": 1 },
+                "size": 24576,
+                "usage": 1243,
+                "since": "2025-01-10T14:30:00Z"
+              },
+              {
+                "name": "workflow_status_1_createdAt_-1",
+                "collection": "workflows",
+                "key": { "status": 1, "createdAt": -1 },
+                "size": 15728640,
+                "usage": 12456,
+                "since": "2025-01-15T09:15:00Z"
+              },
+              {
+                "name": "execution_workflowId_1_createdAt_-1",
+                "collection": "executions",
+                "key": { "workflowId": 1, "createdAt": -1 },
+                "size": 31457280,
+                "usage": 24512,
+                "since": "2025-01-20T11:30:00Z"
+              }
+            ],
+            "onCreateIndex": "handleCreateIndex",
+            "onDropIndex": "handleDropIndex",
+            "onAnalyzeIndex": "handleAnalyzeIndex"
+          }
+        },
+        {
+          "type": "BackupRestore",
+          "props": {
+            "title": "Backup & Restore",
+            "backups": [
+              {
+                "id": "backup-20250214-120000",
+                "name": "Full Backup - 2025-02-14 12:00:00",
+                "type": "full",
+                "size": "2.1 GB",
+                "status": "completed",
+                "createdAt": "2025-02-14T12:00:00Z",
+                "expiresAt": "2025-03-16T12:00:00Z"
+              },
+              {
+                "id": "backup-20250213-000000",
+                "name": "Incremental - 2025-02-13 00:00:00",
+                "type": "incremental",
+                "size": "245 MB",
+                "status": "completed",
+                "createdAt": "2025-02-13T00:00:00Z",
+                "expiresAt": "2025-03-15T00:00:00Z"
+              },
+              {
+                "id": "backup-20250207-000000",
+                "name": "Full Backup - 2025-02-07 00:00:00",
+                "type": "full",
+                "size": "1.9 GB",
+                "status": "expired",
+                "createdAt": "2025-02-07T00:00:00Z",
+                "expiresAt": "2025-03-09T00:00:00Z"
+              }
+            ],
+            "onCreateBackup": "handleCreateBackup",
+            "onRestoreBackup": "handleRestoreBackup",
+            "onDownloadBackup": "handleDownloadBackup",
+            "onDeleteBackup": "handleDeleteBackup",
+            "onScheduleBackup": "handleScheduleBackup",
+            "backupSettings": {
+              "enabled": true,
+              "schedule": "0 0 * * 0", // Weekly on Sunday at midnight
+              "retentionDays": 30,
+              "storageLocation": "/var/backups/flowtrainer",
+              "compression": "gzip",
+              "notifyOnCompletion": true,
+              "notifyOnFailure": true
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "system-config",
+      "name": "System Configuration",
+      "path": "/admin/system-config",
+      "description": "Configure system settings and features",
+      "components": [
+        {
+          "type": "ConfigTabs",
+          "props": {
+            "tabs": [
+              { "label": "General", "value": "general" },
+              { "label": "Authentication", "value": "auth" },
+              { "label": "Email", "value": "email" },
+              { "label": "Storage", "value": "storage" },
+              { "label": "Caching", "value": "caching" },
+              { "label": "Logging", "value": "logging" },
+              { "label": "API", "value": "api" },
+              { "label": "Advanced", "value": "advanced" }
+            ],
+            "defaultTab": "general",
+            "onChange": "handleTabChange"
+          }
+        },
+        {
+          "type": "ConfigForm",
+          "props": {
+            "sections": [
+              {
+                "title": "General Settings",
+                "fields": [
+                  {
+                    "name": "appName",
+                    "label": "Application Name",
+                    "type": "text",
+                    "defaultValue": "FlowTrainer",
+                    "description": "The name displayed in the application header and browser tab"
+                  },
+                  {
+                    "name": "timezone",
+                    "label": "Default Timezone",
+                    "type": "select",
+                    "options": "timezones",
+                    "defaultValue": "UTC",
+                    "description": "Default timezone for date and time display"
+                  },
+                  {
+                    "name": "dateFormat",
+                    "label": "Date Format",
+                    "type": "select",
+                    "options": [
+                      { "value": "MM/DD/YYYY", "label": "MM/DD/YYYY" },
+                      { "value": "DD/MM/YYYY", "label": "DD/MM/YYYY" },
+                      { "value": "YYYY-MM-DD", "label": "YYYY-MM-DD" }
+                    ],
+                    "defaultValue": "YYYY-MM-DD"
+                  },
+                  {
+                    "name": "timeFormat",
+                    "label": "Time Format",
+                    "type": "select",
+                    "options": [
+                      { "value": "12h", "label": "12-hour (e.g., 2:30 PM)" },
+                      { "value": "24h", "label": "24-hour (e.g., 14:30)" }
+                    ],
+                    "defaultValue": "12h"
+                  },
+                  {
+                    "name": "itemsPerPage",
+                    "label": "Items Per Page",
+                    "type": "number",
+                    "min": 5,
+                    "max": 100,
+                    "defaultValue": 25,
+                    "description": "Default number of items to display per page in lists"
+                  },
+                  {
+                    "name": "enableAnalytics",
+                    "label": "Enable Analytics",
+                    "type": "switch",
+                    "defaultValue": true,
+                    "description": "Collect anonymous usage statistics to help improve the application"
+                  },
+                  {
+                    "name": "maintenanceMode",
+                    "label": "Maintenance Mode",
+                    "type": "switch",
+                    "defaultValue": false,
+                    "description": "When enabled, only administrators can access the system"
+                  },
+                  {
+                    "name": "maintenanceMessage",
+                    "label": "Maintenance Message",
+                    "type": "textarea",
+                    "defaultValue": "The system is currently undergoing maintenance. Please check back later.",
+                    "description": "Message to display when maintenance mode is enabled",
+                    "showWhen": "maintenanceMode === true"
+                  }
+                ]
+              },
+              {
+                "title": "User Interface",
+                "fields": [
+                  {
+                    "name": "theme",
+                    "label": "Default Theme",
+                    "type": "select",
+                    "options": [
+                      { "value": "light", "label": "Light" },
+                      { "value": "dark", "label": "Dark" },
+                      { "value": "system", "label": "System Default" }
+                    ],
+                    "defaultValue": "system"
+                  },
+                  {
+                    "name": "primaryColor",
+                    "label": "Primary Color",
+                    "type": "color",
+                    "defaultValue": "#3f51b5"
+                  },
+                  {
+                    "name": "secondaryColor",
+                    "label": "Secondary Color",
+                    "type": "color",
+                    "defaultValue": "#f50057"
+                  },
+                  {
+                    "name": "enableAnimations",
+                    "label": "Enable Animations",
+                    "type": "switch",
+                    "defaultValue": true
+                  }
+                ]
+              }
+            ],
+            "onSubmit": "handleSaveConfig",
+            "onReset": "handleResetConfig",
+            "actions": [
+              {
+                "type": "button",
+                "variant": "outlined",
+                "color": "inherit",
+                "onClick": "handleReset",
+                "text": "Reset to Defaults"
+              },
+              {
+                "type": "button",
+                "variant": "contained",
+                "color": "primary",
+                "onClick": "handleSubmit",
+                "text": "Save Changes"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "components": {
+    "common": [
+      {
+        "name": "AdminLayout",
+        "description": "Main layout component for admin pages",
+        "props": {
+          "title": "string",
+          "breadcrumbs": "Array<{label: string, href?: string}>",
+          "children": "ReactNode",
+          "loading": "boolean",
+          "error": "Error | null",
+          "onRetry": "() => void"
+        }
+      },
+      {
+        "name": "AdminHeader",
+        "description": "Header component with title and actions",
+        "props": {
+          "title": "string",
+          "subtitle": "string",
+          "actions": "ReactNode"
+        }
+      },
+      {
+        "name": "Sidebar",
+        "description": "Navigation sidebar for admin interface",
+        "props": {
+          "open": "boolean",
+          "onClose": "() => void",
+          "items": "Array<{text: string, icon: string, path: string, badge?: string | number}>"
+        }
+      },
+      {
+        "name": "Breadcrumbs",
+        "description": "Breadcrumb navigation component",
+        "props": {
+          "items": "Array<{label: string, href?: string}>",
+          "maxItems": "number"
+        }
+      },
+      {
+        "name": "MetricCard",
+        "description": "Card displaying a single metric with optional trend indicator",
+        "props": {
+          "title": "string",
+          "value": "string | number",
+          "icon": "string",
+          "color": "string",
+          "trend": "'up' | 'down' | 'neutral'",
+          "trendValue": "string | number",
+          "onClick": "() => void"
+        }
+      },
+      {
+        "name": "DataTable",
+        "description": "Configurable data table with sorting, filtering, and pagination",
+        "props": {
+          "columns": "Array<Column>",
+          "data": "any[]",
+          "loading": "boolean",
+          "pagination": "{page: number, pageSize: number, total: number}",
+          "onPageChange": "(page: number) => void",
+          "onPageSizeChange": "(pageSize: number) => void",
+          "onSort": "(sortBy: string, sortOrder: 'asc' | 'desc') => void",
+          "onRowClick": "(row: any) => void",
+          "rowSelection": "boolean | {selectedRows: any[], onSelectionChange: (selectedRows: any[]) => void}",
+          "actions": "Array<{icon: string, tooltip: string, onClick: (row: any) => void}>"
+        }
+      },
+      {
+        "name": "ConfirmationDialog",
+        "description": "Reusable confirmation dialog",
+        "props": {
+          "open": "boolean",
+          "title": "string",
+          "content": "string | ReactNode",
+          "onConfirm": "() => void",
+          "onCancel": "() => void",
+          "confirmText": "string",
+          "cancelText": "string",
+          "severity": "'error' | 'warning' | 'info' | 'success'"
+        }
+      },
+      {
+        "name": "StatusBadge",
+        "description": "Badge for displaying status with appropriate color",
+        "props": {
+          "status": "string",
+          "label": "string",
+          "variant": "'filled' | 'outlined'"
+        }
+      },
+      {
+        "name": "JsonViewer",
+        "description": "Component for viewing and editing JSON data",
+        "props": {
+          "data": "object",
+          "name": "string",
+          "collapsed": "boolean | number",
+          "enableClipboard": "boolean",
+          "displayDataTypes": "boolean",
+          "displayObjectSize": "boolean",
+          "onEdit": "(updatedData: object) => void"
+        }
+      },
+      {
+        "name": "CodeEditor",
+        "description": "Syntax-highlighted code editor",
+        "props": {
+          "value": "string",
+          "language": "string",
+          "onChange": "(value: string) => void",
+          "readOnly": "boolean",
+          "lineNumbers": "boolean",
+          "theme": "string"
+        }
+      }
+    ]
+  },
+  "responsive_breakpoints": {
+    "xs": {
+      "min": 0,
+      "max": 599,
+      "description": "Extra small devices (phones, 600px and down)"
+    },
+    "sm": {
+      "min": 600,
+      "max": 959,
+      "description": "Small devices (portrait tablets and large phones, 600px and up)"
+    },
+    "md": {
+      "min": 960,
+      "max": 1279,
+      "description": "Medium devices (landscape tablets, 960px and up)"
+    },
+    "lg": {
+      "min": 1280,
+      "max": 1919,
+      "description": "Large devices (laptops/desktops, 1280px and up)"
+    },
+    "xl": {
+      "min": 1920,
+      "max": 5000,
+      "description": "Extra large devices (large laptops and desktops, 1920px and up)"
+    }
+  },
+  "accessibility": {
+    "keyboard_navigation": {
+      "tab": "Move focus between interactive elements",
+      "enter/space": "Activate buttons and links",
+      "arrow keys": "Navigate between related items (tabs, menu items, etc.)",
+      "esc": "Close dialogs and menus"
+    },
+    "aria_labels": {
+      "required": true,
+      "examples": {
+        "close_button": "Close dialog",
+        "menu_toggle": "Toggle navigation menu",
+        "search": "Search users"
+      }
+    },
+    "color_contrast": {
+      "minimum_ratio": "4.5:1",
+      "large_text_ratio": "3:1",
+      "validation_tool": "https://webaim.org/resources/contrastchecker/"
+    },
+    "keyboard_traps": {
+      "description": "Modal dialogs should trap focus and be dismissible with the ESC key",
+      "implementation_guide": "https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/"
+    }
+  },
+  "localization": {
+    "default_locale": "en-US",
+    "supported_locales": ["en-US", "es-ES", "fr-FR", "de-DE", "ja-JP"],
+    "date_time_formats": {
+      "en-US": {
+        "short_date": "MM/dd/yyyy",
+        "medium_date": "MMM d, yyyy",
+        "long_date": "MMMM d, yyyy",
+        "short_time": "h:mm a",
+        "medium_time": "h:mm:ss a",
+        "long_time": "h:mm:ss a z",
+        "short_datetime": "MM/dd/yyyy h:mm a",
+        "medium_datetime": "MMM d, yyyy h:mm a",
+        "long_datetime": "EEEE, MMMM d, yyyy 'at' h:mm a z"
+      }
+    },
+    "number_formats": {
+      "en-US": {
+        "currency": {
+          "style": "currency",
+          "currency": "USD",
+          "minimumFractionDigits": 2,
+          "maximumFractionDigits": 2
+        },
+        "percent": {
+          "style": "percent",
+          "minimumFractionDigits": 0,
+          "maximumFractionDigits": 2
+        },
+        "decimal": {
+          "style": "decimal",
+          "minimumFractionDigits": 0,
+          "maximumFractionDigits": 2
+        }
+      }
+    }
+  },
+  "performance_considerations": {
+    "code_splitting": {
+      "description": "Admin routes should be code-split to reduce initial bundle size",
+      "implementation": "Use React.lazy() and Suspense for route-based code splitting"
+    },
+    "virtualization": {
+      "description": "Use virtualization for long lists to improve rendering performance",
+      "components": [
+        "react-window",
+        "react-virtualized"
+      ]
+    },
+    "memoization": {
+      "description": "Memoize expensive calculations and component renders",
+      "hooks": [
+        "useMemo",
+        "useCallback",
+        "React.memo"
+      ]
+    },
+    "bundle_analysis": {
+      "description": "Regularly analyze bundle size to identify optimization opportunities",
+      "tools": [
+        "webpack-bundle-analyzer",
+        "source-map-explorer"
+      ]
+    }
+  },
+  "browser_support": {
+    "desktop": [
+      "Chrome (latest)",
+      "Firefox (latest)",
+      "Safari (latest)",
+      "Edge (latest)"
+    ],
+    "mobile": [
+      "Chrome for Android (latest)",
+      "iOS Safari (latest 2 versions)"
+    ],
+    "not_supported": [
+      "IE 11",
+      "Safari < 14"
+    ]
+  },
+  "version_control": {
+    "branch_strategy": "git-flow",
+    "commit_message_format": "Conventional Commits (https://www.conventionalcommits.org/)",
+    "branch_naming": {
+      "feature": "feature/feature-name",
+      "bugfix": "bugfix/description",
+      "hotfix": "hotfix/description",
+      "release": "release/x.y.z"
+    }
+  },
+  "deployment": {
+    "environments": [
+      {
+        "name": "development",
+        "url": "http://localhost:3000",
+        "api_url": "http://localhost:4000",
+        "description": "Local development environment"
+      },
+      {
+        "name": "staging",
+        "url": "https://staging.flowtrainer.app",
+        "api_url": "https://api.staging.flowtrainer.app",
+        "description": "Staging environment for testing"
+      },
+      {
+        "name": "production",
+        "url": "https://app.flowtrainer.com",
+        "api_url": "https://api.flowtrainer.com",
+        "description": "Production environment"
+      }
+    ],
+    "ci_cd": {
+      "provider": "GitHub Actions",
+      "workflow_files": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/cd-staging.yml",
+        ".github/workflows/cd-production.yml"
+      ]
+    }
+  },
+  "analytics": {
+    "enabled": true,
+    "provider": "Google Analytics 4",
+    "events": [
+      {
+        "name": "page_view",
+        "description": "Track page views",
+        "properties": ["page_path", "page_title"]
+      },
+      {
+        "name": "button_click",
+        "description": "Track button clicks",
+        "properties": ["button_id", "button_text", "page_path"]
+      },
+      {
+        "name": "form_submit",
+        "description": "Track form submissions",
+        "properties": ["form_name", "form_data"]
+      },
+      {
+        "name": "error",
+        "description": "Track client-side errors",
+        "properties": ["error_message", "stack_trace", "component_stack"]
+      }
+    ],
+    "privacy": {
+      "anonymize_ip": true,
+      "respect_dnt": true,
+      "data_retention": "26 months"
+    }
+  },
+  "error_handling": {
+    "client_side": {
+      "error_boundary": {
+        "component": "ErrorBoundary",
+        "fallback_ui": "ErrorFallback",
+        "log_errors": true
+      },
+      "error_codes": {
+        "AUTH_001": "Authentication failed",
+        "AUTH_002": "Session expired",
+        "API_001": "Network error",
+        "API_002": "Server error",
+        "VALIDATION_001": "Invalid input"
+      }
+    },
+    "server_side": {
+      "logging": {
+        "level": "error",
+        "format": "json",
+        "transport": ["console", "file"]
+      },
+      "monitoring": {
+        "enabled": true,
+        "provider": "Sentry",
+        "sample_rate": 1.0
+      }
+    }
+  },
+  "security": {
+    "authentication": {
+      "jwt": {
+        "secret": "process.env.JWT_SECRET",
+        "expires_in": "15m",
+        "refresh_expires_in": "7d",
+        "algorithm": "HS256"
+      },
+      "password_policy": {
+        "min_length": 12,
+        "require_uppercase": true,
+        "require_lowercase": true,
+        "require_numbers": true,
+        "require_special_chars": true,
+        "max_age_days": 90,
+        "history_size": 5
+      },
+      "rate_limiting": {
+        "login_attempts": 5,
+        "lockout_time_minutes": 15,
+        "requests_per_minute": 100
+      }
+    },
+    "cors": {
+      "allowed_origins": ["https://app.flowtrainer.com", "https://staging.flowtrainer.app"],
+      "allowed_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      "allowed_headers": ["Content-Type", "Authorization"],
+      "allow_credentials": true
+    },
+    "headers": {
+      "content_security_policy": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://api.flowtrainer.com;",
+      "strict_transport_security": "max-age=31536000; includeSubDomains; preload",
+      "x_content_type_options": "nosniff",
+      "x_frame_options": "DENY",
+      "x_xss_protection": "1; mode=block"
+    },
+    "session_management": {
+      "http_only": true,
+      "secure": true,
+      "same_site": "Lax",
+      "max_age_seconds": 604800
+    },
+    "data_protection": {
+      "encryption_at_rest": true,
+      "encryption_in_transit": true,
+      "pii_handling": {
+        "masking": ["password", "api_key", "access_token"],
+        "redaction": ["credit_card", "ssn", "phone_number"]
+      },
+      "data_retention": {
+        "user_data": "Until account deletion",
+        "logs": "30 days",
+        "backups": "90 days"
+      }
+    },
+    "audit_logging": {
+      "enabled": true,
+      "log_level": "info",
+      "events": [
+        "user_login",
+        "user_logout",
+        "user_password_change",
+        "user_role_change",
+        "user_creation",
+        "user_deletion",
+        "data_access",
+        "data_modification",
+        "system_configuration_change"
+      ],
+      "retention_days": 365
+    }
+  },
+  "testing_strategy": {
+    "unit_tests": {
+      "framework": "Jest",
+      "coverage_threshold": 80,
+      "test_files": ["**/*.test.{js,jsx,ts,tsx}"],
+      "mock_strategy": "jest.mock"
+    },
+    "component_tests": {
+      "framework": "React Testing Library",
+      "test_files": ["**/*.spec.{js,jsx,ts,tsx}"],
+      "coverage_threshold": 70
+    },
+    "integration_tests": {
+      "framework": "Cypress",
+      "test_files": ["cypress/e2e/**/*.cy.{js,jsx,ts,tsx}"],
+      "coverage_threshold": 60
+    },
+    "api_tests": {
+      "framework": "Supertest",
+      "test_files": ["**/*.api.test.{js,ts}"],
+      "coverage_threshold": 80
+    },
+    "performance_tests": {
+      "framework": "Lighthouse CI",
+      "thresholds": {
+        "performance": 90,
+        "accessibility": 90,
+        "best-practices": 90,
+        "seo": 80
+      }
+    },
+    "test_environment": {
+      "node_version": ">=16.0.0",
+      "browsers": ["chrome", "firefox", "safari"],
+      "test_database": "MongoDB Memory Server"
+    },
+    "test_coverage": {
+      "collect_coverage": true,
+      "coverage_reporters": ["text", "lcov", "clover"],
+      "coverage_directory": "coverage"
+    },
+    "test_automation": {
+      "ci_cd_integration": true,
+      "pre_commit_hooks": ["lint-staged", "pretty-quick --staged"],
+      "pre_push_hooks": ["npm test"]
+    }
+  },
+  "documentation": {
+    "component_library": "Storybook",
+    "api_documentation": "Swagger/OpenAPI",
+    "style_guide": "Storybook + Figma",
+    "architecture_diagrams": "Mermaid.js",
+    "deployment_guide": "README.md + Wiki",
+    "troubleshooting": "TROUBLESHOOTING.md"
+  },
+  "maintenance": {
+    "scheduled_downtime": {
+      "window": "Sunday 2:00 AM - 4:00 AM UTC",
+      "notification_period": "72 hours in advance",
+      "channels": ["email", "in-app", "status page"]
+    },
+    "backup_schedule": {
+      "full_backup": "Weekly (Sundays at 1:00 AM UTC)",
+      "incremental_backup": "Daily at 1:00 AM UTC",
+      "retention": "30 days"
+    },
+    "monitoring": {
+      "uptime": "99.9%",
+      "response_time": "<500ms (p95)",
+      "error_rate": "<0.1%"
+    },
+    "support": {
+      "response_time": {
+        "critical": "<15 minutes",
+        "high": "<4 hours",
+        "normal": "<24 hours",
+        "low": "<72 hours"
+      },
+      "channels": ["email", "chat", "help_center"]
+    }
+  },
+  "glossary": {
+    "roles": {
+      "super-admin": "Has full access to all system features and settings",
+      "admin": "Can manage users and access most system features",
+      "user": "Standard user with limited access to system features"
+    },
+    "permissions": {
+      "read_users": "View user information",
+      "manage_users": "Create, update, and delete users",
+      "read_system_metrics": "View system performance metrics",
+      "manage_system_config": "Modify system configuration"
+    },
+    "statuses": {
+      "active": "User can log in and use the system",
+      "inactive": "User cannot log in but account is preserved",
+      "suspended": "User account is temporarily disabled"
+    }
+  },
+  "appendix": {
+    "revision_history": [
+      {
+        "version": "1.0.0",
+        "date": "2025-02-15",
+        "author": "FlowTrainer Team",
+        "changes": "Initial version of the admin dashboard wireframes and specifications"
+      }
+    ],
+    "related_documents": [
+      "API_DOCUMENTATION.md",
+      "DATABASE_SCHEMA.md",
+      "FRONTEND_ARCHITECTURE.md",
+      "DEPLOYMENT_GUIDE.md"
+    ],
+    "contact_information": {
+      "support_email": "support@flowtrainer.com",
+      "engineering_team": "engineering@flowtrainer.com",
+      "security_concerns": "security@flowtrainer.com"
+    },
+    "license": "Proprietary - © 2025 FlowTrainer. All rights reserved."
+  }
+}

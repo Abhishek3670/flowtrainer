@@ -29,7 +29,7 @@
     
     // ===== TYPE DEFINITIONS =====
     
-    "types": ["node"]                      // Include Node.js type definitions
+    "types": ["node", "jest"]              // Include Node.js and Jest type definitions
   },
   
   // ===== PROJECT STRUCTURE =====

@@ -1,0 +1,364 @@
+{
+  "version": "1.0.0",
+  "last_updated": "2025-02-15",
+  "schema_changes": [
+    {
+      "model": "User",
+      "action": "extend",
+      "description": "Add admin-related fields to User model",
+      "fields": [
+        {
+          "name": "role",
+          "type": "String",
+          "enum": ["user", "admin", "super-admin"],
+          "default": "user",
+          "index": true,
+          "required": true
+        },
+        {
+          "name": "permissions",
+          "type": "[String]",
+          "default": [],
+          "description": "Additional permissions beyond role-based ones"
+        },
+        {
+          "name": "lastLogin",
+          "type": "Date",
+          "index": true,
+          "description": "Timestamp of last successful login"
+        },
+        {
+          "name": "isActive",
+          "type": "Boolean",
+          "default": true,
+          "index": true
+        },
+        {
+          "name": "adminNotes",
+          "type": "String",
+          "optional": true
+        },
+        {
+          "name": "loginAttempts",
+          "type": "Number",
+          "default": 0
+        },
+        {
+          "name": "lockUntil",
+          "type": "Date",
+          "optional": true
+        }
+      ],
+      "indexes": [
+        {
+          "fields": { "email": 1 },
+          "options": { "unique": true }
+        },
+        {
+          "fields": { "role": 1, "isActive": 1 }
+        }
+      ]
+    },
+    {
+      "model": "SystemConfig",
+      "action": "create",
+      "description": "System configuration key-value store",
+      "fields": [
+        {
+          "name": "key",
+          "type": "String",
+          "required": true,
+          "unique": true,
+          "index": true
+        },
+        {
+          "name": "value",
+          "type": "Mixed",
+          "required": true
+        },
+        {
+          "name": "dataType",
+          "type": "String",
+          "enum": ["string", "number", "boolean", "object", "array"],
+          "required": true
+        },
+        {
+          "name": "category",
+          "type": "String",
+          "index": true,
+          "default": "general"
+        },
+        {
+          "name": "description",
+          "type": "String",
+          "optional": true
+        },
+        {
+          "name": "isPublic",
+          "type": "Boolean",
+          "default": false
+        },
+        {
+          "name": "version",
+          "type": "Number",
+          "default": 1
+        },
+        {
+          "name": "createdBy",
+          "type": "ObjectId",
+          "ref": "User",
+          "required": true
+        },
+        {
+          "name": "updatedBy",
+          "type": "ObjectId",
+          "ref": "User"
+        },
+        {
+          "name": "createdAt",
+          "type": "Date",
+          "default": "Date.now"
+        },
+        {
+          "name": "updatedAt",
+          "type": "Date",
+          "default": "Date.now"
+        }
+      ],
+      "indexes": [
+        {
+          "fields": { "key": 1 },
+          "options": { "unique": true }
+        },
+        {
+          "fields": { "category": 1, "isPublic": 1 }
+        }
+      ]
+    },
+    {
+      "model": "SystemMetrics",
+      "action": "create",
+      "description": "System performance and health metrics",
+      "fields": [
+        {
+          "name": "timestamp",
+          "type": "Date",
+          "index": true,
+          "default": "Date.now"
+        },
+        {
+          "name": "cpu",
+          "type": {
+            "usage": "Number",
+            "loadavg": "[Number]"
+          }
+        },
+        {
+          "name": "memory",
+          "type": {
+            "total": "Number",
+            "free": "Number",
+            "used": "Number",
+            "process": {
+              "rss": "Number",
+              "heapTotal": "Number",
+              "heapUsed": "Number",
+              "external": "Number"
+            }
+          }
+        },
+        {
+          "name": "disk",
+          "type": {
+            "total": "Number",
+            "free": "Number",
+            "used": "Number",
+            "usagePercentage": "Number"
+          }
+        },
+        {
+          "name": "network",
+          "type": {
+            "interfaces": "Mixed",
+            "connections": "Number"
+          }
+        },
+        {
+          "name": "process",
+          "type": {
+            "uptime": "Number",
+            "memoryUsage": "Number",
+            "cpuUsage": "Number",
+            "nodeVersion": "String",
+            "pid": "Number"
+          }
+        },
+        {
+          "name": "database",
+          "type": {
+            "connections": "Number",
+            "collections": "Number",
+            "models": "Number",
+            "operations": {
+              "insert": "Number",
+              "queries": "Number",
+              "update": "Number",
+              "delete": "Number",
+              "getmore": "Number",
+              "command": "Number"
+            },
+            "latency": {
+              "reads": "Number",
+              "writes": "Number",
+              "commands": "Number"
+            }
+          }
+        },
+        {
+          "name": "cache",
+          "type": {
+            "status": "String",
+            "keys": "Number",
+            "memoryUsage": "Number",
+            "hitRate": "Number",
+            "missRate": "Number"
+          }
+        },
+        {
+          "name": "application",
+          "type": {
+            "users": {
+              "active": "Number",
+              "total": "Number"
+            },
+            "requests": {
+              "total": "Number",
+              "statusCodes": "Object"
+            },
+            "responseTime": {
+              "avg": "Number",
+              "max": "Number",
+              "min": "Number"
+            },
+            "errors": {
+              "count": "Number",
+              "types": "Object"
+            }
+          }
+        }
+      ],
+      "indexes": [
+        {
+          "fields": { "timestamp": -1 },
+          "options": { "expireAfterSeconds": 2592000 } // 30 days TTL
+        },
+        {
+          "fields": { "timestamp": 1 }
+        }
+      ]
+    },
+    {
+      "model": "UserActivity",
+      "action": "create",
+      "description": "Audit log of user actions",
+      "fields": [
+        {
+          "name": "userId",
+          "type": "ObjectId",
+          "ref": "User",
+          "index": true,
+          "required": true
+        },
+        {
+          "name": "action",
+          "type": "String",
+          "required": true,
+          "index": true
+        },
+        {
+          "name": "entityType",
+          "type": "String",
+          "index": true
+        },
+        {
+          "name": "entityId",
+          "type": "String",
+          "index": true
+        },
+        {
+          "name": "ipAddress",
+          "type": "String"
+        },
+        {
+          "name": "userAgent",
+          "type": "String"
+        },
+        {
+          "name": "metadata",
+          "type": "Mixed"
+        },
+        {
+          "name": "status",
+          "type": "String",
+          "enum": ["success", "failed", "pending"],
+          "default": "success"
+        },
+        {
+          "name": "timestamp",
+          "type": "Date",
+          "default": "Date.now",
+          "index": true
+        }
+      ],
+      "indexes": [
+        {
+          "fields": { "userId": 1, "timestamp": -1 }
+        },
+        {
+          "fields": { "action": 1, "timestamp": -1 }
+        },
+        {
+          "fields": { "entityType": 1, "entityId": 1 }
+        },
+        {
+          "fields": { "timestamp": -1 },
+          "options": { "expireAfterSeconds": 7776000 } // 90 days TTL
+        }
+      ]
+    }
+  ],
+  "migrations": [
+    {
+      "name": "initial_admin_setup",
+      "description": "Initial admin setup with default admin user",
+      "up": "migrations/001_initial_admin_setup.js",
+      "down": "migrations/001_initial_admin_setup.down.js"
+    },
+    {
+      "name": "add_admin_fields_to_user",
+      "description": "Add admin-related fields to User model",
+      "up": "migrations/002_add_admin_fields_to_user.js",
+      "down": "migrations/002_add_admin_fields_to_user.down.js"
+    },
+    {
+      "name": "create_system_models",
+      "description": "Create SystemConfig, SystemMetrics, and UserActivity models",
+      "up": "migrations/003_create_system_models.js",
+      "down": "migrations/003_create_system_models.down.js"
+    }
+  ],
+  "validation_rules": {
+    "user_emails": "Must be unique and valid email format",
+    "role_assignments": "Only super-admin can assign admin roles",
+    "config_changes": "All config changes must be audited",
+    "data_retention": "User activity logs expire after 90 days",
+    "metrics_retention": "System metrics expire after 30 days"
+  },
+  "security_considerations": [
+    "Sensitive fields (like passwords) must be hashed before storage",
+    "API keys and secrets must be encrypted at rest",
+    "All database queries must use parameterized queries to prevent injection",
+    "Access to admin endpoints must be restricted by role",
+    "All admin actions must be logged in the audit trail"
+  ]
+}

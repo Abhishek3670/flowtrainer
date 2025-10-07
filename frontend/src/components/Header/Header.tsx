@@ -13,16 +13,11 @@
  * - Theme switching (light/dark mode)
  * - System status monitoring
  * - Keyboard shortcut support
+ * - User profile and logout
  * 
  * Keyboard Shortcuts:
  * - Ctrl+Z / Cmd+Z: Undo
  * - Ctrl+Y / Cmd+Shift+Z: Redo
- * 
- * Props:
- * - Workflow state management (save, undo, redo)
- * - Execution controls (run, status)
- * - System configuration (auto-save, theme)
- * - Checkpoint management
  */
 
 import React, { useEffect, useState } from 'react';
@@ -33,14 +28,19 @@ import {
   Redo,
   Brain,
   ChevronRight,
-  Sun,
-  Moon,
   Play,
   Activity,
+  User,
+  LogOut,
+  ChevronDown,
 } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuthContext } from '../../hooks/useAuthContext';
 import { useSystemStatus } from '../../hooks/useSystemStatus';
 import SystemDashboard from '../SystemDashboard/SystemDashboard';
+import { useNavigate } from 'react-router-dom';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 
 /**
  * Header component props interface
@@ -99,11 +99,21 @@ const Header: React.FC<HeaderProps> = ({
   // Theme context for light/dark mode switching
   const { theme, toggleTheme } = useTheme();
   
+  // Auth context (either unified or admin)
+  const authContext = useAuthContext();
+  const { user, isAuthenticated, logout } = authContext || { user: null, isAuthenticated: false, logout: () => {} };
+  
   // System status monitoring for resource utilization
   const { systemStatus } = useSystemStatus();
   
   // Local state for system dashboard visibility
   const [showSystemDashboard, setShowSystemDashboard] = useState(false);
+  
+  // Navigation hook
+  const navigate = useNavigate();
+  
+  // State for admin dropdown menu
+  const [showAdminMenu, setShowAdminMenu] = useState(false);
 
   // ===== KEYBOARD SHORTCUTS =====
   
@@ -138,6 +148,28 @@ const Header: React.FC<HeaderProps> = ({
     // Clean up event listener on component unmount
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onUndo, onRedo, disableUndo, disableRedo]);
+
+  // Close profile dropdown menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (showAdminMenu) {
+        const profileMenu = document.querySelector('.absolute.right-0.mt-2.w-56');
+        const profileButton = event.target as Element;
+        
+        // Check if click is outside the profile dropdown and button
+        if (profileMenu && 
+            !profileMenu.contains(event.target as Node) && 
+            !profileButton.closest('button.flex.items-center.space-x-2')) {
+          setShowAdminMenu(false);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showAdminMenu]);
 
   // ===== SYSTEM STATUS UTILITIES =====
   
@@ -185,6 +217,13 @@ const Header: React.FC<HeaderProps> = ({
   };
 
   const systemStatusInfo = getSystemStatusInfo();
+
+  // ===== NAVIGATION FUNCTIONS =====
+  
+  const handleAdminDashboardClick = () => {
+    navigate('/admin/dashboard');
+    setShowAdminMenu(false);
+  };
 
   return (
     <>
@@ -343,20 +382,74 @@ const Header: React.FC<HeaderProps> = ({
             </button>
           </div>
 
+          {/* Theme toggle button with Material-UI icons */}
           <button
             onClick={toggleTheme}
             className="btn btn-outline p-2"
           >
             {theme === 'light' ? (
-              <Moon className="w-4 h-4" />
+              <Brightness4Icon className="w-4 h-4" />
             ) : (
-              <Sun className="w-4 h-4" />
+              <Brightness7Icon className="w-4 h-4" />
             )}
           </button>
 
-          <div className="flex -space-x-2">
-            <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">DS</div>
-            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm">ML</div>
+          {/* User Profile and Logout */}
+          <div className="flex items-center space-x-2">
+            {isAuthenticated ? (
+              <>
+                <div className="relative">
+                  <button
+                    className="flex items-center space-x-2 focus:outline-none"
+                    onClick={() => setShowAdminMenu(!showAdminMenu)}
+                  >
+                    <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">
+                      <User className="w-4 h-4" />
+                    </div>
+                  </button>
+                  
+                  {/* Profile Dropdown Menu */}
+                  {showAdminMenu && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
+                      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {user?.firstName} {user?.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {user?.email}
+                        </p>
+                      </div>
+                      {/* Admin menu items for admin users */}
+                      {user && (user.role === 'admin' || user.role === 'super-admin') && (
+                        <>
+                          <button
+                            onClick={handleAdminDashboardClick}
+                            className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                          >
+                            Admin Dashboard
+                          </button>
+                          <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                        </>
+                      )}
+                      <button
+                        onClick={logout}
+                        className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Logout
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            ) : (
+              <button
+                onClick={() => window.location.href = '/login'}
+                className="btn btn-primary text-sm"
+              >
+                Login
+              </button>
+            )}
           </div>
         </div>
       </header>

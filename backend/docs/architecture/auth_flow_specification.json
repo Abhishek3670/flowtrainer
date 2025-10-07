@@ -1,0 +1,131 @@
+{
+  "jwt_token_specification": {
+    "access_token": {
+      "expiry": "15m",
+      "claims": {
+        "sub": "User ID",
+        "role": "User role (user/admin/super-admin)",
+        "permissions": "Array of user permissions",
+        "iat": "Issued at timestamp",
+        "exp": "Expiration timestamp"
+      },
+      "signing_algorithm": "RS256"
+    },
+    "refresh_token": {
+      "expiry": "7d",
+      "storage": "HTTP-only cookie",
+      "rotation": {
+        "enabled": true,
+        "reuse_detection": true
+      }
+    },
+    "security_measures": [
+      "SameSite=Strict",
+      "Secure flag",
+      "HttpOnly flag",
+      "Token binding"
+    ]
+  },
+  "authentication_flows": {
+    "login": {
+      "endpoint": "POST /api/auth/login",
+      "request": {
+        "email": "string, required, validated",
+        "password": "string, required, min 8 chars"
+      },
+      "response": {
+        "success": {
+          "access_token": "JWT access token",
+          "user": {
+            "id": "string",
+            "email": "string",
+            "role": "string",
+            "permissions": "string[]"
+          }
+        },
+        "error": {
+          "code": "authentication_failed",
+          "message": "Invalid credentials"
+        }
+      }
+    },
+    "refresh": {
+      "endpoint": "POST /api/auth/refresh",
+      "request": {
+        "refresh_token": "string, required"
+      },
+      "response": {
+        "success": {
+          "access_token": "New JWT access token"
+        },
+        "error": {
+          "code": "invalid_refresh_token",
+          "message": "Invalid or expired refresh token"
+        }
+      }
+    },
+    "logout": {
+      "endpoint": "POST /api/auth/logout",
+      "request": {},
+      "response": {
+        "success": {
+          "message": "Successfully logged out"
+        }
+      }
+    }
+  },
+  "authorization": {
+    "roles": [
+      {
+        "name": "user",
+        "description": "Basic user with workflow access",
+        "permissions": [
+          "workflow:read",
+          "workflow:write",
+          "profile:read",
+          "profile:update"
+        ]
+      },
+      {
+        "name": "admin",
+        "description": "Admin with user management access",
+        "permissions": [
+          "user:read",
+          "user:create",
+          "user:update",
+          "user:delete",
+          "workflow:admin"
+        ],
+        "inherits": ["user"]
+      },
+      {
+        "name": "super-admin",
+        "description": "Full system access",
+        "permissions": ["*"],
+        "inherits": ["admin"]
+      }
+    ],
+    "permission_checking": {
+      "middleware": "checkPermission(permission: string | string[])",
+      "frontend_utility": "useHasPermission(permission: string): boolean"
+    }
+  },
+  "security_measures": {
+    "password_policy": {
+      "min_length": 8,
+      "require_uppercase": true,
+      "require_number": true,
+      "require_special_char": true,
+      "max_age_days": 90,
+      "history_size": 5
+    },
+    "account_lockout": {
+      "max_attempts": 5,
+      "duration_minutes": 15
+    },
+    "session_management": {
+      "inactivity_timeout": 30,
+      "reauthentication_required": true
+    }
+  }
+}

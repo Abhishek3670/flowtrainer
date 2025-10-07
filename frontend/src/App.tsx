@@ -1,24 +1,3 @@
-/**
- * FlowCraft Main Application Component
- * 
- * This is the core application component that manages the workflow canvas,
- * node interactions, undo/redo functionality, and project execution.
- * 
- * Key Features:
- * - Interactive workflow canvas with drag & drop
- * - Real-time node and edge management
- * - Undo/redo with state snapshots
- * - Checkpoint system for workflow persistence
- * - Project execution and monitoring
- * - Auto-save functionality
- * 
- * Architecture:
- * - Uses React Flow for canvas rendering
- * - Implements custom state management for complex workflows
- * - Integrates with backend APIs for persistence and execution
- * - Supports real-time collaboration via WebSocket
- */
-
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import ReactFlow, {
@@ -38,14 +17,27 @@ import ReactFlow, {
   Viewport,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
 // Core application components
 import Header from './components/Header/Header';
 import FloatingComponentsPanel from './components/FloatingComponentsPanel/FloatingComponentsPanel';
 import CustomNode from './components/CustomNode/CustomNode';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext';
 import StackEdgeDrawer from './components/StackEdgeDrawer/StackEdgeDrawer';
 import ErrorBoundary from './components/ErrorBoundary/ErrorBoundary';
+import ProtectedRoute from './components/ProtectedRoute';
+
+// Admin component
+import { AdminApp } from './admin';
+
+// Authentication pages
+import UnifiedLoginPage from './pages/UnifiedLoginPage';
+import UnifiedRegisterPage from './pages/UnifiedRegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
+import FirstTimeResetPasswordPage from './pages/FirstTimeResetPasswordPage';
 
 // Types and interfaces
 import { NodeData, WorkflowData, ValidationError } from './types';
@@ -705,9 +697,30 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider>
-        <ReactFlowProvider>
-          <FlowCanvas />
-        </ReactFlowProvider>
+        <UnifiedAuthProvider>
+          <ReactFlowProvider>
+            <Router>
+              <Routes>
+                {/* Public routes - using unified login for both regular and admin users */}
+                <Route path="/login" element={<UnifiedLoginPage />} />
+                <Route path="/register" element={<UnifiedRegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/reset-first-time-password" element={<FirstTimeResetPasswordPage />} />
+                
+                {/* Protected routes */}
+                <Route path="/" element={<ProtectedRoute><FlowCanvas /></ProtectedRoute>} />
+                <Route path="/workflow/*" element={<ProtectedRoute><FlowCanvas /></ProtectedRoute>} />
+                
+                {/* Admin routes - handles its own authentication */}
+                <Route path="/admin/*" element={<ProtectedRoute><AdminApp /></ProtectedRoute>} />
+                
+                {/* Redirect all other routes to login if not authenticated */}
+                <Route path="*" element={<Navigate to="/login" replace />} />
+              </Routes>
+            </Router>
+          </ReactFlowProvider>
+        </UnifiedAuthProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );
