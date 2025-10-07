@@ -29,8 +29,8 @@ authApi.interceptors.response.use(
   (error) => {
     // Handle 401 Unauthorized
     if (error.response?.status === 401) {
-      // Redirect to login
-      window.location.href = '/admin/login';
+      // Redirect to unified login
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }
@@ -116,7 +116,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
-    window.location.href = '/admin/login';
+    window.location.href = '/login';
   };
 
   const value = {

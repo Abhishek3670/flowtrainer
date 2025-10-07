@@ -15,14 +15,8 @@ const UnifiedLoginPage: React.FC = () => {
   // Handle redirection after successful authentication
   useEffect(() => {
     if (isAuthenticated && user) {
-      // Redirect based on user role
-      if (user.role === 'admin' || user.role === 'super-admin') {
-        // Admin users go to admin dashboard
-        navigate('/admin/dashboard');
-      } else {
-        // Regular users go to main workflow page
-        navigate('/');
-      }
+      // Redirect all users to main workflow page (including admins)
+      navigate('/');
     }
   }, [isAuthenticated, user, navigate]);
 

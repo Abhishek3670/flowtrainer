@@ -43,6 +43,7 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick, onThemeToggle })
 
   const handleHomeClick = () => {
     navigate('/');
+    handleProfileMenuClose();
   };
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -149,22 +150,6 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick, onThemeToggle })
           
           {/* Right Section */}
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            {/* Home button to navigate to main page - Hidden on very small screens */}
-            {!isSmallScreen && (
-              <Button
-                startIcon={<HomeIcon />}
-                onClick={handleHomeClick}
-                sx={{ 
-                  mr: 2,
-                  color: theme.palette.text.primary,
-                  textTransform: 'none',
-                  fontWeight: 500
-                }}
-              >
-                Home
-              </Button>
-            )}
-            
             {/* User Profile and Logout - Similar to main page */}
             <div className="flex items-center space-x-2">
               {user && (
@@ -209,6 +194,11 @@ const AdminHeader: React.FC<AdminHeaderProps> = ({ onMenuClick, onThemeToggle })
                           {user?.email}
                         </p>
                       </div>
+                      <MenuItem onClick={handleHomeClick}>
+                        <HomeIcon sx={{ mr: 1, fontSize: '1rem' }} />
+                        Home
+                      </MenuItem>
+                      <Divider />
                       {/* Admin menu items for admin users - Only show if not on dashboard */}
                       {user && (user.role === 'admin' || user.role === 'super-admin') && location.pathname !== '/admin/dashboard' && (
                         <>
