@@ -131,13 +131,6 @@ const UserManagementPage: React.FC = () => {
     }
   };
 
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
 
   const validateForm = () => {
     const errors: Record<string, string> = {};

@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticateJWT, requirePermission, logAdminAction } from '../../middleware/adminAuth';
 import { adminRateLimiter } from '../../middleware/rateLimit';
 import { User } from '../../models/User';
+import UserActivity from '../../models/UserActivity';
 import logger from '../../utils/logger';
 
 const router = Router();
@@ -16,15 +17,67 @@ router.use(authenticateJWT, requirePermission('read_audit_logs'), logAdminAction
  */
 router.get('/logs', async (req: Request, res: Response) => {
   try {
-    // For now, return an empty response since we don't have audit logs implemented
+    const { 
+      userId, 
+      action, 
+      entityType, 
+      startDate, 
+      endDate,
+      page = 1, 
+      limit = 20 
+    } = req.query as any;
+
+    // Build filter object
+    const filter: any = {};
+    
+    if (userId) {
+      filter.userId = userId;
+    }
+    
+    if (action) {
+      filter.action = { $regex: action, $options: 'i' };
+    }
+    
+    if (entityType) {
+      filter.entityType = entityType;
+    }
+    
+    // Handle date range filtering
+    if (startDate || endDate) {
+      filter.timestamp = {};
+      if (startDate) {
+        filter.timestamp.$gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        filter.timestamp.$lte = new Date(endDate as string);
+      }
+    }
+
+    // Calculate pagination
+    const pageNum = parseInt(page as string) || 1;
+    const limitNum = parseInt(limit as string) || 20;
+    const skip = (pageNum - 1) * limitNum;
+
+    // Fetch logs with filtering and pagination
+    const [logs, total] = await Promise.all([
+      UserActivity.find(filter)
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(limitNum)
+        .lean(),
+      UserActivity.countDocuments(filter)
+    ]);
+
+    const totalPages = Math.ceil(total / limitNum);
+
     res.json({
       success: true,
-      data: [],
+      data: logs,
       pagination: {
-        total: 0,
-        page: 1,
-        limit: 20,
-        totalPages: 0
+        total,
+        page: pageNum,
+        limit: limitNum,
+        totalPages
       }
     });
   } catch (error) {
@@ -40,8 +93,23 @@ router.get('/logs', async (req: Request, res: Response) => {
  */
 router.get('/logs/:id', async (req: Request, res: Response) => {
   try {
-    // For now, return a not found response since we don't have audit logs implemented
-    return res.status(404).json({ success: false, error: 'Log not found' });
+    const { id } = req.params;
+    
+    // Validate ObjectId
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ success: false, error: 'Invalid log ID' });
+    }
+    
+    const log = await UserActivity.findById(id);
+    
+    if (!log) {
+      return res.status(404).json({ success: false, error: 'Log not found' });
+    }
+    
+    return res.json({
+      success: true,
+      data: log
+    });
   } catch (error) {
     logger.error('Error fetching audit log:', error);
     return res.status(500).json({ success: false, error: 'Server error' });
@@ -55,13 +123,35 @@ router.get('/logs/:id', async (req: Request, res: Response) => {
  */
 router.get('/activities', async (req: Request, res: Response) => {
   try {
-    // For now, return an empty response since we don't have audit logs implemented
+    // Get recent activities (last 24 hours)
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    const [recentActivities, totalActivities] = await Promise.all([
+      UserActivity.find({ timestamp: { $gte: twentyFourHoursAgo } })
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .lean(),
+      UserActivity.countDocuments({ timestamp: { $gte: twentyFourHoursAgo } })
+    ]);
+    
+    // Get user activity stats
+    const userActivityStats = await UserActivity.aggregate([
+      { $match: { timestamp: { $gte: twentyFourHoursAgo } } },
+      { $group: { 
+          _id: '$userId', 
+          count: { $sum: 1 },
+          lastActivity: { $max: '$timestamp' }
+      }},
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+    
     res.json({
       success: true,
       data: {
-        totalActivities: 0,
-        recentActivities: [],
-        userActivityStats: []
+        totalActivities,
+        recentActivities,
+        userActivityStats
       }
     });
   } catch (error) {

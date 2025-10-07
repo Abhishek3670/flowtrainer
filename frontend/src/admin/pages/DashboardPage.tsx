@@ -191,16 +191,10 @@ const DashboardPage: React.FC = () => {
         </StatCard>
       </Box>
       
+      {/* Recent Activity - Full Width */}
       <Box sx={{ 
-        display: 'grid',
-        gridTemplateColumns: { 
-          xs: '1fr', 
-          md: '2fr 1fr' 
-        },
-        gap: { xs: 2, sm: 3 },
         mt: 3
       }}>
-        {/* Recent Activity */}
         <Item>
           <Typography variant="h6" gutterBottom>
             Recent Activity
@@ -230,80 +224,6 @@ const DashboardPage: React.FC = () => {
             ) : (
               <Typography>No recent activities</Typography>
             )}
-          </Box>
-        </Item>
-        
-        {/* Quick Actions */}
-        <Item>
-          <Typography variant="h6" gutterBottom>
-            Quick Actions
-          </Typography>
-          <Box sx={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: 1,
-            py: 1
-          }}>
-            <Typography 
-              variant="body2" 
-              color="primary" 
-              sx={{ 
-                cursor: 'pointer',
-                py: 1,
-                px: 2,
-                borderRadius: 1,
-                '&:hover': {
-                  backgroundColor: theme.palette.action.hover
-                }
-              }}
-            >
-              • Add New User
-            </Typography>
-            <Typography 
-              variant="body2" 
-              color="primary" 
-              sx={{ 
-                cursor: 'pointer',
-                py: 1,
-                px: 2,
-                borderRadius: 1,
-                '&:hover': {
-                  backgroundColor: theme.palette.action.hover
-                }
-              }}
-            >
-              • View System Logs
-            </Typography>
-            <Typography 
-              variant="body2" 
-              color="primary" 
-              sx={{ 
-                cursor: 'pointer',
-                py: 1,
-                px: 2,
-                borderRadius: 1,
-                '&:hover': {
-                  backgroundColor: theme.palette.action.hover
-                }
-              }}
-            >
-              • Run System Check
-            </Typography>
-            <Typography 
-              variant="body2" 
-              color="primary" 
-              sx={{ 
-                cursor: 'pointer',
-                py: 1,
-                px: 2,
-                borderRadius: 1,
-                '&:hover': {
-                  backgroundColor: theme.palette.action.hover
-                }
-              }}
-            >
-              • Backup Database
-            </Typography>
           </Box>
         </Item>
       </Box>

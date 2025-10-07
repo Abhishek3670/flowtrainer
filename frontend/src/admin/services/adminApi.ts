@@ -182,11 +182,11 @@ export const activityApi = {
     endDate?: string;
     page?: number;
     limit?: number;
-  }) => api.get<ApiResponse<{ logs: ActivityLog[]; total: number }>>('/activity/logs', { params }),
+  }) => api.get<ApiResponse<{ logs: ActivityLog[]; total: number }>>('/audit/logs', { params }),
   
   // Get activity log by ID
   getLog: (id: string) => 
-    api.get<ApiResponse<ActivityLog>>(`/activity/logs/${id}`),
+    api.get<ApiResponse<ActivityLog>>(`/audit/logs/${id}`),
 };
 
 // Settings API
