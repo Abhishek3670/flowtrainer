@@ -14,11 +14,20 @@ async function seedAdmin() {
     const existingAdmin = await User.findOne({ email: 'admin@example.com' });
     
     if (existingAdmin) {
-      console.log('Admin user already exists, updating password...');
+      console.log('Admin user already exists, updating password and permissions...');
       // Update the password
       existingAdmin.password = 'Admin@123';
+      // Update permissions to match the role-based permissions
+      existingAdmin.permissions = [
+        'read_users',
+        'manage_users',
+        'read_system_metrics',
+        'manage_system_config',
+        'read_audit_logs',
+        'manage_workflows'
+      ];
       await existingAdmin.save();
-      console.log('Admin password updated successfully');
+      console.log('Admin user updated successfully');
       console.log('Email: admin@example.com');
       console.log('Password: Admin@123');
       process.exit(0);
@@ -32,14 +41,12 @@ async function seedAdmin() {
       lastName: 'User',
       role: 'admin',
       permissions: [
-        'users:read',
-        'users:create',
-        'users:update',
-        'users:delete',
-        'workflows:read',
-        'workflows:create',
-        'workflows:update',
-        'workflows:delete',
+        'read_users',
+        'manage_users',
+        'read_system_metrics',
+        'manage_system_config',
+        'read_audit_logs',
+        'manage_workflows'
       ],
       isActive: true,
     });

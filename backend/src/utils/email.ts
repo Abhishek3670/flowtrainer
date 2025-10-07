@@ -1,8 +1,12 @@
 import nodemailer from 'nodemailer';
 import logger from './logger';
 
+// Check if email is disabled
+const isEmailDisabled = process.env.DISABLE_EMAIL === 'true';
+
 // Create a transporter object using the default SMTP transport
-const transporter = nodemailer.createTransport({
+// Only create transporter if email is not disabled
+const transporter = isEmailDisabled ? null : nodemailer.createTransport({
   host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
   port: parseInt(process.env.EMAIL_PORT || '587'),
   secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
@@ -23,6 +27,12 @@ export const sendPasswordResetEmail = async (
   firstName: string,
   resetToken: string
 ): Promise<void> => {
+  // If email is disabled, log and return early
+  if (isEmailDisabled) {
+    logger.info('Email disabled: Skipping password reset email', { email });
+    return;
+  }
+
   try {
     // Create the reset URL
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
@@ -57,11 +67,13 @@ export const sendPasswordResetEmail = async (
     };
 
     // Send the email
-    const info = await transporter.sendMail(mailOptions);
-    logger.info('Password reset email sent', { messageId: info.messageId, email });
+    if (transporter) {
+      const info = await transporter.sendMail(mailOptions);
+      logger.info('Password reset email sent', { messageId: info.messageId, email });
+    }
   } catch (error: any) {
     logger.error('Failed to send password reset email', { error, email });
-    throw error;
+    // Don't throw error to prevent breaking the flow
   }
 };
 
@@ -74,6 +86,12 @@ export const sendWelcomeEmail = async (
   email: string,
   firstName: string
 ): Promise<void> => {
+  // If email is disabled, log and return early
+  if (isEmailDisabled) {
+    logger.info('Email disabled: Skipping welcome email', { email });
+    return;
+  }
+
   try {
     // Define email options
     const mailOptions = {
@@ -112,10 +130,12 @@ export const sendWelcomeEmail = async (
     };
 
     // Send the email
-    const info = await transporter.sendMail(mailOptions);
-    logger.info('Welcome email sent', { messageId: info.messageId, email });
+    if (transporter) {
+      const info = await transporter.sendMail(mailOptions);
+      logger.info('Welcome email sent', { messageId: info.messageId, email });
+    }
   } catch (error: any) {
     logger.error('Failed to send welcome email', { error, email });
-    throw error;
+    // Don't throw error to prevent breaking the flow
   }
 };
