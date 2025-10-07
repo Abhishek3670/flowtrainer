@@ -149,16 +149,19 @@ const Header: React.FC<HeaderProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onUndo, onRedo, disableUndo, disableRedo]);
 
-  // Close admin menu when clicking outside
+  // Close profile dropdown menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const adminMenu = document.getElementById('admin-menu');
-      const adminButton = document.getElementById('admin-button');
-      
-      if (adminMenu && adminButton && 
-          !adminMenu.contains(event.target as Node) && 
-          !adminButton.contains(event.target as Node)) {
-        setShowAdminMenu(false);
+      if (showAdminMenu) {
+        const profileMenu = document.querySelector('.absolute.right-0.mt-2.w-56');
+        const profileButton = event.target as Element;
+        
+        // Check if click is outside the profile dropdown and button
+        if (profileMenu && 
+            !profileMenu.contains(event.target as Node) && 
+            !profileButton.closest('button.flex.items-center.space-x-2')) {
+          setShowAdminMenu(false);
+        }
       }
     };
 
@@ -166,7 +169,7 @@ const Header: React.FC<HeaderProps> = ({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [showAdminMenu]);
 
   // ===== SYSTEM STATUS UTILITIES =====
   
@@ -394,47 +397,49 @@ const Header: React.FC<HeaderProps> = ({
           <div className="flex items-center space-x-2">
             {isAuthenticated ? (
               <>
-                <div className="flex items-center space-x-2 relative">
-                  <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">
-                    <User className="w-4 h-4" />
-                  </div>
-                  <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {user?.firstName} {user?.lastName}
-                  </span>
-                  {/* Admin dropdown menu for admin users */}
-                  {user && (user.role === 'admin' || user.role === 'super-admin') && (
-                    <div className="relative">
-                      <button
-                        id="admin-button"
-                        onClick={() => setShowAdminMenu(!showAdminMenu)}
-                        className="flex items-center text-gray-700 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400"
-                      >
-                        <ChevronDown className="w-4 h-4 ml-1" />
-                      </button>
-                      
-                      {showAdminMenu && (
-                        <div 
-                          id="admin-menu"
-                          className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700"
-                        >
+                <div className="relative">
+                  <button
+                    className="flex items-center space-x-2 focus:outline-none"
+                    onClick={() => setShowAdminMenu(!showAdminMenu)}
+                  >
+                    <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white text-sm">
+                      <User className="w-4 h-4" />
+                    </div>
+                  </button>
+                  
+                  {/* Profile Dropdown Menu */}
+                  {showAdminMenu && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-md shadow-lg py-1 z-50 border border-gray-200 dark:border-gray-700">
+                      <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {user?.firstName} {user?.lastName}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                          {user?.email}
+                        </p>
+                      </div>
+                      {/* Admin menu items for admin users */}
+                      {user && (user.role === 'admin' || user.role === 'super-admin') && (
+                        <>
                           <button
                             onClick={handleAdminDashboardClick}
                             className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                           >
                             Admin Dashboard
                           </button>
-                        </div>
+                          <div className="border-t border-gray-200 dark:border-gray-700 my-1"></div>
+                        </>
                       )}
+                      <button
+                        onClick={logout}
+                        className="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Logout
+                      </button>
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={logout}
-                  className="btn btn-outline p-2 text-gray-700 dark:text-gray-300"
-                  title="Logout"
-                >
-                  <LogOut className="w-4 h-4" />
-                </button>
               </>
             ) : (
               <button
